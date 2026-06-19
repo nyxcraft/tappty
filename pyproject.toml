@@ -33,6 +33,7 @@ tapterm = "tappty.cli:main"
 [project.urls]
 Homepage = "https://github.com/nkissebe/tappty"
 Source = "https://github.com/nkissebe/tappty"
+Changelog = "https://github.com/nkissebe/tappty/blob/main/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
 where = ["src"]

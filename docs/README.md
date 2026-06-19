@@ -26,7 +26,8 @@ importable package is **`tappty`**.
 | build your own tool on the engine (taps, the bus, custom sources, dashboards) | **[REFERENCE](REFERENCE.md)** |
 | understand how it works inside, and why | **[DESIGN](DESIGN.md)** |
 | set up to develop and run the tests | the top-level [README](../README.md) |
-| see how the project came to be — and what's left to do | **[HISTORY](HISTORY.md)** |
+| see when it started and what's changed | the [CHANGELOG](../CHANGELOG.md) |
+| see what's planned next | the [ROADMAP](../ROADMAP.md) |
 
 ## The documents
 
@@ -42,12 +43,11 @@ importable package is **`tappty`**.
 - **[DESIGN.md](DESIGN.md)** — the architecture and the reasoning behind it: the decoupled
   Source → Terminal → Session → renderer/bus pipeline, the observe/control contract and the
   talking-stick arbitration, the bytes-vs-characters decode, the bus protocol, the concurrency
-  and threading model, the security/trust model, the extraction boundary, and the known
-  limitations. *For modifying tappty.*
-- **[HISTORY.md](HISTORY.md)** — how the project got here, with dates (built as `sbterm`
-  inside the *SIXBIT FORTRAN 66* project, then extracted and generalized into `tappty`) —
-  and **what's left**: the open-work roadmap (CI, the `sixbit/term` rewire, PyPI, finishing
-  the Windows ConPTY path on a real box). *For contributing.*
+  and threading model, the security/trust model, the extraction boundary, the known
+  limitations, and how the design was found (the provenance). *For modifying tappty.*
+These four are the curated docs. Two more project files live at the repo root: the
+[CHANGELOG](../CHANGELOG.md) — dated history, including when tappty started and first worked —
+and the [ROADMAP](../ROADMAP.md) — the open work that's still ahead.
 
 Quickstart and install live in the top-level [README](../README.md); the license is
 [LICENSE](../LICENSE) (MIT © Nicholas J. Kisseberth).

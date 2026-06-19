@@ -3,7 +3,8 @@
 How `tappty` is structured and why. This is the architecture companion to the
 [README](../README.md) (the usage guide); it is for someone modifying the toolkit and
 wanting the full picture — contracts, data shapes, the threading model, and the reasoning
-behind each part. The open-work roadmap lives in [HISTORY.md](HISTORY.md) ("What's left").
+behind each part. The dated history is in [CHANGELOG.md](../CHANGELOG.md); the open-work
+roadmap is in [ROADMAP.md](../ROADMAP.md).
 
 ---
 
@@ -110,7 +111,7 @@ caller can re-raise it. **Five implementations ship:**
   VT100+ and `pywinpty` returns already-decoded `str`, so it is a *text source* and pairs with
   `PyteTerminal` (not the VT52 model). **Written against the documented `PtyProcess` API but
   not yet exercised on real Windows — provisional** (finishing it is open work — see
-  [HISTORY.md](HISTORY.md)).
+  [ROADMAP.md](../ROADMAP.md)).
 
 **Shared reader loop.** The three subprocess/pty sources (`PtySource`, `PipeSource`,
 `ConPtySource`) all run the same daemon-thread loop, so it lives once in `Source._pump`:
@@ -468,7 +469,7 @@ by-eye pass: under WSLg (`DISPLAY`/`WAYLAND_DISPLAY` set, SDL auto-picks x11) bo
 draw correctly, `tapterm --cast rec.cast --gui` is the easiest reproducible visual check, and
 `--snapshot` writes a reviewable PNG (harmless EGL/MESA warnings on stderr are failed
 hardware-GL probing — SDL falls back to software). The Windows `ConPtySource` path is unverified
-(no Windows runner; finishing it is open work — see [HISTORY.md](HISTORY.md)).
+(no Windows runner; finishing it is open work — see [ROADMAP.md](../ROADMAP.md)).
 
 ---
 
@@ -540,4 +541,80 @@ Conscious scope choices, recorded so they aren't mistaken for defects:
   pywinpty, the `win` extra) exists and `cli.py` selects it — but it has **never run on real
   Windows**, so it's provisional until exercised. (The stdlib also lacks `curses` on Windows;
   the CUI would need `windows-curses`.) Finishing Windows — validate `ConPtySource`, add a
-  Windows CI lane, broaden the `pyproject` classifiers — is open work (see [HISTORY.md](HISTORY.md)).
+  Windows CI lane, broaden the `pyproject` classifiers — is open work (see [ROADMAP.md](../ROADMAP.md)).
+
+---
+
+## 10. Provenance — how this design was found
+
+tappty was **not designed in the abstract; it was discovered** by building a real
+instrumented terminal against a hard target — hosting and driving 1970s PDP-10 games on a
+Fortran-66 interpreter, and in particular *multiplayer DECWAR*, where bots and human
+spectators all needed to watch and take turns driving the same sessions. The author had been
+hand-driving those bots and spectators ad hoc in Python; the idea was to **externalize that
+once** so every consumer — the screen, an AI, a logger, a dashboard — attaches the same way.
+The shorthand that framed it: *"expect + tmux + asciinema, for AIs"* — a programmable,
+observable, shareable terminal. §1's "every consumer is equal" is the distilled result; this
+section records the reasoning that produced it, for anyone changing the contracts.
+
+**Build in-project first, extract later.** The design was dogfooded inside the game project
+against the real DECWAR/SIMH need *before* being lifted out — deliberately, to avoid
+pre-generalizing a tool nobody had used yet. The rule was to keep the seams clean so the
+extraction would be a *lift, not a rewrite*: only the in-process `EngineSource` was
+project-coupled; the bus, the Terminal/grid, the pty source, and the talking stick were
+generic from the start. (What stayed behind is §6.)
+
+**The three load-bearing decisions** (each chosen for a reason, not for symmetry):
+
+- **One observe/control *contract*, with pluggable transport.** Build the interface once;
+  let in-process renderers use a direct call and out-of-process clients use a socket — same
+  semantics either way. The **three taps** are deliberately different *views*, not redundant:
+  the **raw stream** is lossless and temporal (it catches transient or scrolled-away output,
+  bells, exact ordering — for loggers and replay); the **grid** is spatial and rendered *once
+  then shared*, so N clients don't each run an emulator; **events** carry the turn boundary
+  (`WAIT` = "your turn"). An automated driver was already implicitly using the grid + events;
+  formalizing the contract just added the raw-stream tap and a name.
+- **Scope is a Source seam.** Everything downstream of the source — Terminal, the taps,
+  control, arbitration, renderers — is identical no matter where the bytes come from, so a new
+  producer is the *only* thing a new use-case adds. The full-ANSI grid (`PyteTerminal`) was
+  deliberately deferred *behind this same seam* until a non-VT52 program actually needed it,
+  rather than built speculatively up front.
+- **Arbitration is a talking stick** — a single driver token, with **you-privileged
+  preemption**: a human can always take the stick from an AI, and an AI can *never* preempt a
+  human, so a runaway bot can't lock the operator out ("watch it fly, grab the stick, hand it
+  back"). The stick **auto-releases on disconnect/death**, the same liveness rule that keeps a
+  session from getting stuck uncontrollable. (A fourth original thread — *discovery* via a
+  TOPS-10-flavored job table — was genuinely OS/game-specific and stayed behind in the
+  extraction.)
+
+**Dogfooding shaped the contract.** Several parts of the protocol exist because *using* it
+exposed the need, not because they were specified up front:
+
+- **Injected-input echo** (`Session.echo`, the bus `LINE` echo) — driving the game through the
+  bus in a watched window, a spectator couldn't see the AI's commands, because injected input
+  isn't echoed like a local keypress. So the driver echoes a command (when it holds the stick)
+  before sending it.
+- **The synchronous `CMD` primitive** — every automated driver was hand-rolling the same
+  "send a line, drain output until the next `WAIT`" loop, so it became one verb.
+- **An `INFO` `waiting` flag** — a late-attaching controller couldn't tell it was already its
+  turn (the first `WAIT` fired before it connected).
+- **The explicit stick toggle** (the compositor's `F2`) — an earlier "last-to-act-wins" rule
+  let a stray click or keystroke silently flip control, which the operator disliked; typing
+  now never grabs the stick.
+
+**A scaling lesson shaped the compositor.** Running the session *engines* inside the render
+process starved the GIL and slowed frames. The fix is why the compositor talks to *backings*
+rather than hosting sessions itself: real sessions run in separate processes, and the window
+is a bus client that only draws `FRAME` snapshots and forwards input (`BusBacking`) — no
+interpreting in the render loop. `SessionBacking` is the in-process special case of the same
+shape.
+
+**Rendering avoids "curses-in-curses."** The grid model does two separable jobs:
+*emulate-to-observe* (a headless screen an automated client reads — always safe) and
+*emulate-to-display* (render for a human). Keeping them separate, plus sealing the program in
+a fixed 80×24 model with a render-side viewport (§1), is what lets a renderer resize freely
+without the hosted program ever seeing it.
+
+> The fuller working notes — the increment-by-increment build log and the original
+> discussion — live in the parent SIXBIT FORTRAN 66 project's Claude memory
+> (`sbterm-instrumentation`, at `~/pdp10-empire`).
