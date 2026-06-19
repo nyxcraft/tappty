@@ -24,7 +24,10 @@ classifiers = [
 [project.optional-dependencies]
 gui = ["pygame-ce"]            # the maintained community fork (drop-in `import pygame`); CI-tested
 ansi = ["pyte"]                # full-ANSI/VT100+ Terminal backend (PyteTerminal); LGPLv3
-win = ['pywinpty; platform_system == "Windows"']   # ConPtySource (Windows pseudo-console)
+win = [                                              # Windows-native support
+    'pywinpty; platform_system == "Windows"',        #   ConPtySource (Windows pseudo-console)
+    'windows-curses; platform_system == "Windows"',  #   curses_ui CUI (stdlib ships no curses on Windows)
+]
 dev = ["pytest", "ruff"]
 
 [project.scripts]

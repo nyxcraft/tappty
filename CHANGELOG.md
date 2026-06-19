@@ -56,10 +56,11 @@ The `0.1.0` line — the generic toolkit and the `tapterm` command. Built across
 - **`tapterm` CLI.** `--cui` / `--gui` / `--headless`, `--ansi`, `--no-pty`, `--cast`
   (`--speed` / `--loop`), `--cols` / `--rows`, `--snapshot`, `--exit-when-done`. Headless
   prints the final screen and exits with the child's own status.
-- **Packaging & tooling.** `pyproject.toml` (extras `gui` / `ansi` / `win` / `dev`), MIT
-  license, `src/` layout, a pytest suite (92 tests), ruff lint + format (line length 99), and
-  a GitHub Actions CI matrix on Python 3.9–3.13 (pyte + pygame-ce so the ANSI and headless-GUI
-  tests run).
+- **Packaging & tooling.** `pyproject.toml` (extras `gui` / `ansi` / `win` / `dev`; `win`
+  bundles pywinpty *and* windows-curses so `tappty[win]` gives both the ConPTY host and the
+  curses CUI on Windows), MIT license, `src/` layout, a pytest suite (92 tests), ruff lint +
+  format (line length 99), and a GitHub Actions CI matrix on Python 3.9–3.13 (pyte + pygame-ce
+  so the ANSI and headless-GUI tests run).
 
 ### Changed
 

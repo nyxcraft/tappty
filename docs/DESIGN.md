@@ -414,7 +414,8 @@ Session to a renderer. The pieces it wires:
 *inside* the functions/constructors that need them, never at module top. So `import tappty`
 works with none of them installed (verified under a bare interpreter), and `tapterm --cui` /
 `--headless` need no display. The extras: `gui` = pygame-ce, `ansi` = pyte (`PyteTerminal`),
-`win` = pywinpty (`ConPtySource`, Windows only), `dev` = pytest + ruff.
+`win` = pywinpty + windows-curses (`ConPtySource` and the curses CUI on Windows; both
+Windows-marked), `dev` = pytest + ruff.
 
 ---
 
@@ -539,8 +540,10 @@ Conscious scope choices, recorded so they aren't mistaken for defects:
   `EngineSource`, `CastSource`, `PipeSource`, the renderers, and the TCP bus are already
   cross-platform. So Windows hosting needs only a Windows Source: `ConPtySource` (ConPTY via
   pywinpty, the `win` extra) exists and `cli.py` selects it — but it has **never run on real
-  Windows**, so it's provisional until exercised. (The stdlib also lacks `curses` on Windows;
-  the CUI would need `windows-curses`.) Finishing Windows — validate `ConPtySource`, add a
+  Windows**, so it's provisional until exercised. (The stdlib also lacks `curses` on Windows,
+  so the CUI needs `windows-curses` — now bundled in the `win` extra; `curses_ui` itself is
+  already portable, since all color setup is guarded with a fallback.) Finishing Windows —
+  validate `ConPtySource`, add a
   Windows CI lane, broaden the `pyproject` classifiers — is open work (see [ROADMAP.md](../ROADMAP.md)).
 
 ---

@@ -37,7 +37,7 @@ flag and mode, with practical examples and troubleshooting.
 pip install tappty            # the core + tapterm; the CUI works out of the box
 pip install 'tappty[gui]'     # add the green-phosphor window (pygame-ce)
 pip install 'tappty[ansi]'    # add the full-ANSI backend (pyte) for --ansi
-pip install 'tappty[win]'     # Windows: add the ConPTY host (pywinpty)
+pip install 'tappty[win]'     # Windows-native: ConPTY host + curses CUI (pywinpty, windows-curses)
 ```
 
 After install, `tapterm` is on your `PATH`. You can combine extras: `pip install 'tappty[gui,ansi]'`.
@@ -46,7 +46,7 @@ What each mode needs:
 
 | You want… | Needs |
 |-----------|-------|
-| `--cui` (curses) | a POSIX terminal — no extras |
+| `--cui` (curses) | a terminal — no extras on POSIX; on Windows, the `win` extra (`windows-curses`) |
 | `--gui` (pygame window) | the `gui` extra **and** a display |
 | `--headless` | no terminal, no display, no extras\* |
 | `--ansi` (full-ANSI render) | the `ansi` extra |
@@ -313,9 +313,10 @@ display / positive-integer notes that the bare `--help` leaves out.)
   `--gui` *without the `gui` extra* fails with a clear install hint; `--gui` *with no display*
   surfaces pygame/SDL's own video-initialization error instead.
 - **macOS:** the GUI works (native, no `DISPLAY` needed); CUI works in Terminal/iTerm.
-- **Windows:** the GUI (pygame) and `--headless` work; the CUI needs `windows-curses` (not
-  bundled). Hosting a command uses ConPTY (`win` extra) and auto-enables `--ansi`, but that
-  path is **provisional/untested** — prefer `--no-pty` for now.
+- **Windows:** the GUI (pygame) and `--headless` work; the CUI needs `windows-curses`, which
+  the `win` extra installs (`pip install 'tappty[win]'`). Hosting a command uses ConPTY (also
+  in the `win` extra) and auto-enables `--ansi`, but that path is **provisional/untested** —
+  prefer `--no-pty` for now.
 - **`--headless` needs neither a terminal nor a display**, so it's the safe choice in CI and
   scripts on any platform.
 

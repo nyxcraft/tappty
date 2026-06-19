@@ -227,8 +227,9 @@ def main(argv=None):
         if not _have_curses():
             ap.error(
                 "--cui needs the curses library, which the Python standard library does "
-                "not ship on Windows: install it with  pip install windows-curses  "
-                "(or use --gui for a window, or --headless to just run and print)"
+                "not ship on Windows: install it with  pip install 'tappty[win]'  (or "
+                "pip install windows-curses), or use --gui for a window or --headless to "
+                "just run and print"
             )
         from tappty import curses_ui
 

@@ -28,8 +28,9 @@ ConPTY source is written but unverified on real Windows.
      others still assume a POSIX shell `sh` and would need guarding too).
    - Broaden the `Operating System` classifiers in `pyproject.toml` (POSIX-only today) and
      flip the README/DESIGN Windows wording from "provisional" to "verified".
-   - Optional: `windows-curses` makes `curses_ui` work on Windows (the stdlib ships no
-     `curses` there) — as an extra or a documented manual install.
+   - CUI on Windows: `windows-curses` is now bundled in the `win` extra (the stdlib ships no
+     `curses` there), and `curses_ui` is already portable — but, like `ConPtySource`, it's
+     unverified on real Windows; confirm `tapterm --cui` renders there.
 3. **Possible features:** an arcade or web renderer (same `run(session, runner, …)` shape —
    `terminado` / `pyxtermjs` are references); and the deliberate gaps in
    [docs/DESIGN.md](docs/DESIGN.md) §9 if they ever bite (SGR color via

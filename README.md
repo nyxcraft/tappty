@@ -94,7 +94,7 @@ the renderers, and the TCP bus are cross-platform. `PtySource` uses `pty`/`termi
 `--ansi`) or `PipeSource` (`--no-pty`), and use the TCP bus rather than a Unix socket. The
 Windows ConPTY path is implemented but not yet exercised on real Windows — finishing it is
 open work (see [ROADMAP.md](ROADMAP.md)). The GUI needs a display; the CUI needs a
-terminal (`windows-curses` on Windows); `--headless` needs neither.
+terminal (and, on Windows, the `win` extra's `windows-curses`); `--headless` needs neither.
 
 ## Documentation
 
