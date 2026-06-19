@@ -351,7 +351,19 @@ its native key events (arrows/function/Ctrl) through `tappty.keys` and `send_key
   otherwise stalls it ~55 s). It needs a real GL context (a display), where the pure-software
   pygame path does not.
 
-A further renderer (web, an embedded widget, …) is the same shape; nothing else needs to know.
+- **`web_ui`** renders the session in a **browser tab** — the same `run(...)` contract, over
+  HTTP + a WebSocket (the `web` extra). A stdlib `http.server` serves one inlined HTML/JS page;
+  `websockets` (its *synchronous* server — no asyncio) carries the live connection. Per client,
+  one handler thread runs a poll loop: `recv` keystrokes (short timeout) and push the latest
+  frame when the grid is dirty, so only that thread sends and the source thread just flips a
+  flag. Frames are `style.runs()` per row (RLE, hex colors) and the browser is a **thin canvas
+  painter** — *not* an emulator, exactly like the other renderers (tappty's model already
+  emulated). Keystrokes arrive as *logical* keys (a char, or `"up"`/`"enter"`/`"ctrl-c"`); the
+  server translates them via `tappty.keys` and routes to `send_key`/`feed_key`, so byte-mapping
+  stays in one place. Each client `claim_control`s its own name (the talking stick arbitrates
+  several browsers). Loopback-bound with an optional `token` (§8); it's a control plane, no TLS.
+
+An embedded-widget or arcade-cabinet renderer would be the same shape; nothing else needs to know.
 
 ### 2.6 The compositor — `compositor.py`
 
@@ -439,15 +451,17 @@ Session to a renderer. The pieces it wires:
 | `curses_ui.py` | CUI renderer + the pure `viewport()` | stdlib `curses` (deferred) |
 | `pygame_ui.py` | GUI renderer | pygame (deferred) |
 | `arcade_ui.py` | GUI renderer (arcade/pyglet/OpenGL twin of `pygame_ui`) | arcade (deferred; `arcade` extra) |
+| `web_ui.py` | browser renderer over HTTP + a WebSocket | stdlib `http.server`; `websockets` (deferred; `web` extra) |
 | `cli.py` | the `tapterm` program | session, terminal, source |
 | `__init__.py` | public API | — |
 
-**Optional deps are deferred** — `pygame`, `arcade`, `curses`, `pyte`, and `pywinpty` are
-imported *inside* the functions/constructors that need them, never at module top. So `import tappty`
-works with none of them installed (verified under a bare interpreter), and `tapterm --cui` /
-`--headless` need no display. The extras: `gui` = pygame-ce, `arcade` = arcade (the
-`arcade_ui` renderer), `ansi` = pyte (`PyteTerminal`), `win` = pywinpty + windows-curses
-(`ConPtySource` and the curses CUI on Windows; both Windows-marked), `dev` = pytest + ruff.
+**Optional deps are deferred** — `pygame`, `arcade`, `websockets`, `curses`, `pyte`, and
+`pywinpty` are imported *inside* the functions/constructors that need them, never at module top.
+So `import tappty` works with none of them installed (verified under a bare interpreter), and
+`tapterm --cui` / `--headless` need no display. The extras: `gui` = pygame-ce, `arcade` = arcade
+(`arcade_ui`), `web` = websockets (`web_ui`), `ansi` = pyte (`PyteTerminal`), `win` = pywinpty +
+windows-curses (`ConPtySource` and the curses CUI on Windows; both Windows-marked), `dev` =
+pytest + ruff.
 
 ---
 
@@ -509,8 +523,9 @@ hardware-GL probing — SDL falls back to software). The Windows `ConPtySource` 
 ## 8. Security / trust model
 
 The bus is a **terminal control plane**: a connected client can read the screen and, holding
-the talking stick, inject input — i.e. terminal read/write as the tappty user. It is
-**trusted-local**, not a boundary against a hostile network. The defenses:
+the talking stick, inject input — i.e. terminal read/write as the tappty user. The **`web_ui`**
+renderer is the same kind of plane over HTTP + a WebSocket, and takes the same posture (next
+paragraph). Both are **trusted-local**, not a boundary against a hostile network. The defenses:
 
 - **Unix socket (default-safe):** the socket *file* is `0600`, so only the owner UID can
   connect — that file mode is the actual connect gate, the auth. When tappty creates the parent
@@ -532,6 +547,10 @@ the talking stick, inject input — i.e. terminal read/write as the tappty user.
 - **Untrusted `.cast` files:** width/height are clamped, v2 line reads are byte-bounded, and the
   unstreamable v1 whole-file load is refused above `MAX_CAST_FILE` — so a malicious recording
   can't drive a huge grid allocation or load an unbounded file.
+- **`web_ui` (the browser renderer):** binds **loopback only** by default; an optional non-empty
+  `token` (a WebSocket query param, constant-time compared via `hmac`) gates connections. Same
+  cleartext-gate caveat as the bus `token` — it's not transport security; put it behind an SSH
+  tunnel / a TLS proxy for an untrusted network. No TLS of its own.
 
 Not in scope as bugs: the subprocess path launches `argv` with `shell=False` (no shell
 injection), and `--snapshot` writes exactly where the user asked (user-directed output, not a

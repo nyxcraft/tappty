@@ -37,6 +37,7 @@ flag and mode, with practical examples and troubleshooting.
 pip install tappty            # the core + tapterm; the CUI works out of the box
 pip install 'tappty[gui]'     # add the green-phosphor window (pygame-ce)
 pip install 'tappty[arcade]'  # add the arcade/OpenGL window (alternative GUI backend)
+pip install 'tappty[web]'     # add the browser renderer for --web (websockets)
 pip install 'tappty[ansi]'    # add the full-ANSI backend (pyte) for --ansi
 pip install 'tappty[win]'     # Windows-native: ConPTY host + curses CUI (pywinpty, windows-curses)
 ```
@@ -50,6 +51,7 @@ What each mode needs:
 | `--cui` (curses) | a terminal — no extras on POSIX; on Windows, the `win` extra (`windows-curses`) |
 | `--gui` (pygame window) | the `gui` extra **and** a display |
 | `--arcade` (arcade window) | the `arcade` extra **and** a display (a GL context) |
+| `--web` (browser tab) | the `web` extra (no display needed — it's a server) |
 | `--headless` | no terminal, no display, no extras\* |
 | `--ansi` (full-ANSI render) | the `ansi` extra |
 
@@ -152,6 +154,27 @@ echo "exit was $?"             # tapterm forwards the child's exit status
 - On **Windows**, *default* hosting uses ConPTY, which needs `tappty[ansi,win]` and is still
   provisional — use `--no-pty` (no extras) for headless CI there. See
   [Platform notes](#platform-notes).
+
+### Web — `--web` (a browser tab)
+
+Serves the terminal over HTTP + a WebSocket so you can watch and drive it in a **browser** —
+from this machine, or any device that can reach it. Needs the `web` extra; no display required
+(it's a server).
+
+```sh
+pip install 'tappty[web]'
+tapterm --web -- bash              # then open http://127.0.0.1:8023/
+tapterm --web --port 9000 -- bash  # page on :9000, websocket on :9001
+```
+
+- The browser draws tappty's grid (green phosphor + the same SGR **color** as the other UIs);
+  keystrokes go back to the program. Add **`--raw`** for full-screen TUIs (`tapterm --web --ansi --raw -- vim`).
+- **Several browsers can connect at once** — all watch; the talking stick decides who drives
+  (typing takes it). This is the "human and a bot share one session" idea, in a browser.
+- It binds **loopback (127.0.0.1) only** and has **no TLS** — it's a local control plane, like
+  the bus. To reach it from another machine, tunnel it (`ssh -L`) rather than exposing the port.
+- The page is on `--port` (default 8023); the WebSocket is on `--port + 1`. `tapterm` prints the
+  URL on start; it runs until the program exits or you press **Ctrl-C**.
 
 ---
 
@@ -305,6 +328,7 @@ use the library; see [REFERENCE.md](REFERENCE.md).)
 | Same, save it to a file | `tapterm --headless --snapshot build.txt -- make` |
 | No pty (line-oriented / cross-platform) | `tapterm --no-pty -- python3 -u script.py` |
 | Replay a recording | `tapterm --cast demo.cast --speed 2` |
+| Watch/drive it in a browser | `tapterm --web -- bash` → open `http://127.0.0.1:8023/` |
 | Loop a recording in a window | `tapterm --gui --loop --cast demo.cast` |
 | Headless PNG of a recording | `SDL_VIDEODRIVER=dummy tapterm --gui --exit-when-done --snapshot demo --cast demo.cast` |
 
@@ -319,10 +343,12 @@ MODE (mutually exclusive; default = GUI if pygame+display, else CUI)
   --cui                 curses character UI, in the current terminal
   --gui                 pygame green-phosphor window (needs the 'gui' extra + a display)
   --arcade              arcade/OpenGL green-phosphor window (needs the 'arcade' extra + a display)
+  --web                 serve in a browser over a websocket (needs the 'web' extra)
   --headless            run to completion, print the final screen, exit with the child's code
 
 OPTIONS
   --title TITLE         window / status-line title
+  --port N              --web: HTTP port for the page (websocket = N+1; default 8023)
   --cols N              terminal columns (default 80; positive integer)
   --rows N              terminal rows (default 24; positive integer)
   --ansi                full-ANSI/VT100+ backend (needs the 'ansi' extra); for modern programs

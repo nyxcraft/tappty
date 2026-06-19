@@ -19,8 +19,8 @@ from tappty import (
 
 `import tappty` works with no optional dependencies installed; `PyteTerminal` needs the
 `ansi` extra (pyte), `pygame_ui` and the `compositor` need the `gui` extra (pygame-ce),
-`arcade_ui` needs the `arcade` extra — `curses_ui` uses only the stdlib `curses` — and
-`ConPtySource` needs the `win` extra
+`arcade_ui` needs the `arcade` extra, `web_ui` needs the `web` extra (websockets) — `curses_ui`
+uses only the stdlib `curses` — and `ConPtySource` needs the `win` extra
 (pywinpty). Those are imported lazily, so you only pay for what you call.
 
 ---
@@ -33,7 +33,7 @@ from tappty import (
 - [Sources](#sources) — `Source` and the five producers; writing your own
 - [Session](#session) — taps, control, the talking stick, lifecycle
 - [The bus](#the-bus) — `BusServer`, `BusClient`
-- [Renderers](#renderers) — `curses_ui`, `pygame_ui`, `arcade_ui`
+- [Renderers](#renderers) — `curses_ui`, `pygame_ui`, `arcade_ui`, `web_ui`
 - [Compositor](#compositor) — `TerminalPanel`, backings, `run`
 - [Worked examples](#worked-examples)
 - [Quick reference](#quick-reference)
@@ -453,6 +453,17 @@ The same renderer on the arcade (pyglet/OpenGL) stack — identical signature an
 `max_seconds`, `fps >= 1`), so the two are interchangeable. The `arcade` extra; needs a real GL
 context (a display), where the pygame path runs purely in software. `arcade` is imported lazily,
 so `import tappty` works without it.
+
+### `web_ui.run(session, runner, title="tapterm", host="127.0.0.1", port=8023, token=None, exit_when_done=False, max_seconds=None, fps=30)`  *(browser)*
+
+Serves the session in a **browser tab** (the `web` extra). A stdlib `http.server` serves one
+page on `port`; a `websockets` server carries the live connection on `port + 1`. The browser
+draws the `cells()` grid (phosphor + SGR color) on a canvas and sends keystrokes back, honoring
+`session.raw_keys` for full TUIs. Binds **loopback** by default; pass a non-empty `token` (a
+WebSocket query param, constant-time compared) to gate connections. Several browsers can connect
+at once — the talking stick arbitrates who drives. `run()` blocks until the program ends
+(`exit_when_done`), `max_seconds`, or `KeyboardInterrupt`. No TLS — tunnel it for untrusted
+networks (see DESIGN §8).
 
 ---
 

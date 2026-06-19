@@ -24,6 +24,7 @@ classifiers = [
 [project.optional-dependencies]
 gui = ["pygame-ce"]            # the maintained community fork (drop-in `import pygame`); CI-tested
 arcade = ["arcade"]            # the arcade_ui renderer (pyglet/OpenGL); needs a GL context
+web = ["websockets"]           # the web_ui renderer (browser over a websocket)
 ansi = ["pyte"]                # full-ANSI/VT100+ Terminal backend (PyteTerminal); LGPLv3
 win = [                                              # Windows-native support
     'pywinpty; platform_system == "Windows"',        #   ConPtySource (Windows pseudo-console)

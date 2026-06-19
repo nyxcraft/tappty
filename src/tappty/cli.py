@@ -41,6 +41,10 @@ def _have_arcade():
     return importlib.util.find_spec("arcade") is not None
 
 
+def _have_websockets():
+    return importlib.util.find_spec("websockets") is not None
+
+
 def _have_curses():
     # The stdlib `curses` *package* wrapper ships even on Windows, but it's useless without
     # the `_curses` C extension -- absent on stock Windows, supplied by `windows-curses`. So
@@ -135,6 +139,13 @@ def build_parser():
         help="arcade green-phosphor window (needs the 'arcade' extra; a GL display)",
     )
     mode.add_argument(
+        "--web",
+        dest="mode",
+        action="store_const",
+        const="web",
+        help="serve the terminal in a browser over a websocket (needs the 'web' extra)",
+    )
+    mode.add_argument(
         "--headless",
         dest="mode",
         action="store_const",
@@ -142,6 +153,12 @@ def build_parser():
         help="run to completion, print the final screen, then exit",
     )
     ap.add_argument("--title", default=None, help="window / status-line title")
+    ap.add_argument(
+        "--port",
+        type=_positive_int,
+        default=8023,
+        help="--web: HTTP port for the page (the websocket uses PORT+1); default 8023",
+    )
     ap.add_argument("--cols", type=_positive_int, default=80, help="terminal columns (default 80)")
     ap.add_argument("--rows", type=_positive_int, default=24, help="terminal rows (default 24)")
     ap.add_argument(
@@ -241,6 +258,17 @@ def main(argv=None):
         return sess.source.returncode or 0  # propagate the child's exit code (None -> 0)
 
     sess.raw_keys = a.raw  # raw keystrokes for full-screen TUIs (no echo/line-edit)
+    if mode == "web":  # a server: browser clients claim their own control, not a local human
+        if not _have_websockets():
+            ap.error(
+                "--web needs the websockets library: install it with  pip install "
+                "'tappty[web]'  (or use --gui / --cui / --headless)"
+            )
+        from tappty import web_ui
+
+        web_ui.run(sess, None, title=title, port=a.port, exit_when_done=a.exit_when_done)
+        return 0
+
     sess.claim_control("local", "human")  # a human is at the keyboard -> default driver
     if mode == "cui":
         if not _have_curses():

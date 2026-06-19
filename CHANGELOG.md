@@ -61,19 +61,22 @@ The `0.1.0` line — the generic toolkit and the `tapterm` command. Built across
 - **Bus.** `BusServer`/`BusClient` carry the same observe/control contract over a Unix-domain
   socket *or* TCP, with a synchronous `CMD` capture primitive (send a line, get its output to
   the next prompt) for automated drivers.
-- **Renderers.** `curses_ui` (the CUI plus the pure, unit-tested `viewport()` math) and two
+- **Renderers.** `curses_ui` (the CUI plus the pure, unit-tested `viewport()` math); two
   interchangeable GUI backends with the same `run(...)` signature, both drawing SGR color —
   `pygame_ui` (pygame; lazy glyph cache, scrollback, optional text+PNG snapshots) and
-  `arcade_ui` (the arcade/OpenGL twin, the `arcade` extra); the `compositor` tiles local
-  (`SessionBacking`) and remote (`BusBacking`) panels in one window with per-tile pan/zoom.
-- **`tapterm` CLI.** `--cui` / `--gui` / `--arcade` / `--headless`, `--ansi`, `--raw`,
-  `--no-pty`, `--cast` (`--speed` / `--loop`), `--cols` / `--rows`, `--snapshot`,
+  `arcade_ui` (the arcade/OpenGL twin, the `arcade` extra); and `web_ui` — a **browser**
+  renderer over HTTP + a WebSocket (the `web` extra, `websockets`): a stdlib `http.server`
+  serves one canvas page, the browser paints the `cells()` grid (color) and sends keystrokes
+  back, several clients can connect, loopback-bound + optional `token`. The `compositor` tiles
+  local (`SessionBacking`) and remote (`BusBacking`) panels in one window with per-tile pan/zoom.
+- **`tapterm` CLI.** `--cui` / `--gui` / `--arcade` / `--web` / `--headless`, `--ansi`, `--raw`,
+  `--no-pty`, `--cast` (`--speed` / `--loop`), `--cols` / `--rows`, `--port`, `--snapshot`,
   `--exit-when-done`. Headless prints the final screen and exits with the child's own status.
-- **Packaging & tooling.** `pyproject.toml` (extras `gui` / `ansi` / `win` / `dev`; `win`
-  bundles pywinpty *and* windows-curses so `tappty[win]` gives both the ConPTY host and the
-  curses CUI on Windows), MIT license, `src/` layout, a pytest suite (92 tests), ruff lint +
-  format (line length 99), and a GitHub Actions CI matrix on Python 3.9–3.13 (pyte + pygame-ce
-  so the ANSI and headless-GUI tests run).
+- **Packaging & tooling.** `pyproject.toml` (extras `gui` / `arcade` / `web` / `ansi` / `win` /
+  `dev`; `win` bundles pywinpty *and* windows-curses so `tappty[win]` gives both the ConPTY host
+  and the curses CUI on Windows), MIT license, `src/` layout, a pytest suite (116 tests), ruff
+  lint + format (line length 99), and a GitHub Actions CI matrix on Python 3.9–3.13 (pyte +
+  pygame-ce so the ANSI and headless-GUI tests run).
 
 ### Changed
 

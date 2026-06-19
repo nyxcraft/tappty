@@ -106,6 +106,16 @@ def test_arcade_without_arcade_errors_cleanly(monkeypatch, capsys):
     assert "tappty[arcade]" in capsys.readouterr().err
 
 
+def test_web_without_websockets_errors_cleanly(monkeypatch, capsys):
+    import tappty.cli as cli
+
+    monkeypatch.setattr(cli, "_have_websockets", lambda: False)
+    with pytest.raises(SystemExit) as e:
+        cli.main(["--web", "--", "true"])
+    assert e.value.code == 2
+    assert "tappty[web]" in capsys.readouterr().err
+
+
 def test_cui_without_curses_errors_cleanly(monkeypatch, capsys):
     import tappty.cli as cli
 
