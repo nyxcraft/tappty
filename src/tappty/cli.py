@@ -37,6 +37,18 @@ def _have_pyte():
     return importlib.util.find_spec("pyte") is not None
 
 
+def _have_curses():
+    # The stdlib `curses` *package* wrapper ships even on Windows, but it's useless without
+    # the `_curses` C extension -- absent on stock Windows, supplied by `windows-curses`. So
+    # probe `_curses` (the real dependency), not the `curses` wrapper, which find_spec would
+    # report present on Windows.
+    return importlib.util.find_spec("_curses") is not None
+
+
+def _have_winpty():
+    return importlib.util.find_spec("winpty") is not None  # pywinpty's import name
+
+
 def _display_available():
     """Is a GUI display reachable? Windows and macOS have a native GUI (no X11 DISPLAY);
     other POSIX (Linux/BSD) needs X/Wayland (or a forced SDL driver) -- over SSH/cron there
@@ -71,7 +83,7 @@ def _make_terminal(ap, ansi, cols, rows):
     return Terminal(cols=cols, rows=rows)
 
 
-def _make_source(no_pty, cmd, rows, cols):
+def _make_source(ap, no_pty, cmd, rows, cols):
     """Pick how to host the command: plain pipes (--no-pty, cross-platform), a ConPTY on
     Windows, or a real pty on POSIX."""
     if no_pty:
@@ -79,6 +91,12 @@ def _make_source(no_pty, cmd, rows, cols):
 
         return PipeSource(cmd)
     if os.name == "nt":  # Windows pseudo-console
+        if not _have_winpty():
+            ap.error(
+                "hosting a command on Windows uses ConPTY, which needs pywinpty: install "
+                "it with  pip install 'tappty[win]'  (or use --no-pty to host over plain "
+                "pipes, which needs no extra)"
+            )
         from tappty.source import ConPtySource
 
         return ConPtySource(cmd, size=(rows, cols))
@@ -192,7 +210,7 @@ def main(argv=None):
             cmd = [os.environ.get("SHELL", "/bin/sh")]
         term = _make_terminal(ap, ansi, a.cols, a.rows)
         sess = Session(term)
-        sess.source = _make_source(a.no_pty, cmd, a.rows, a.cols)
+        sess.source = _make_source(ap, a.no_pty, cmd, a.rows, a.cols)
         title = a.title or ("tapterm :: " + os.path.basename(cmd[0]))
 
     if mode == "headless":
@@ -206,6 +224,12 @@ def main(argv=None):
 
     sess.claim_control("local", "human")  # a human is at the keyboard -> default driver
     if mode == "cui":
+        if not _have_curses():
+            ap.error(
+                "--cui needs the curses library, which the Python standard library does "
+                "not ship on Windows: install it with  pip install windows-curses  "
+                "(or use --gui for a window, or --headless to just run and print)"
+            )
         from tappty import curses_ui
 
         curses_ui.run(sess, None, title=title)

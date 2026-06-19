@@ -72,6 +72,65 @@ def test_default_mode_is_cui_without_a_display(monkeypatch):
     assert cli._default_mode() == "gui"
 
 
+# ---- missing optional dependencies: a clean error, never a raw traceback ----
+# Every tapterm mode that needs an optional dep must fail through argparse (usage + a
+# pip-install hint, exit 2), not let a bare ModuleNotFoundError escape. We force each probe
+# off so the test is deterministic whether or not the dep is actually installed.
+def test_ansi_without_pyte_errors_cleanly(monkeypatch, capsys):
+    import tappty.cli as cli
+
+    monkeypatch.setattr(cli, "_have_pyte", lambda: False)
+    with pytest.raises(SystemExit) as e:
+        cli.main(["--ansi", "--headless", "--", "true"])
+    assert e.value.code == 2
+    assert "tappty[ansi]" in capsys.readouterr().err
+
+
+def test_gui_without_pygame_errors_cleanly(monkeypatch, capsys):
+    import tappty.cli as cli
+
+    monkeypatch.setattr(cli, "_have_pygame", lambda: False)
+    with pytest.raises(SystemExit) as e:
+        cli.main(["--gui", "--", "true"])
+    assert e.value.code == 2
+    assert "tappty[gui]" in capsys.readouterr().err
+
+
+def test_cui_without_curses_errors_cleanly(monkeypatch, capsys):
+    import tappty.cli as cli
+
+    monkeypatch.setattr(cli, "_have_curses", lambda: False)  # e.g. stock Windows (no _curses)
+    with pytest.raises(SystemExit) as e:
+        cli.main(["--cui", "--", "true"])
+    assert e.value.code == 2
+    assert "windows-curses" in capsys.readouterr().err
+
+
+def test_windows_default_host_without_pywinpty_errors_cleanly(monkeypatch, capsys):
+    import tappty.cli as cli
+
+    # Simulate Windows with pywinpty not installed: the default (ConPTY) host path needs it.
+    monkeypatch.setattr(cli.os, "name", "nt")
+    monkeypatch.setattr(cli, "_have_winpty", lambda: False)
+    with pytest.raises(SystemExit) as e:
+        cli._make_source(cli.build_parser(), no_pty=False, cmd=["whatever"], rows=24, cols=80)
+    assert e.value.code == 2
+    err = capsys.readouterr().err
+    assert "tappty[win]" in err and "--no-pty" in err
+
+
+def test_no_pty_host_needs_no_extra_even_on_windows(monkeypatch):
+    import tappty.cli as cli
+    from tappty.source import PipeSource
+
+    # The documented escape hatch: --no-pty sidesteps ConPTY/pywinpty, so it builds a
+    # PipeSource with no extra even where pywinpty is absent.
+    monkeypatch.setattr(cli.os, "name", "nt")
+    monkeypatch.setattr(cli, "_have_winpty", lambda: False)
+    src = cli._make_source(cli.build_parser(), no_pty=True, cmd=["whatever"], rows=24, cols=80)
+    assert isinstance(src, PipeSource)
+
+
 # ---- observer failure isolation ---------------------------------------------
 def test_observer_exception_is_isolated():
     sess = Session(Terminal(80, 24))
