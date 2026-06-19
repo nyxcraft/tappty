@@ -49,10 +49,11 @@ The `0.1.0` line — the generic toolkit and the `tapterm` command. Built across
 - **Bus.** `BusServer`/`BusClient` carry the same observe/control contract over a Unix-domain
   socket *or* TCP, with a synchronous `CMD` capture primitive (send a line, get its output to
   the next prompt) for automated drivers.
-- **Renderers.** `curses_ui` (the CUI plus the pure, unit-tested `viewport()` math) and
-  `pygame_ui` (the GUI — lazy glyph cache, scrollback, optional text+PNG snapshots); the
-  `compositor` tiles local (`SessionBacking`) and remote (`BusBacking`) panels in one window
-  with per-tile pan/zoom.
+- **Renderers.** `curses_ui` (the CUI plus the pure, unit-tested `viewport()` math) and two
+  interchangeable GUI backends with the same `run(...)` signature — `pygame_ui` (pygame; lazy
+  glyph cache, scrollback, optional text+PNG snapshots) and `arcade_ui` (the arcade/OpenGL twin,
+  the `arcade` extra); the `compositor` tiles local (`SessionBacking`) and remote (`BusBacking`)
+  panels in one window with per-tile pan/zoom.
 - **`tapterm` CLI.** `--cui` / `--gui` / `--headless`, `--ansi`, `--no-pty`, `--cast`
   (`--speed` / `--loop`), `--cols` / `--rows`, `--snapshot`, `--exit-when-done`. Headless
   prints the final screen and exits with the child's own status.

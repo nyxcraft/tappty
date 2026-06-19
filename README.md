@@ -17,6 +17,7 @@ hosting 1970s PDP-10 games), generalized to host any command.
 ```sh
 pip install tappty          # core (CUI works out of the box)
 pip install 'tappty[gui]'   # add the pygame window (pygame-ce)
+pip install 'tappty[arcade]' # add the arcade/OpenGL window (an alternative GUI backend)
 pip install 'tappty[ansi]'  # add the full-ANSI/VT100+ backend (pyte) for --ansi
 pip install 'tappty[win]'   # Windows: add the ConPTY source (pywinpty)
 # from a checkout:
@@ -30,6 +31,7 @@ tapterm                    # host your $SHELL (GUI if pygame + a display, else C
 tapterm -- python3 -i      # host a specific command (everything after -- is its argv)
 tapterm --cui -- bash      # force the curses character UI (takes over this terminal)
 tapterm --gui -- bash      # force the pygame green-phosphor window
+tapterm --arcade -- bash   # same, on the arcade/OpenGL stack (the 'arcade' extra)
 tapterm --headless -- ls   # run to completion, print the final screen (scripting/CI)
 tapterm --cast rec.cast    # replay an asciinema recording (--speed N, --loop)
 tapterm --ansi -- vim      # use the full-ANSI/VT100+ backend (pyte) instead of VT52
@@ -82,7 +84,9 @@ The pieces:
   terminal control plane — **trusted-local**: the Unix socket is owner-only, TCP is
   loopback-only unless `allow_remote=True`, and a `token=` adds an optional shared-secret
   gate. Not a substitute for a tunnel on an untrusted network (no TLS).
-- **`curses_ui` / `pygame_ui`** — renderers; each exposes `run(session, runner, title=…)`.
+- **`curses_ui` / `pygame_ui` / `arcade_ui`** — renderers; each exposes
+  `run(session, runner, title=…)`. `pygame_ui` and `arcade_ui` are two backends for the same
+  green-phosphor window (pygame, or arcade/OpenGL).
 - **`compositor`** — tile several panels (`SessionBacking` for in-process, `BusBacking`
   for remote) in one pygame window, with per-tile pan/zoom and focus.
 

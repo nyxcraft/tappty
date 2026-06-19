@@ -36,6 +36,7 @@ flag and mode, with practical examples and troubleshooting.
 ```sh
 pip install tappty            # the core + tapterm; the CUI works out of the box
 pip install 'tappty[gui]'     # add the green-phosphor window (pygame-ce)
+pip install 'tappty[arcade]'  # add the arcade/OpenGL window (alternative GUI backend)
 pip install 'tappty[ansi]'    # add the full-ANSI backend (pyte) for --ansi
 pip install 'tappty[win]'     # Windows-native: ConPTY host + curses CUI (pywinpty, windows-curses)
 ```
@@ -48,6 +49,7 @@ What each mode needs:
 |-----------|-------|
 | `--cui` (curses) | a terminal — no extras on POSIX; on Windows, the `win` extra (`windows-curses`) |
 | `--gui` (pygame window) | the `gui` extra **and** a display |
+| `--arcade` (arcade window) | the `arcade` extra **and** a display (a GL context) |
 | `--headless` | no terminal, no display, no extras\* |
 | `--ansi` (full-ANSI render) | the `ansi` extra |
 
@@ -126,6 +128,11 @@ tapterm --gui -- bash
   showing the final screen).
 - **`--snapshot PATH`** mirrors the screen to a text file (and a `.png`) about once a second —
   handy for letting a script or an AI watch what you see (see [Snapshots](#snapshots-and-automation)).
+
+**`--arcade`** opens the *same* green-phosphor window on the arcade (pyglet/OpenGL) stack
+instead of pygame — same keys, scrollback, `F12`, `--snapshot`, and `--exit-when-done`. It
+needs the `arcade` extra and a real GL display (where `--gui` also runs in software). Use it if
+you prefer the arcade backend or already depend on it; otherwise `--gui` is the default window.
 
 ### Headless — `--headless` (run, print, exit)
 
@@ -283,6 +290,7 @@ tapterm [MODE] [OPTIONS] -- COMMAND [ARGS...]
 MODE (mutually exclusive; default = GUI if pygame+display, else CUI)
   --cui                 curses character UI, in the current terminal
   --gui                 pygame green-phosphor window (needs the 'gui' extra + a display)
+  --arcade              arcade/OpenGL green-phosphor window (needs the 'arcade' extra + a display)
   --headless            run to completion, print the final screen, exit with the child's code
 
 OPTIONS

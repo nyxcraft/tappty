@@ -28,11 +28,11 @@ Public API:
     CastSource                      -- replay a recorded asciinema .cast session
     PipeSource, ConPtySource        -- non-pty pipes (any OS) / Windows ConPTY (pywinpty)
     BusServer, BusClient            -- out-of-process observe/control over a unix socket
-    curses_ui, pygame_ui            -- renderers; each: run(session, runner, title=...)
+    curses_ui, pygame_ui, arcade_ui -- renderers; each: run(session, runner, title=...)
     compositor                      -- multi-panel single-window dashboard
 """
 
-from tappty import compositor, curses_ui, pygame_ui
+from tappty import arcade_ui, compositor, curses_ui, pygame_ui
 from tappty.bus import BusClient, BusServer
 from tappty.pyte_terminal import PyteTerminal
 from tappty.session import Session
@@ -55,6 +55,7 @@ __all__ = [
     "BusClient",
     "curses_ui",
     "pygame_ui",
+    "arcade_ui",
     "compositor",
     "__version__",
 ]

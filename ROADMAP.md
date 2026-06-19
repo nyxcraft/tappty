@@ -6,11 +6,12 @@ completed work is in [CHANGELOG.md](CHANGELOG.md); the architecture is in
 
 ## Status
 
-The generic toolkit and the `tapterm` command exist and are green: **92 tests**, a full-ANSI
-backend (with scrollback), `.cast` replay, non-pty and Windows sources, a Unix + TCP bus, and
-ruff lint/format. `~/tappty` is a git repo on `main` with a CI workflow. **Not yet shipped:**
-no tagged or PyPI release; CI has never actually run (no remote pushed); and the Windows
-ConPTY source is written but unverified on real Windows.
+The generic toolkit and the `tapterm` command exist and are green: **94 tests**, a full-ANSI
+backend (with scrollback), `.cast` replay, non-pty and Windows sources, a Unix + TCP bus, two
+interchangeable GUI backends (pygame and arcade/OpenGL) alongside the curses CUI, and ruff
+lint/format. `~/tappty` is a git repo on `main` with a CI workflow. **Not yet shipped:** no
+tagged or PyPI release; CI has never actually run (no remote pushed); and the Windows ConPTY
+source is written but unverified on real Windows.
 
 ## What's left (roughly in priority order)
 
@@ -31,8 +32,8 @@ ConPTY source is written but unverified on real Windows.
    - CUI on Windows: `windows-curses` is now bundled in the `win` extra (the stdlib ships no
      `curses` there), and `curses_ui` is already portable — but, like `ConPtySource`, it's
      unverified on real Windows; confirm `tapterm --cui` renders there.
-3. **Possible features:** an arcade or web renderer (same `run(session, runner, …)` shape —
-   `terminado` / `pyxtermjs` are references); and the deliberate gaps in
-   [docs/DESIGN.md](docs/DESIGN.md) §9 if they ever bite (SGR color via
-   `styled_rows()` / `cells()`, `wcwidth`-style cell widths, a renderer→session key map for
+3. **Possible features:** a web renderer (same `run(session, runner, …)` shape — `terminado` /
+   `pyxtermjs` are references; the arcade renderer is done — `arcade_ui`, the `arcade` extra);
+   and the deliberate gaps in [docs/DESIGN.md](docs/DESIGN.md) §9 if they ever bite (SGR color
+   via `styled_rows()` / `cells()`, `wcwidth`-style cell widths, a renderer→session key map for
    full TUIs).

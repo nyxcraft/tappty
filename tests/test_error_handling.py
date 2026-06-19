@@ -96,6 +96,16 @@ def test_gui_without_pygame_errors_cleanly(monkeypatch, capsys):
     assert "tappty[gui]" in capsys.readouterr().err
 
 
+def test_arcade_without_arcade_errors_cleanly(monkeypatch, capsys):
+    import tappty.cli as cli
+
+    monkeypatch.setattr(cli, "_have_arcade", lambda: False)
+    with pytest.raises(SystemExit) as e:
+        cli.main(["--arcade", "--", "true"])
+    assert e.value.code == 2
+    assert "tappty[arcade]" in capsys.readouterr().err
+
+
 def test_cui_without_curses_errors_cleanly(monkeypatch, capsys):
     import tappty.cli as cli
 

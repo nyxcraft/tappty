@@ -13,13 +13,14 @@ from tappty import (
     Source, PtySource, EngineSource, CastSource,              # byte/text producers
     PipeSource, ConPtySource,
     BusServer, BusClient,                                     # out-of-process observe/control
-    curses_ui, pygame_ui, compositor,                         # renderers
+    curses_ui, pygame_ui, arcade_ui, compositor,              # renderers
 )
 ```
 
 `import tappty` works with no optional dependencies installed; `PyteTerminal` needs the
-`ansi` extra (pyte), `pygame_ui` and the `compositor` need the `gui` extra (pygame-ce) —
-`curses_ui` uses only the stdlib `curses` — and `ConPtySource` needs the `win` extra
+`ansi` extra (pyte), `pygame_ui` and the `compositor` need the `gui` extra (pygame-ce),
+`arcade_ui` needs the `arcade` extra — `curses_ui` uses only the stdlib `curses` — and
+`ConPtySource` needs the `win` extra
 (pywinpty). Those are imported lazily, so you only pay for what you call.
 
 ---
@@ -32,7 +33,7 @@ from tappty import (
 - [Sources](#sources) — `Source` and the five producers; writing your own
 - [Session](#session) — taps, control, the talking stick, lifecycle
 - [The bus](#the-bus) — `BusServer`, `BusClient`
-- [Renderers](#renderers) — `curses_ui`, `pygame_ui`
+- [Renderers](#renderers) — `curses_ui`, `pygame_ui`, `arcade_ui`
 - [Compositor](#compositor) — `TerminalPanel`, backings, `run`
 - [Worked examples](#worked-examples)
 - [Quick reference](#quick-reference)
@@ -423,6 +424,14 @@ A green-phosphor window (the `gui` extra; needs a display). `snapshot_path` mirr
 to a text file + PNG each second (and `F12` on demand) so an automated observer can watch;
 `exit_when_done` closes when the program ends; `max_seconds` is a hard loop cap (scripting/
 tests). Scrollback is mouse-wheel / PageUp-PageDown. `fps` must be `>= 1` (else `ValueError`).
+
+### `arcade_ui.run(session, runner, title="tapterm", snapshot_path=None, font_size=18, exit_when_done=False, fps=30, max_seconds=None)`  *(GUI)*
+
+The same renderer on the arcade (pyglet/OpenGL) stack — identical signature and behavior to
+`pygame_ui.run` (green phosphor, scrollback, `snapshot_path` text+PNG, `F12`, `exit_when_done`,
+`max_seconds`, `fps >= 1`), so the two are interchangeable. The `arcade` extra; needs a real GL
+context (a display), where the pygame path runs purely in software. `arcade` is imported lazily,
+so `import tappty` works without it.
 
 ---
 

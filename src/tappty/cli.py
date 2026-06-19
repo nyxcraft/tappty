@@ -37,6 +37,10 @@ def _have_pyte():
     return importlib.util.find_spec("pyte") is not None
 
 
+def _have_arcade():
+    return importlib.util.find_spec("arcade") is not None
+
+
 def _have_curses():
     # The stdlib `curses` *package* wrapper ships even on Windows, but it's useless without
     # the `_curses` C extension -- absent on stock Windows, supplied by `windows-curses`. So
@@ -122,6 +126,13 @@ def build_parser():
         action="store_const",
         const="gui",
         help="pygame green-phosphor window (needs the 'gui' extra)",
+    )
+    mode.add_argument(
+        "--arcade",
+        dest="mode",
+        action="store_const",
+        const="arcade",
+        help="arcade green-phosphor window (needs the 'arcade' extra; a GL display)",
     )
     mode.add_argument(
         "--headless",
@@ -234,6 +245,17 @@ def main(argv=None):
         from tappty import curses_ui
 
         curses_ui.run(sess, None, title=title)
+    elif mode == "arcade":
+        if not _have_arcade():
+            ap.error(
+                "--arcade needs the arcade library: install it with  pip install "
+                "'tappty[arcade]'  (or use --gui for the pygame window, --cui, or --headless)"
+            )
+        from tappty import arcade_ui
+
+        arcade_ui.run(
+            sess, None, title=title, snapshot_path=a.snapshot, exit_when_done=a.exit_when_done
+        )
     else:  # gui
         if not _have_pygame():
             ap.error(

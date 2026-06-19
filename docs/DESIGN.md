@@ -303,7 +303,7 @@ messages — for one request/reply at a time before subscribing, not concurrent 
 subscriber must drain `inbox` (it is unbounded). `send()` is a low-level string-frame API that
 rejects non-`str` payloads and embedded newlines (which would inject frames).
 
-### 2.5 Renderers — `curses_ui.py` (CUI), `pygame_ui.py` (GUI)
+### 2.5 Renderers — `curses_ui.py` (CUI), `pygame_ui.py` / `arcade_ui.py` (GUI)
 
 Each is a Session client exposing `run(session, runner, title=…)`: start the hosted program,
 then loop — read the grid, draw it, forward keystrokes. Both are *owning* renderers: they call
@@ -321,8 +321,18 @@ then loop — read the grid, draw it, forward keystrokes. Both are *owning* rend
   text + PNG snapshots (and `F12` on demand) let an automated observer watch the same session;
   `max_seconds` is a hard loop cap for scripting/tests, `exit_when_done` closes when the
   program ends. `fps` is validated `>= 1`.
+- **`arcade_ui`** is the same renderer on the arcade (pyglet/OpenGL) stack — the *same*
+  `run(...)` signature and green-phosphor look as `pygame_ui`, sharing nothing but the Session
+  contract (the proof that a renderer is just an adapter). Each grid row is drawn as one pooled
+  `arcade.Text` (a monospace font keeps the columns aligned); the cursor and the scrollback bar
+  are primitives. Same scrollback / snapshots / `F12` / `exit_when_done` / `max_seconds` / `fps`
+  as pygame. `arcade` is imported lazily — the `arcade.Window` subclass is built on first `run()`
+  via a cached factory, since a class can't subclass `arcade.Window` until arcade is imported —
+  and pyglet's audio driver is forced to `silent` before that import (an absent sound server
+  otherwise stalls it ~55 s). It needs a real GL context (a display), where the pure-software
+  pygame path does not.
 
-A third renderer (arcade, web, …) is the same shape; nothing else needs to know.
+A further renderer (web, an embedded widget, …) is the same shape; nothing else needs to know.
 
 ### 2.6 The compositor — `compositor.py`
 
@@ -407,15 +417,16 @@ Session to a renderer. The pieces it wires:
 | `compositor.py` | multi-panel window + `SessionBacking`/`BusBacking` | pygame (deferred), curses_ui, bus |
 | `curses_ui.py` | CUI renderer + the pure `viewport()` | stdlib `curses` (deferred) |
 | `pygame_ui.py` | GUI renderer | pygame (deferred) |
+| `arcade_ui.py` | GUI renderer (arcade/pyglet/OpenGL twin of `pygame_ui`) | arcade (deferred; `arcade` extra) |
 | `cli.py` | the `tapterm` program | session, terminal, source |
 | `__init__.py` | public API | — |
 
-**Optional deps are deferred** — `pygame`, `curses`, `pyte`, and `pywinpty` are imported
-*inside* the functions/constructors that need them, never at module top. So `import tappty`
+**Optional deps are deferred** — `pygame`, `arcade`, `curses`, `pyte`, and `pywinpty` are
+imported *inside* the functions/constructors that need them, never at module top. So `import tappty`
 works with none of them installed (verified under a bare interpreter), and `tapterm --cui` /
-`--headless` need no display. The extras: `gui` = pygame-ce, `ansi` = pyte (`PyteTerminal`),
-`win` = pywinpty + windows-curses (`ConPtySource` and the curses CUI on Windows; both
-Windows-marked), `dev` = pytest + ruff.
+`--headless` need no display. The extras: `gui` = pygame-ce, `arcade` = arcade (the
+`arcade_ui` renderer), `ansi` = pyte (`PyteTerminal`), `win` = pywinpty + windows-curses
+(`ConPtySource` and the curses CUI on Windows; both Windows-marked), `dev` = pytest + ruff.
 
 ---
 
