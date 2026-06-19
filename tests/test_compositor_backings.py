@@ -1,7 +1,7 @@
 """The composable TerminalPanel backings: a panel observes + controls its program
 the same way whether it's backed by an in-process Session or a REMOTE session over
 the bus. (The pygame draw is verified by eye; this pins the data contract.)
-See [[sbterm-instrumentation]]."""
+See docs/DESIGN.md."""
 
 import os
 import tempfile

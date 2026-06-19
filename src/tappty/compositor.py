@@ -10,13 +10,16 @@ feed_key(ch); focus(); close()), so a panel doesn't care where its bytes come fr
 Each terminal tile supports mouse PAN + ZOOM: wheel zooms (font size), left-drag pans
 the viewport, right-click resets to fit + cursor-follow. A panel is equally an
 EMBEDDABLE widget (drop one into any pygame app) and a tile in the Compositor (keys
-route to the focused tile = the talking stick per tile). See [[sbterm-instrumentation]].
+route to the focused tile = the talking stick per tile). See docs/DESIGN.md.
 """
 
+import logging
 import os
 import queue
 import threading
 from collections import deque
+
+log = logging.getLogger(__name__)
 
 FONT_PATH = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf"
 FG = (90, 255, 130)
@@ -77,7 +80,9 @@ def draw_terminal(surface, rect, grid, font, glyphs, pan=None):
 class SessionBacking:
     """Back a panel with an in-process Session (its live Terminal + input). The local
     operator only types while it explicitly HOLDS the stick (no auto-grab on typing);
-    toggle_stick() grabs/releases it."""
+    toggle_stick() grabs/releases it. This is a NON-OWNING view: it doesn't start or stop
+    the session (close() is a no-op), since the same session may outlive the panel or be
+    driven elsewhere. Call session.stop() yourself if the panel owns the program."""
 
     def __init__(self, session, op="local"):
         self.session = session
@@ -103,7 +108,7 @@ class SessionBacking:
         pass  # focus never grabs control
 
     def close(self):
-        pass
+        pass  # non-owning: leave the session running (see class docstring)
 
 
 class BusBacking:
@@ -113,11 +118,11 @@ class BusBacking:
     compositor binds it to F2). Lets the compositor tile sessions that run in other
     processes."""
 
-    def __init__(self, socket_path, name="panel", role="human"):
+    def __init__(self, socket_path, name="panel", role="human", token=None):
         from tappty.bus import BusClient
 
         self.name = name
-        self.client = BusClient(socket_path).connect()
+        self.client = BusClient(socket_path, token=token).connect()
         self.client.hello(role=role, name=name)
         self.client.sub()
         self.client.send("SNAP")
@@ -195,7 +200,7 @@ class DrawCtx:
 
     def fit_size(self, w, h, cols=80, rows=24):
         """Largest font size at which the whole `cols`x`rows` model fits in the tile."""
-        key = (w, h)
+        key = (w, h, cols, rows)  # cache per tile size AND grid size (not just the tile)
         if key not in self._fit:
             best = ZMIN
             for s in range(ZMIN, ZMAX + 1):
@@ -220,13 +225,15 @@ class TerminalPanel:
         self._fit = ZMIN
 
     def draw(self, surface, ctx):
-        # default = the largest font at which the FULL 80x24 fits the tile; zoom in
-        # from there magnifies a region and pan moves it.
-        self._fit = ctx.fit_size(self.rect[2], self.rect[3])
-        font, glyphs = ctx.atlas(self.zoom or self._fit)
-        ox, oy, vw, vh, cw, chh = draw_terminal(
-            surface, self.rect, self.backing.grid(), font, glyphs, self.pan
+        # default = the largest font at which the FULL grid fits the tile; zoom in from
+        # there magnifies a region and pan moves it. Use the backing's actual dimensions
+        # (a cast/terminal need not be 80x24) so the fit font size is right.
+        grid = self.backing.grid()
+        self._fit = ctx.fit_size(
+            self.rect[2], self.rect[3], grid.get("cols", 80), grid.get("rows_n", 24)
         )
+        font, glyphs = ctx.atlas(self.zoom or self._fit)
+        ox, oy, vw, vh, cw, chh = draw_terminal(surface, self.rect, grid, font, glyphs, self.pan)
         self._cw, self._chh = cw, chh
         self.pan = [ox, oy]  # store the clamped offset
 
@@ -277,6 +284,8 @@ def run(
     snapshot_path=None,
     max_seconds=None,
 ):
+    if fps < 1:
+        raise ValueError("fps must be >= 1")
     import pygame
 
     pygame.init()
@@ -352,8 +361,8 @@ def run(
         if snapshot_path and frame % max(1, fps) == 0:
             try:
                 pygame.image.save(screen, snapshot_path + ".png")
-            except Exception:  # snapshots are best-effort -- never kill the render loop
-                pass
+            except Exception as e:  # snapshots are best-effort -- never kill the render loop
+                log.debug("dashboard snapshot failed: %s", e)
         clock.tick(fps)
         frame += 1
         if max_seconds is not None and frame >= max_seconds * fps:

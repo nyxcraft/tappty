@@ -1,6 +1,6 @@
 """Per-tile pan/zoom view math (pure): a terminal tile shows the full 80x24 by
 default (fit), zoom magnifies, pan slides the viewport (clamped). See
-[[sbterm-instrumentation]]."""
+docs/DESIGN.md."""
 
 from tappty.compositor import TerminalPanel, clamp_view
 

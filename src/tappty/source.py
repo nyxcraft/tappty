@@ -17,14 +17,34 @@ and accepts input via send_input(text).
 Bytes vs text (see Source.encoding): a *byte source* (pty/pipe/ConPTY) reads raw bytes
 and hands them up as a byte-transparent latin-1 str -- lossless on the stream tap -- and
 declares the wire `encoding` the Session decodes by for the screen. A *text source*
-(engine/cast) emits real characters and leaves `encoding` None (no decode). See
-[[sbterm-instrumentation]].
+(engine/cast) emits real characters and leaves `encoding` None (no decode). See docs/DESIGN.md.
 """
 
+import contextlib
 import json
 import os
 import queue
 import threading
+
+MAX_CAST_DIM = 1000  # clamp untrusted .cast width/height (grid alloc = cols*rows cells)
+MAX_CAST_LINE = 1 << 20  # max bytes per .cast line read (untrusted-input guard)
+MAX_CAST_FILE = 16 << 20  # max .cast file size for the unstreamable v1 path (json.load all)
+
+
+def _cast_dim(value, default):
+    try:
+        n = int(value)
+    except (TypeError, ValueError):
+        return default
+    return max(1, min(MAX_CAST_DIM, n))
+
+
+_STOP = object()  # sentinel EngineSource.stop() pushes to unblock a runner in readline()
+
+
+class _StopRunner(BaseException):
+    """Raised inside a runner (via readline) when EngineSource.stop() is called, to unwind it
+    cleanly. A BaseException so a runner's `except Exception` can't accidentally swallow it."""
 
 
 class Source:
@@ -32,6 +52,12 @@ class Source:
     # A byte source sets it (e.g. "utf-8"); the Session reads it to decode bytes -> screen
     # characters while keeping the stream tap byte-lossless. None => emit-as-text, no decode.
     encoding = None
+    # Exit status after on_exit (None until then): the hosted program's return code for a
+    # subprocess source, or None for sources without one (engine / cast).
+    returncode = None
+    # The exception that ended the program, if any (else None). Session.run_blocking()
+    # re-raises it; observers get an ERROR event. Set by sources that run user code.
+    error = None
 
     def start(self, on_output, on_wait, on_exit):
         raise NotImplementedError
@@ -41,6 +67,30 @@ class Source:
 
     def stop(self):
         pass
+
+    def _pump(self, read_one, on_output, on_exit, reap=None):
+        """The standard reader loop for a subprocess/pty source, on a daemon thread: pull
+        chunks from read_one() until it returns "" (EOF), forward each to on_output, then
+        reap the child's exit status (if `reap` is given) and fire on_exit. read_one() owns
+        its own EOF/error handling and returns "" to stop. Sets self.thread; the caller must
+        have set self._running = True. Used by the pty/pipe/ConPTY sources."""
+
+        def reader():
+            try:
+                while self._running:
+                    chunk = read_one()
+                    if not chunk:
+                        break
+                    on_output(chunk)
+            finally:
+                if reap is not None:
+                    with contextlib.suppress(Exception):  # reap the child's exit status
+                        self.returncode = reap()
+                self._running = False
+                on_exit()
+
+        self.thread = threading.Thread(target=reader, daemon=True)
+        self.thread.start()
 
 
 class EngineSource(Source):
@@ -57,11 +107,18 @@ class EngineSource(Source):
     def start(self, on_output, on_wait, on_exit):
         def readline():
             on_wait()  # program is now blocked for input
-            return self._inq.get()
+            line = self._inq.get()
+            if line is _STOP:  # stop() asked us to unwind
+                raise _StopRunner
+            return line
 
         def go():
             try:
                 self.runner(on_output, readline)
+            except _StopRunner:
+                pass  # clean stop() -- not an error
+            except BaseException as e:  # capture so run_blocking() can re-raise / observers see it
+                self.error = e
             finally:
                 on_exit()
 
@@ -70,6 +127,12 @@ class EngineSource(Source):
 
     def send_input(self, text):
         self._inq.put(text)
+
+    def stop(self):
+        # Unblock a runner waiting in readline() so Session.stop()/join() returns promptly.
+        # A runner busy elsewhere (compute/sleep) can't be force-stopped; its thread is a
+        # daemon and won't block process exit.
+        self._inq.put(_STOP)
 
 
 class PtySource(Source):
@@ -81,7 +144,7 @@ class PtySource(Source):
     fired -- a pty gives no readline boundary, so an observer reads the stream/grid instead.
     This is what lets you observe+control any terminal program (e.g. real SIMH/TOPS-10);
     pair with the VT52 `Terminal` for period children or `PyteTerminal` (--ansi) for modern
-    ANSI. See [[sbterm-instrumentation]]."""
+    ANSI. See docs/DESIGN.md."""
 
     def __init__(self, argv, cwd=None, env=None, size=(24, 80), encoding="utf-8"):
         self.argv = list(argv)
@@ -102,40 +165,40 @@ class PtySource(Source):
         import termios
 
         self.master, slave = pty.openpty()
-        rows, cols = self.size
         try:
-            fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", rows, cols, 0, 0))
-        except OSError:
-            pass
-        self.proc = subprocess.Popen(
-            self.argv,
-            stdin=slave,
-            stdout=slave,
-            stderr=slave,
-            cwd=self.cwd,
-            env=self.env,
-            start_new_session=True,
-            close_fds=True,
-        )
+            rows, cols = self.size
+            try:
+                fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", rows, cols, 0, 0))
+            except OSError:
+                pass
+            self.proc = subprocess.Popen(
+                self.argv,
+                stdin=slave,
+                stdout=slave,
+                stderr=slave,
+                cwd=self.cwd,
+                env=self.env,
+                start_new_session=True,
+                close_fds=True,
+            )
+        except BaseException:  # spawn failed (e.g. command not found) -> don't leak pty fds
+            with contextlib.suppress(OSError):
+                os.close(slave)
+            with contextlib.suppress(OSError):
+                os.close(self.master)
+            self.master = None
+            raise
         os.close(slave)
         self._running = True
 
-        def reader():
+        def read_one():
             try:
-                while self._running:
-                    try:
-                        data = os.read(self.master, 4096)
-                    except OSError:
-                        break
-                    if not data:
-                        break
-                    on_output(data.decode("latin-1"))  # raw bytes, lossless (Session decodes)
-            finally:
-                self._running = False
-                on_exit()
+                data = os.read(self.master, 4096)
+            except OSError:
+                return ""  # master closed
+            return data.decode("latin-1")  # raw bytes, lossless (Session decodes)
 
-        self.thread = threading.Thread(target=reader, daemon=True)
-        self.thread.start()
+        self._pump(read_one, on_output, on_exit, reap=lambda: self.proc.wait(timeout=2))
 
     def send_input(self, text):
         if self.master is not None:
@@ -173,7 +236,7 @@ class CastSource(Source):
     `{"version": 2, "width": .., "height": ..}` then `[time, code, data]` events, where code
     "o" is terminal output -- the only kind replayed; "i"/"m"/"r" are skipped -- and time is
     seconds from the start) and compact v1 (`{"version": 1, "width", "height", "stdout":
-    [[delay, data], ...]}`). See [[sbterm-instrumentation]]."""
+    [[delay, data], ...]}`). See docs/DESIGN.md."""
 
     def __init__(self, path, speed=1.0, idle_time_limit=None, loop=False):
         self.path = path
@@ -190,21 +253,28 @@ class CastSource(Source):
 
     def _read_header(self):
         with open(self.path, encoding="utf-8") as f:
-            first = f.readline()
+            first = f.readline(MAX_CAST_LINE)  # bounded: untrusted file
         try:
             head = json.loads(first)
         except ValueError:
             head = None
         if isinstance(head, dict) and head.get("version", 0) >= 2 and "stdout" not in head:
             self.version = int(head["version"])  # v2 (or later): stream lines
-            self.width = int(head.get("width", 80))
-            self.height = int(head.get("height", 24))
+            self.width = _cast_dim(head.get("width"), 80)  # clamp untrusted dimensions
+            self.height = _cast_dim(head.get("height"), 24)
             return
-        with open(self.path, encoding="utf-8") as f:  # v1: the file is one object
+        # v1 is one JSON object loaded whole (unstreamable) -> cap the file size so an
+        # untrusted v1 recording can't drive unbounded allocation.
+        if os.path.getsize(self.path) > MAX_CAST_FILE:
+            raise ValueError(
+                f"v1 .cast file exceeds {MAX_CAST_FILE} bytes; refusing to load it whole "
+                "(v1 is unstreamable -- re-record as asciicast v2 for large sessions)"
+            )
+        with open(self.path, encoding="utf-8") as f:
             doc = json.load(f)
         self.version = 1
-        self.width = int(doc.get("width", 80))
-        self.height = int(doc.get("height", 24))
+        self.width = _cast_dim(doc.get("width"), 80)
+        self.height = _cast_dim(doc.get("height"), 24)
         self._events_v1 = doc.get("stdout", [])  # [[delay, data], ...]
 
     def _events(self):
@@ -217,8 +287,11 @@ class CastSource(Source):
                     yield t, item[1]
             return
         with open(self.path, encoding="utf-8") as f:  # v2: skip header, stream
-            f.readline()
-            for line in f:
+            f.readline(MAX_CAST_LINE)
+            while True:
+                line = f.readline(MAX_CAST_LINE)  # bounded per-event read
+                if not line:
+                    break
                 line = line.strip()
                 if not line:
                     continue
@@ -298,19 +371,11 @@ class PipeSource(Source):
         )
         self._running = True
 
-        def reader():
-            try:
-                while self._running:
-                    data = self.proc.stdout.read(4096)  # raw (bufsize=0): returns what's ready
-                    if not data:
-                        break
-                    on_output(data.decode("latin-1"))  # raw bytes, lossless (Session decodes)
-            finally:
-                self._running = False
-                on_exit()
+        def read_one():
+            data = self.proc.stdout.read(4096)  # raw (bufsize=0): returns what's ready, b"" at EOF
+            return data.decode("latin-1")  # raw bytes, lossless (Session decodes)
 
-        self.thread = threading.Thread(target=reader, daemon=True)
-        self.thread.start()
+        self._pump(read_one, on_output, on_exit, reap=lambda: self.proc.wait(timeout=2))
 
     def send_input(self, text):
         if self.proc is not None and self.proc.stdin is not None:
@@ -359,22 +424,15 @@ class ConPtySource(Source):
         )
         self._running = True
 
-        def reader():
+        def read_one():
+            if not self.proc.isalive():
+                return ""
             try:
-                while self._running and self.proc.isalive():
-                    try:
-                        data = self.proc.read(4096)  # pywinpty returns str (already decoded)
-                    except EOFError:
-                        break
-                    if not data:
-                        break
-                    on_output(data)
-            finally:
-                self._running = False
-                on_exit()
+                return self.proc.read(4096)  # pywinpty returns str (already decoded)
+            except EOFError:
+                return ""
 
-        self.thread = threading.Thread(target=reader, daemon=True)
-        self.thread.start()
+        self._pump(read_one, on_output, on_exit, reap=self.proc.wait)
 
     def send_input(self, text):
         if self.proc is not None:

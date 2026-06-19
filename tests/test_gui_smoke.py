@@ -36,6 +36,18 @@ def _cast(path):
     return str(path)
 
 
+def test_fit_size_keyed_by_grid_dimensions():
+    """fit_size must account for the grid dimensions, not just the tile size: a bigger
+    grid in the same tile needs a smaller font (it used to cache by tile size alone)."""
+    import pygame
+
+    pygame.font.init()  # DrawCtx builds a font in __init__
+    ctx = compositor.DrawCtx()
+    small_grid = ctx.fit_size(800, 600, 80, 24)
+    huge_grid = ctx.fit_size(800, 600, 500, 200)  # many more cells in the same tile
+    assert huge_grid < small_grid
+
+
 def test_pygame_ui_draws_headless(tmp_path):
     """pygame_ui.run executes its full draw loop and renders the recorded screen."""
     cast = _cast(tmp_path / "ui.cast")

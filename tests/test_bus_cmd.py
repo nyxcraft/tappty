@@ -1,6 +1,6 @@
 """The synchronous CMD verb (send a line, get its output up to the next input
 prompt) and the INFO `waiting` flag -- the two primitives the dogfood session
-showed an AI driver needs. See [[sbterm-instrumentation]]."""
+showed an AI driver needs. See docs/DESIGN.md."""
 
 import os
 import tempfile

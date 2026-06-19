@@ -22,7 +22,7 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-gui = ["pygame"]
+gui = ["pygame-ce"]            # the maintained community fork (drop-in `import pygame`); CI-tested
 ansi = ["pyte"]                # full-ANSI/VT100+ Terminal backend (PyteTerminal); LGPLv3
 win = ['pywinpty; platform_system == "Windows"']   # ConPtySource (Windows pseudo-console)
 dev = ["pytest", "ruff"]

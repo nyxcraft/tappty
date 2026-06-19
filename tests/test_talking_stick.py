@@ -1,6 +1,6 @@
 """Control arbitration -- the talking stick: one driver at a time, you-privileged
 preemption (a human can take from an AI; an AI can't take from a human), and
-auto-release when a controller drops. See [[sbterm-instrumentation]]."""
+auto-release when a controller drops. See docs/DESIGN.md."""
 
 import os
 import tempfile

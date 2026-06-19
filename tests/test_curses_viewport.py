@@ -1,6 +1,6 @@
 """The curses renderer's viewport math (pure -- no tty needed): a fixed 80x24 model
 shown whole when the terminal is big enough, or a cursor-following sub-rectangle
-when it's smaller, never resizing the model. See [[sbterm-instrumentation]]."""
+when it's smaller, never resizing the model. See docs/DESIGN.md."""
 
 from tappty.curses_ui import viewport
 

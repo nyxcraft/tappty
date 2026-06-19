@@ -35,3 +35,36 @@ def test_scrollback_is_bounded():
     for i in range(50):
         t.write(f"{i}\n")
     assert t.max_scroll() <= 5  # the roll is trimmed to the cap
+
+
+# ---- VT52 escapes (the small set the model honors) --------------------------
+def test_vt52_home_and_erase_to_end_of_screen():
+    t = Terminal(cols=10, rows=3)
+    t.write("ABC\r\nDEF\r\nGHI")
+    t.write("\x1bH")  # ESC H: cursor home
+    assert (t.cx, t.cy) == (0, 0)
+    t.write("\x1bJ")  # ESC J: erase to end of screen
+    assert t.snapshot().strip() == ""
+
+
+def test_vt52_erase_to_end_of_line():
+    t = Terminal(cols=10, rows=2)
+    t.write("ABCDEF\x1bHXY\x1bK")  # home, overwrite "XY", erase to end of line
+    assert t.rows_text()[0].rstrip() == "XY"
+
+
+def test_vt52_direct_cursor_address():
+    t = Terminal(cols=20, rows=5)
+    t.write("\x1bY" + chr(2 + 32) + chr(4 + 32) + "hi")  # ESC Y row col: row 2, col 4
+    assert t.rows_text()[2][4:6] == "hi"
+    assert (t.cx, t.cy) == (6, 2)
+
+
+def test_vt52_cursor_moves_are_bounds_clamped():
+    t = Terminal(cols=5, rows=3)
+    t.write("\x1bH\x1bA")  # home then up at the top -> clamped to row 0
+    assert (t.cx, t.cy) == (0, 0)
+    t.write("\x1bB\x1bB\x1bB\x1bB")  # down 4 in a 3-row screen -> clamped to row 2
+    assert t.cy == 2
+    t.write("\x1bC\x1bC\x1bD")  # right 2, left 1 -> col 1
+    assert t.cx == 1

@@ -86,7 +86,7 @@ A working session in the standalone repo (under WSLg, with `pygame-ce` + `pyte` 
 
 ## Where it stands
 
-- **Standalone (`~/tappty`):** the generic toolkit + `tapterm`, **48 tests green**, with a
+- **Standalone (`~/tappty`):** the generic toolkit + `tapterm`, **87 tests green**, with a
   full-ANSI backend (with scrollback), recording replay, non-pty/Windows sources, a TCP bus,
   and ruff lint/format. **Now a git repo** (initial commit on `main`) with a CI workflow —
   though CI hasn't run yet (no remote pushed). The pygame draw path is smoke-tested headlessly

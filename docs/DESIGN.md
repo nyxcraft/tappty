@@ -107,7 +107,9 @@ The hub. It holds a Terminal and a Source, and exposes the contract:
     transport, temporal): the program's exact bytes
   - `on_frame(cb())` — the grid changed; call `snapshot()` to read it. The grid is the output
     **decoded** to characters
-  - `on_event(cb(name, info))` — `WAIT` / `BELL` / `CLOSED` / `DRIVER`
+  - `on_event(cb(name, info))` — `WAIT` / `BELL` / `CLOSED` / `DRIVER` / `ERROR` (a buggy
+    observer or a failed program; observer exceptions are caught so one client can't kill
+    the output path for the rest)
 - **Bytes vs characters.** The two output taps are deliberately different views: a stream
   observer (a logger, an AI watching the byte stream) sees the program's exact bytes, while
   the screen (the grid, `snapshot()`, a renderer, the bus `FRAME`) is those bytes **decoded**
@@ -135,7 +137,8 @@ and one watching the grid gets characters.
 session running in one process can be observed and driven from another (a logger, a remote
 renderer, an automated client). One server = one session. The address is a filesystem path
 (Unix socket) or a `(host, port)` tuple (TCP) — the latter works on Windows, where
-`AF_UNIX` is absent; the protocol is identical either way.
+`AF_UNIX` is absent; the protocol is identical either way. The bus is a control plane —
+treat it as **trusted-local** (see §7).
 
 ### 2.5 Renderers — `curses_ui.py` (CUI), `pygame_ui.py` (GUI)
 
@@ -167,7 +170,8 @@ newest, so a remote program's output streams in like a live terminal.
 A thin front-end: wrap a command in a Source, host it in a `Session`, hand the Session to a
 renderer. Modes: `--cui` (curses, anywhere), `--gui` (pygame, needs the optional extra),
 `--headless` (run to completion, print the final screen — for scripting/CI). With no flag it
-picks GUI when pygame is importable, else CUI. With no command it hosts `$SHELL`. Two
+picks GUI when pygame is importable *and a display is available*, else CUI. With no command
+it hosts `$SHELL`. Two
 backend/transport switches: `--ansi` selects `PyteTerminal` over the VT52 `Terminal`;
 `--no-pty` hosts over `PipeSource` instead of a pty. The Source is chosen by platform —
 `PtySource` on POSIX, `ConPtySource` on Windows — and `--cast` replays a recording instead.
@@ -192,7 +196,7 @@ backend/transport switches: `--ansi` selects `PyteTerminal` over the VT52 `Termi
 **Optional deps are deferred:** `pygame`, `curses`, `pyte`, and `pywinpty` are imported
 *inside* the functions/constructors that need them, never at module top. So `import tappty`
 works with none of them installed (verified), and `tapterm --cui` / `--headless` need no
-display. The extras: `gui` = pygame, `ansi` = pyte (`PyteTerminal`), `win` = pywinpty
+display. The extras: `gui` = pygame-ce, `ansi` = pyte (`PyteTerminal`), `win` = pywinpty
 (`ConPtySource`, Windows only).
 
 ---
@@ -216,7 +220,7 @@ their `.kind`, so dropping `GalaxyPanel` left it fully generic.
 
 ## 6. Testing
 
-48 tests exercise the model and contract through real paths: the Terminal model
+87 tests exercise the model and contract through real paths: the Terminal model
 (`test_term`), the full-ANSI backend (`test_pyte_terminal` — SGR/cursor-address/erase/
 Unicode/scrollback, skips without pyte), Session taps + control + talking stick + local-echo
 frames (`test_session_bus`, `test_talking_stick`, `test_session_echo`), the bus round-trip
@@ -224,7 +228,10 @@ over an actual socket and over TCP, plus duplicate-name handling (`test_bus_sock
 `test_bus_cmd`, `test_bus_tcp`), a real subprocess on a pty (`test_pty_source`) and over
 plain pipes (`test_pipe_source`, which also checks `ConPtySource` is import-guarded), the
 bytes/characters encoding split (`test_source_encoding`), recording replay through the
-pipeline (`test_cast_source`), the pure viewport/pan/zoom math (`test_curses_viewport`,
+pipeline (`test_cast_source`), error paths (`test_error_handling` — child exit-code
+propagation, observer-failure isolation, runner-error re-raise, CMD timeout signaling, pty
+spawn cleanup), bus hardening (`test_bus_security` — token auth, loopback-only TCP, newline
+injection, safe socket unlink), the pure viewport/pan/zoom math (`test_curses_viewport`,
 `test_compositor_view`), and the panel backings (`test_compositor_backings`).
 
 The pygame **draw path** is now smoke-tested too (`test_gui_smoke`): it drives the real
@@ -234,3 +241,63 @@ rather than a live subprocess. That test runs wherever `pygame` is installed and
 cleanly* where it isn't, so it never breaks the pygame-free path. What's still by-eye only
 is pixel-level *fidelity* (does it look right) — the smoke test proves the path runs and
 the right grid data reaches it, not that the phosphor is pretty.
+
+---
+
+## 7. Security / trust model
+
+The bus is a **terminal control plane**: a connected client can read the screen and, holding
+the talking stick, inject input — i.e. terminal read/write as the tappty user. It is
+**trusted-local**, not a boundary against a hostile network. The defenses:
+
+- **Unix socket (default-safe):** the socket *file* is `0600`, so only the owner UID can
+  connect — that file mode is the actual connect gate, the auth. When tappty creates the
+  parent directory it also makes it `0700` (defense-in-depth); if you point the path at an
+  existing shared directory its permissions are left untouched, so the `0600` socket file is
+  what protects you there.
+- **TCP:** bound to **loopback only**; binding a non-loopback host raises unless
+  `allow_remote=True` is passed explicitly. Loopback isn't user-isolated, so on a shared box
+  set a `token`.
+- **`token` (optional):** a non-empty shared secret presented in `HELLO` (constant-time
+  compared; an empty token is rejected at construction); a client without it is denied. It's
+  a *casual gate sent in the clear*, **not** transport security — tunnel over SSH/TLS for an
+  untrusted network.
+- **DoS bounds:** protocol frames are read with a size cap (`MAX_FRAME`) on **both** ends —
+  server *and* client — (the server's own outbound messages are naturally small, bounded by
+  per-read chunk sizes); `CMD` captures are byte-bounded (`MAX_CAPTURE`, with a `truncated`
+  flag); and `BusClient.send` rejects newlines so a `LINE`/`CMD` payload can't inject frames.
+- **Untrusted `.cast` files:** width/height are clamped and v2 line reads are byte-bounded;
+  the unstreamable v1 path (whole-file `json.load`) is refused above `MAX_CAST_FILE`. So a
+  malicious recording can't drive a huge grid allocation or load an unbounded file.
+
+Not in scope as bugs: the subprocess path launches `argv` with `shell=False` (no shell
+injection), and `--snapshot` writes exactly where the user asked (user-directed output, not
+a privilege boundary). Full transport auth (TLS/mTLS) is intentionally out of scope for this
+toolkit; the recommendation is a private Unix socket, or loopback+token behind an SSH tunnel.
+
+---
+
+## 8. Known limitations (deliberate, not bugs)
+
+These are conscious scope choices, recorded so they aren't mistaken for defects:
+
+- **Monochrome render — no SGR attributes.** `PyteTerminal` parses ANSI position/erase/edit
+  correctly, but the read interface exposes only text (`rows_text`/`display`); the renderers
+  draw one phosphor color. So `--ansi` gives text/cursor fidelity, not color/bold/inverse.
+  A future `styled_rows()`/`cells()` API could expose attributes without changing
+  `rows_text()`.
+- **Single-cell Unicode.** Both Terminal models treat each Python code point as one cell, and
+  renderers blit one glyph per cell. CJK full-width, emoji, and combining marks can drift or
+  overwrite neighbors. Faithful width would need a `wcwidth`-style helper in the model and
+  renderers.
+- **Line-oriented input.** Renderers forward Enter/Backspace/printable text (and pygame's
+  scrollback keys); arrows, function keys, Esc, and Ctrl-combos are not yet mapped to VT
+  sequences for the hosted program. Right for the toolkit's line-oriented heritage; hosting
+  full interactive TUIs would need a renderer→session key map (pairs naturally with the
+  full-ANSI backend).
+- **Frame fan-out is per-chunk.** A subscribed bus client gets a full screen snapshot on
+  every output chunk. Fine at the default 80×24; a busy remote dashboard would want frame
+  coalescing / rate-limiting (send the latest at a bounded tick, drop stale frames).
+- **`BusClient` is single-consumer.** `wait_for()` drains the inbox until a matching verb,
+  discarding others; it's for one request/reply at a time before subscribing, not concurrent
+  callers or overlapping requests. A subscriber must drain `inbox` (it is unbounded).

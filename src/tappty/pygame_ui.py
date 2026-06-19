@@ -7,7 +7,10 @@ automated observer can watch the same session the human sees. The renderer is ju
 an adapter over the UI-agnostic core; an arcade renderer would implement the same shape.
 """
 
+import logging
 import os
+
+log = logging.getLogger(__name__)
 
 FONT_PATH = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf"
 FG = (90, 255, 130)  # phosphor green
@@ -24,6 +27,8 @@ def run(
     fps=30,
     max_seconds=None,
 ):
+    if fps < 1:
+        raise ValueError("fps must be >= 1")
     import pygame
 
     pygame.init()
@@ -97,16 +102,16 @@ def run(
                 pygame.image.save(
                     screen, snapshot_path + ".png" if snapshot_path else "/tmp/tapterm.png"
                 )
-            except Exception:  # snapshots are best-effort -- never kill the render loop
-                pass
+            except Exception as e:  # snapshots are best-effort -- never kill the render loop
+                log.debug("PNG snapshot failed: %s", e)
             e_f12 = False
         if snapshot_path and frame % fps == 0:
             try:
                 with open(snapshot_path, "w") as f:
                     f.write(session.term.snapshot())
                 pygame.image.save(screen, snapshot_path + ".png")  # pixels, for review
-            except Exception:  # snapshots are best-effort -- never kill the render loop
-                pass
+            except Exception as e:  # snapshots are best-effort -- never kill the render loop
+                log.debug("snapshot write failed: %s", e)
         clock.tick(fps)
         frame += 1
         if session.done:  # program ended
@@ -121,4 +126,5 @@ def run(
                 f.write(session.term.snapshot())
         except OSError:
             pass
+    session.stop()  # owning renderer: stop the hosted source when the window closes
     pygame.quit()

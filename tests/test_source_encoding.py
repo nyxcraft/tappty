@@ -2,13 +2,17 @@
 (lossless) and DECODED characters on the screen. The Session does the decode (per the
 source's `encoding`, default UTF-8); the terminal backends stay encoding-agnostic."""
 
+import os
 import sys
+
+import pytest
 
 from tappty.session import Session
 from tappty.source import PipeSource, PtySource
 from tappty.terminal import Terminal
 
 
+@pytest.mark.skipif(os.name == "nt", reason="PtySource is POSIX-only (pty/termios)")
 def test_pty_screen_decoded_stream_raw():
     src = PtySource([sys.executable, "-c", "print('café')"])
     sess = Session(Terminal(80, 24), source=src)
@@ -19,6 +23,17 @@ def test_pty_screen_decoded_stream_raw():
     assert any("café" in r for r in sess.term.rows_text())  # screen: decoded characters
     raw = "".join(chunks).encode("latin-1")  # stream: recover exact bytes
     assert b"caf\xc3\xa9" in raw  # é as its two UTF-8 bytes, undecoded
+
+
+@pytest.mark.skipif(os.name == "nt", reason="PtySource is POSIX-only (pty/termios)")
+def test_partial_multibyte_is_flushed_on_exit():
+    # the stream ends on a lone UTF-8 lead byte: the held byte must be flushed at EOF
+    src = PtySource([sys.executable, "-c", "import os; os.write(1, b'A'); os.write(1, b'\\xc3')"])
+    sess = Session(Terminal(80, 24), source=src)
+    sess.run_blocking()
+    row = sess.term.rows_text()[0]
+    assert row[0] == "A"
+    assert "�" in row  # the incomplete sequence became U+FFFD on the final flush
 
 
 def test_pipe_screen_decoded_stream_raw():

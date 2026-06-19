@@ -13,6 +13,8 @@ import threading
 
 class Terminal:
     def __init__(self, cols=80, rows=24, scrollback=5000):
+        if cols < 1 or rows < 1:  # a 0/negative grid would crash on the first write
+            raise ValueError(f"cols and rows must be >= 1 (got {cols}x{rows})")
         self.cols, self.rows = cols, rows
         self.grid = [[" "] * cols for _ in range(rows)]
         self.cx = self.cy = 0
@@ -34,9 +36,10 @@ class Terminal:
             self.dirty = True
 
     def clear(self):
-        for row in self.grid:
-            row[:] = [" "] * self.cols
-        self.cx = self.cy = 0
+        with self.lock:  # RLock -> safe even though the form-feed path holds it via write()
+            for row in self.grid:
+                row[:] = [" "] * self.cols
+            self.cx = self.cy = 0
 
     def _newline(self):
         self.cx = 0

@@ -16,7 +16,7 @@ hosting 1970s PDP-10 games), generalized to host any command.
 
 ```sh
 pip install tappty          # core (CUI works out of the box)
-pip install 'tappty[gui]'   # add the pygame window
+pip install 'tappty[gui]'   # add the pygame window (pygame-ce)
 pip install 'tappty[ansi]'  # add the full-ANSI/VT100+ backend (pyte) for --ansi
 pip install 'tappty[win]'   # Windows: add the ConPTY source (pywinpty)
 # from a checkout:
@@ -26,7 +26,7 @@ pip install -e '.[gui,ansi,dev]'
 ## The `tapterm` program
 
 ```sh
-tapterm                    # host your $SHELL (GUI if pygame is installed, else CUI)
+tapterm                    # host your $SHELL (GUI if pygame + a display, else CUI)
 tapterm -- python3 -i      # host a specific command (everything after -- is its argv)
 tapterm --cui -- bash      # force the curses character UI (takes over this terminal)
 tapterm --gui -- bash      # force the pygame green-phosphor window
@@ -37,7 +37,8 @@ tapterm --no-pty -- ls     # host over plain pipes, no pty (cross-platform, incl
 ```
 
 `--cui` works anywhere; `--gui` needs the `gui` extra. With no mode flag, `tapterm` picks
-GUI when pygame is installed, otherwise CUI. `--ansi` swaps the built-in VT52 grid for the
+GUI when pygame is installed *and a display is available* (else CUI) — so it won't try to
+open a window over SSH/cron. `--ansi` swaps the built-in VT52 grid for the
 `pyte` full-ANSI model (needs the `ansi` extra) — use it for programs that emit modern ANSI
 (colors, cursor addressing). On Windows the pty path uses ConPTY (the `win` extra); pair it
 with `--ansi`, since ConPTY emits VT100+.
@@ -71,7 +72,10 @@ The pieces:
   talking-stick arbitration so exactly one controller types at a time.
 - **`BusServer` / `BusClient`** — the same observe/control contract over a Unix-domain
   socket *or* TCP (a `(host, port)` tuple — works on Windows too), so an out-of-process
-  client (a logger, an automated driver, a remote renderer) can attach to a session.
+  client (a logger, an automated driver, a remote renderer) can attach to a session. It's a
+  terminal control plane — **trusted-local**: the Unix socket is owner-only, TCP is
+  loopback-only unless `allow_remote=True`, and a `token=` adds an optional shared-secret
+  gate. Not a substitute for a tunnel on an untrusted network (no TLS).
 - **`curses_ui` / `pygame_ui`** — renderers; each exposes `run(session, runner, title=…)`.
 - **`compositor`** — tile several panels (`SessionBacking` for in-process, `BusBacking`
   for remote) in one pygame window, with per-tile pan/zoom and focus.
@@ -89,7 +93,10 @@ Windows ConPTY path is implemented but not yet exercised on real Windows — see
 ## Tests
 
 ```sh
-pip install -e '.[dev]'
+pip install -e '.[dev]'            # quick: core suite (pyte + GUI tests skip)
+pytest
+
+pip install -e '.[dev,ansi,gui]'   # full: also the ANSI backend + headless GUI smoke
 pytest
 ```
 

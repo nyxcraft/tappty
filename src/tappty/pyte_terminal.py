@@ -29,6 +29,8 @@ class PyteTerminal:
     def __init__(self, cols=80, rows=24, scrollback=5000):
         import pyte
 
+        if cols < 1 or rows < 1:
+            raise ValueError(f"cols and rows must be >= 1 (got {cols}x{rows})")
         self.cols, self.rows = cols, rows
         self.lock = threading.RLock()
         self.dirty = True

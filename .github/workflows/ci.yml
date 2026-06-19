@@ -33,10 +33,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - run: pip install -e '.[dev,ansi]' pygame-ce
+      - run: pip install -e '.[dev,ansi,gui]'  # gui extra == pygame-ce (the CI-tested dep)
       - run: pytest -q
 
 # NOTE: no Windows job yet. The pty-based tests (test_pty_source, the PtySource half of
-# test_source_encoding) are POSIX-only and would error on Windows, and ConPtySource has
-# never been exercised on real Windows. Add a `windows-latest` job once those tests skip
-# on `os.name == "nt"` and ConPtySource is validated -- see docs/WINDOWS.md.
+# test_source_encoding) now skip on os.name == "nt", but other tests still assume a POSIX
+# shell, and ConPtySource has never been exercised on real Windows. Add a `windows-latest`
+# job once the remaining POSIX assumptions are guarded and ConPtySource is validated --
+# see docs/WINDOWS.md.

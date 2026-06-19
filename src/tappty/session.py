@@ -7,7 +7,9 @@ Observe taps (subscribe to taste):
                               latin-1 transport, temporal) -- the program's exact bytes
   on_frame(cb())           -- tap 2: the grid changed; call snapshot() to read it. The grid
                               is the output DECODED to characters (per the source's encoding)
-  on_event(cb(name, info)) -- tap 3: WAIT (blocked on input), BELL, CLOSED
+  on_event(cb(name, info)) -- tap 3: WAIT (blocked on input), BELL, CLOSED, DRIVER, ERROR
+                              (ERROR = an observer callback raised, or the program failed;
+                              observer failures are isolated, never killing the output path)
 Control:
   send_input(text)         -- inject input into the program
   feed_key(ch)/feed_text   -- interactive keystrokes (local echo + line buffer)
@@ -15,7 +17,7 @@ Control:
 The Source (engine, pty, ...) supplies the bytes; the Session fans them out to the
 Terminal and the taps, and routes control back to the Source. A renderer is just a
 client of this contract; an external socket front-end (later) registers socket-backed
-taps + forwards input through the same methods. See [[sbterm-instrumentation]].
+taps + forwards input through the same methods. See docs/DESIGN.md.
 """
 
 import codecs
@@ -54,6 +56,18 @@ class Session:
         self._event_obs.append(cb)
         return cb
 
+    def off_stream(self, cb):
+        if cb in self._stream_obs:
+            self._stream_obs.remove(cb)
+
+    def off_frame(self, cb):
+        if cb in self._frame_obs:
+            self._frame_obs.remove(cb)
+
+    def off_event(self, cb):
+        if cb in self._event_obs:
+            self._event_obs.remove(cb)
+
     def snapshot(self):
         """The current grid + cursor (tap 2 payload)."""
         return {
@@ -71,28 +85,50 @@ class Session:
         # screen gets it decoded to characters per the source's wire encoding; observers
         # watching the stream get the raw bytes. (Called only on the source thread, so the
         # incremental decoder is accessed single-threaded.)
-        for cb in list(self._stream_obs):  # tap 1: RAW program output (lossless, temporal)
-            cb(raw)
+        self._fanout(self._stream_obs, "stream", raw)  # tap 1: RAW program output (lossless)
         text = self._decoder.decode(raw.encode("latin-1")) if self._decoder else raw
         if text:
             with self._lock:
                 self.term.write(text)  # screen: decoded characters
-        for cb in list(self._frame_obs):  # tap 2: "something changed"
-            cb()
+        self._fanout(self._frame_obs, "frame")  # tap 2: "something changed"
         if "\a" in raw:  # BELL
             self._event("BELL")
+
+    def _fanout(self, observers, where, *args):
+        # Isolate observer failures: a buggy stream/frame callback must not propagate into
+        # the source thread and stop output for everyone. Swallow, then emit an ERROR event
+        # (best-effort) so the failure leaves a breadcrumb. The observer is NOT auto-dropped.
+        for cb in list(observers):
+            try:
+                cb(*args)
+            except Exception as e:
+                self._event("ERROR", where=where, error=repr(e))
 
     def _wait(self):
         self.waiting = True  # program is blocked for input
         self._event("WAIT")
 
     def _exit(self):
+        if self._decoder is not None:  # flush a held partial multibyte sequence at EOF
+            tail = self._decoder.decode(b"", final=True)
+            if tail:
+                with self._lock:
+                    self.term.write(tail)
+                self._fanout(self._frame_obs, "frame")
         self.done = True
+        err = getattr(self.source, "error", None)
+        if err is not None:  # the program raised -> tell observers before CLOSED
+            self._event("ERROR", where="source", error=repr(err))
         self._event("CLOSED")
 
     def _event(self, name, **info):
+        # Event observers are dispatched defensively too -- and never via _fanout, so an
+        # ERROR emitted for a failing observer can't recurse into another ERROR.
         for cb in list(self._event_obs):
-            cb(name, info)
+            try:
+                cb(name, info)
+            except Exception:
+                pass
 
     # ---- the talking stick (control arbitration) ---------------------------
     def _set_driver(self, name):
@@ -161,12 +197,10 @@ class Session:
         stay consistent with raw program output (without disturbing the program's decoder)."""
         s = text + "\r\n"
         raw = s.encode(self._wire, "replace").decode("latin-1") if self._wire else s
-        for cb in list(self._stream_obs):  # stream: bytes (consistent with program output)
-            cb(raw)
+        self._fanout(self._stream_obs, "stream", raw)  # stream: bytes (like program output)
         with self._lock:
             self.term.write(s)  # screen: characters, as-is
-        for cb in list(self._frame_obs):
-            cb()
+        self._fanout(self._frame_obs, "frame")
 
     def _echo_local(self, text):
         """Write locally-echoed keystrokes to the grid and notify FRAME observers, so a
@@ -175,8 +209,7 @@ class Session:
         not program output, so on_stream stays a faithful record of the program's bytes."""
         with self._lock:
             self.term.write(text)
-        for cb in list(self._frame_obs):
-            cb()
+        self._fanout(self._frame_obs, "frame")
 
     def feed_key(self, ch, by="local", auto_take=True):
         """An interactive keystroke: local echo + assemble a line, sending on Enter.
@@ -233,3 +266,17 @@ class Session:
         thread = getattr(self.source, "thread", None)
         if thread is not None:
             thread.join()
+        err = getattr(self.source, "error", None)
+        if err is not None:  # surface a program/runner failure to the blocking caller
+            raise err
+
+    def stop(self):
+        """Stop the hosted source and wait briefly for its reader/runner thread to finish.
+        Idempotent. An owning renderer calls this on exit; a non-owning view (e.g. a
+        compositor panel over a session it didn't start) should not."""
+        if self.source is None:
+            return
+        self.source.stop()
+        thread = getattr(self.source, "thread", None)
+        if thread is not None and thread is not threading.current_thread():
+            thread.join(timeout=2)

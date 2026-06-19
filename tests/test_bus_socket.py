@@ -1,6 +1,6 @@
 """The instrumentation bus over a Unix socket: an out-of-process client observes a
 Session's screen and injects input. Short tmpdir socket paths (AF_UNIX has a ~108
-char limit). See [[sbterm-instrumentation]]."""
+char limit)."""
 
 import os
 import tempfile
@@ -13,6 +13,140 @@ from tappty.session import Session
 
 def _sock():
     return os.path.join(tempfile.mkdtemp(), "s")
+
+
+def test_stop_unsubscribes_session_taps():
+    """start() registers 3 Session taps; stop() must remove them so a stopped server
+    doesn't linger as a stale observer on a long-lived Session."""
+    s = Session()
+    base = (len(s._stream_obs), len(s._frame_obs), len(s._event_obs))
+    srv = BusServer(s, _sock()).start()
+    assert (len(s._stream_obs), len(s._frame_obs), len(s._event_obs)) == tuple(n + 1 for n in base)
+    srv.stop()
+    assert (len(s._stream_obs), len(s._frame_obs), len(s._event_obs)) == base
+
+
+def test_stop_drops_clients_and_releases_the_stick():
+    """stop() must close accepted client connections and release any stick they held."""
+    s = Session()
+    s.run_in_thread(lambda emit, readline: readline())  # keep the session alive
+    path = _sock()
+    srv = BusServer(s, path).start()
+    c = BusClient(path).connect()
+    c.hello("ai", "bot")
+    assert c.wait_for("OK", 2)
+    assert s.driver == "bot"  # the controller holds the stick
+    srv.stop()
+    assert srv._conns == {}  # client connection state cleared
+    assert s.driver is None  # its claimed stick was released
+    c.close()
+
+
+def test_stop_before_start_is_safe_and_restartable():
+    s = Session()
+    path = _sock()
+    srv = BusServer(s, path)
+    srv.stop()  # before start(): no socket yet -> must not raise
+    srv.start()
+    srv.stop()
+    srv.start()  # restart after stop(): taps re-registered, not doubled
+    assert len(s._stream_obs) == 1
+    srv.stop()
+
+
+def test_stop_wakes_a_pending_cmd_capture():
+    """A CMD blocked waiting for the next prompt must be woken by stop(), not linger to
+    cmd_timeout. Observed server-side: the capture is removed promptly after stop()."""
+
+    def runner(emit, readline):
+        readline()  # consume the CMD input, then never prompt again
+        time.sleep(30)
+
+    s = Session()
+    path = _sock()
+    srv = BusServer(s, path, cmd_timeout=30).start()  # long timeout: would linger 30s
+    s.run_in_thread(runner)
+    c = BusClient(path).connect()
+    c.hello("ai", "bot")
+    assert c.wait_for("OK", 2)
+    time.sleep(0.2)
+    c.send("CMD", "go")  # raw send: the CMD thread will block on the capture event
+    time.sleep(0.3)
+    assert len(srv._captures) == 1  # one capture in flight
+    srv.stop()
+    end = time.monotonic() + 3  # woken capture is removed well before cmd_timeout (30s)
+    while srv._captures and time.monotonic() < end:
+        time.sleep(0.02)
+    assert srv._captures == []
+    c.close()
+
+
+def test_stop_does_not_deliver_partial_output_as_a_clean_resp():
+    """A CMD interrupted by stop() must not report its partial output as a clean result
+    (cap.ev is reused for both 'reached prompt' and 'shutdown' -> needs the cancelled flag)."""
+
+    def runner(emit, readline):
+        readline()  # the CMD input
+        emit("partial output")  # produced, but no next prompt follows
+        time.sleep(30)
+
+    s = Session()
+    path = _sock()
+    srv = BusServer(s, path, cmd_timeout=30).start()
+    s.run_in_thread(runner)
+    c = BusClient(path).connect()
+    c.hello("ai", "bot")
+    assert c.wait_for("OK", 2)
+    time.sleep(0.2)
+
+    result = {}
+
+    def do_cmd():
+        try:
+            result["text"] = c.cmd("go", timeout=2)  # clean result -> text; else None/raises
+        except TimeoutError:
+            result["timeout"] = True
+
+    t = threading.Thread(target=do_cmd, daemon=True)
+    t.start()
+    time.sleep(0.3)  # let the CMD capture "partial output" and block on the event
+    srv.stop()
+    t.join(timeout=4)
+    assert not t.is_alive()
+    # interrupted -> the client either saw timeout, or got no RESP (None); never a clean
+    # RESP carrying the partial text.
+    assert result.get("timeout") or result.get("text") is None
+    assert "partial output" not in (result.get("text") or "")
+    c.close()
+
+
+def test_stop_does_not_relabel_an_already_completed_capture():
+    """If a capture reached a real prompt before stop() runs, stop() must not cancel it
+    (the completion-then-shutdown race), so its result stays clean."""
+    from tappty.bus import _Capture
+
+    s = Session()
+    srv = BusServer(s, _sock()).start()
+    cap = _Capture()
+    srv._captures.append(cap)
+    srv._on_event("WAIT", {})  # the command reached a real prompt first
+    assert cap.completed is True
+    srv.stop()  # shutdown lands afterwards
+    assert cap.cancelled is False  # not relabelled -> _h_cmd reports it clean
+    assert cap.completed is True
+
+
+def test_stop_cancels_an_incomplete_capture():
+    """A capture still waiting when stop() runs is cancelled (the interrupted case)."""
+    from tappty.bus import _Capture
+
+    s = Session()
+    srv = BusServer(s, _sock()).start()
+    cap = _Capture()
+    srv._captures.append(cap)
+    srv.stop()  # shutdown before any prompt
+    assert cap.cancelled is True
+    assert cap.completed is False
 
 
 def test_socket_snapshot_and_control():

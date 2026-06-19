@@ -1,6 +1,6 @@
 """tapterm -- host a program on a pseudo-terminal and render it in a terminal UI.
 
-    tapterm                      # host your $SHELL (GUI if pygame is installed, else CUI)
+    tapterm                      # host your $SHELL (GUI if pygame + a display, else CUI)
     tapterm -- python3 -i        # host a specific command (everything after -- is argv)
     tapterm --cui -- bash        # force the curses character UI (this terminal)
     tapterm --gui -- bash        # force the pygame green-phosphor window
@@ -8,7 +8,8 @@
 
 tapterm is a thin front-end over tappty: it wraps the command in a PtySource, hosts it
 in a Session (the observe/control core), and hands the Session to a renderer. The CUI
-(curses) works anywhere; the GUI (pygame) needs the optional 'gui' extra.
+(curses) works anywhere; the GUI (pygame, the 'gui' extra) also needs a display, so the
+default mode is GUI only when both are present, else CUI.
 """
 
 import argparse
@@ -21,6 +22,13 @@ from tappty.source import PtySource
 from tappty.terminal import Terminal
 
 
+def _positive_int(s):
+    v = int(s)
+    if v < 1:
+        raise argparse.ArgumentTypeError("must be a positive integer")
+    return v
+
+
 def _have_pygame():
     return importlib.util.find_spec("pygame") is not None
 
@@ -29,9 +37,24 @@ def _have_pyte():
     return importlib.util.find_spec("pyte") is not None
 
 
+def _display_available():
+    """Is a GUI display reachable? Windows and macOS have a native GUI (no X11 DISPLAY);
+    other POSIX (Linux/BSD) needs X/Wayland (or a forced SDL driver) -- over SSH/cron there
+    is none, so fall back to CUI."""
+    if os.name == "nt" or sys.platform == "darwin":
+        return True
+    return bool(
+        os.environ.get("DISPLAY")
+        or os.environ.get("WAYLAND_DISPLAY")
+        or os.environ.get("SDL_VIDEODRIVER")
+    )
+
+
 def _default_mode():
-    """GUI when pygame is installed (the showcase), else the always-available CUI."""
-    return "gui" if _have_pygame() else "cui"
+    """GUI when pygame is installed AND a display is available (the showcase), else the
+    always-available CUI. Avoids picking GUI on a headless box where it would just fail
+    (an explicit --gui still tries, and fails clearly)."""
+    return "gui" if _have_pygame() and _display_available() else "cui"
 
 
 def _make_terminal(ap, ansi, cols, rows):
@@ -90,8 +113,8 @@ def build_parser():
         help="run to completion, print the final screen, then exit",
     )
     ap.add_argument("--title", default=None, help="window / status-line title")
-    ap.add_argument("--cols", type=int, default=80, help="terminal columns (default 80)")
-    ap.add_argument("--rows", type=int, default=24, help="terminal rows (default 24)")
+    ap.add_argument("--cols", type=_positive_int, default=80, help="terminal columns (default 80)")
+    ap.add_argument("--rows", type=_positive_int, default=24, help="terminal rows (default 24)")
     ap.add_argument(
         "--snapshot",
         default=None,
@@ -179,7 +202,7 @@ def main(argv=None):
             with open(a.snapshot, "w") as f:
                 f.write(out)
         print(out)
-        return 0
+        return sess.source.returncode or 0  # propagate the child's exit code (None -> 0)
 
     sess.claim_control("local", "human")  # a human is at the keyboard -> default driver
     if mode == "cui":

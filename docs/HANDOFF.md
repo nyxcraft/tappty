@@ -24,7 +24,7 @@ is **`tapterm`** (the package is `tappty`).
 
 ```
 tappty/
-├── pyproject.toml          dist "tappty"; extras [gui]=pygame [ansi]=pyte [win]=pywinpty [dev]=pytest+ruff; ruff config (line-length 99); script: tapterm = tappty.cli:main
+├── pyproject.toml          dist "tappty"; extras [gui]=pygame-ce [ansi]=pyte [win]=pywinpty [dev]=pytest+ruff; ruff config (line-length 99); script: tapterm = tappty.cli:main
 ├── README.md, LICENSE      MIT © Nicholas J. Kisseberth
 ├── .github/workflows/ci.yml  ruff + pytest matrix (3.9–3.13) on push/PR; headless GUI via SDL dummy
 ├── src/tappty/
@@ -38,7 +38,7 @@ tappty/
 │   ├── pygame_ui.py      GUI renderer
 │   ├── cli.py            the tapterm program (--ansi, --no-pty, --cast, platform source pick)
 │   └── __init__.py       public API
-├── tests/              48 tests (model, ansi+scrollback, taps, stick, bus+tcp, pty, pipe, cast, encoding, viewport, gui-smoke)
+├── tests/              87 tests (model, ansi+scrollback, taps, stick, bus+tcp+security, pty, pipe, cast, encoding, errors, viewport, gui-smoke)
 └── docs/               DESIGN.md, HISTORY.md, HANDOFF.md, WINDOWS.md
 ```
 
@@ -48,8 +48,8 @@ tappty/
 
 ```sh
 cd ~/tappty
-python3 -m pytest                         # 39 pass + 2 skipped (system python3: no pyte/pygame)
-.venv/bin/python -m pytest                # 48 pass (venv with pygame-ce + pyte: all run)
+python3 -m pytest                         # 77 pass + 2 skipped (system python3: no pyte/pygame)
+.venv/bin/python -m pytest                # 87 pass (venv with pygame-ce + pyte: all run)
 .venv/bin/ruff check src tests            # lint (E,F,W,I,B,UP); must be clean
 .venv/bin/ruff format src tests           # format (line-length 99, black-style)
 
@@ -64,7 +64,8 @@ tapterm --no-pty -- ls                    # host over plain pipes (no pty; cross
 ```
 
 `--cui` and `--headless` need no display; `--gui` needs pygame + a display. With no mode
-flag `tapterm` picks GUI when pygame is installed, else CUI. With no command it hosts
+flag `tapterm` picks GUI when pygame is installed *and a display is available* (DISPLAY/
+WAYLAND_DISPLAY on Linux; native on macOS/Windows), else CUI. With no command it hosts
 `$SHELL`.
 
 ---
@@ -75,7 +76,7 @@ flag `tapterm` picks GUI when pygame is installed, else CUI. With no command it 
   imported *inside* the functions/constructors that use them, never at module top — so
   `import tappty` works with none installed (there's a test-ish check; verified by importing
   under system python3 with no extras). Keep it that way; don't hoist those imports to module
-  scope. Extras: `gui`=pygame, `ansi`=pyte, `win`=pywinpty, `dev`=pytest.
+  scope. Extras: `gui`=pygame-ce, `ansi`=pyte, `win`=pywinpty, `dev`=pytest.
 - **`PyteTerminal` (the `ansi` extra, `--ansi`) is the full-ANSI backend.** Drop-in for the
   VT52 `Terminal` (same read interface), wraps `pyte` (LGPLv3 — fine as a *separate* optional
   install; don't vendor/modify it). Use it for programs that emit modern ANSI; the VT52
@@ -89,17 +90,25 @@ flag `tapterm` picks GUI when pygame is installed, else CUI. With no command it 
   UTF-8 renders right on *both* `Terminal` and `PyteTerminal`. `encoding="latin-1"` makes the
   screen byte-transparent too. Don't move the decode back into a source — it would make the
   stream tap lossy.
-- **The GUI draw path is now smoke-tested, but only where pygame is installed.**
+- **The bus is a trusted-local control plane (auth is opt-in).** A connected client gets
+  terminal read/write as the tappty user. Defenses: the Unix socket *file* is `0600`
+  (owner-only connect — the actual gate; a parent dir tappty creates is also `0700`, but an
+  existing dir is left as-is); TCP is loopback-only unless `allow_remote=True`; an optional
+  non-empty `token` (a string in `HELLO`, constant-time compared) gates connections but is
+  cleartext, not transport security; frames are size-capped on both ends and captures byte-
+  bounded; `BusClient.send` rejects newlines. Full design + the reasoning is
+  [DESIGN.md](DESIGN.md) §7. Don't expose the bus to an untrusted network without a tunnel —
+  there is no TLS.
+- **The GUI draw path is smoke-tested, but only where pygame is installed.**
   `test_gui_smoke` drives `pygame_ui.run` + the compositor to completion under the SDL
-  `dummy` driver (no display), so the blit/draw/flip paths execute in CI — but it
-  `importorskip`s pygame, so in the pygame-free build env it *skips* (you'll see "1 skipped"
-  there, "29 passed" with the gui extra). To actually exercise it, a CI job must install the
-  gui extra: `pip install -e '.[dev]' && pip install pygame-ce`. **There is no CI config yet
-  (no repo)** — wire a pygame-ce job when you set one up, or the smoke test silently skips.
-  Pixel *fidelity* is still by-eye: under WSLg (`DISPLAY`/`WAYLAND_DISPLAY` set, SDL
-  auto-picks x11) both renderers draw correctly and `--snapshot` writes a reviewable PNG;
-  `tapterm --cast rec.cast --gui` is the easiest reproducible visual check. Harmless
-  EGL/MESA warnings on stderr are failed hardware-GL probing; SDL falls back to software.
+  `dummy` driver (no display), so the blit/draw/flip paths execute — but it `importorskip`s
+  pygame, so without it the test *skips* (the 2 skips in the system-python run). The CI
+  workflow installs `pygame-ce`, so it runs there; if you ever drop that, the smoke test goes
+  silently green-by-skipping. Pixel *fidelity* is still by-eye: under WSLg
+  (`DISPLAY`/`WAYLAND_DISPLAY` set, SDL auto-picks x11) both renderers draw correctly and
+  `--snapshot` writes a reviewable PNG; `tapterm --cast rec.cast --gui` is the easiest
+  reproducible visual check. Harmless EGL/MESA warnings on stderr are failed hardware-GL
+  probing; SDL falls back to software.
 - **Cross-platform now, except the pty + a still-untested Windows source.** `PtySource`
   uses `pty`/`termios`/`fcntl` (POSIX only). For Windows: `PipeSource` (`--no-pty`, plain
   pipes, tested on POSIX) and `ConPtySource` (the `win` extra, ConPTY via pywinpty) exist,

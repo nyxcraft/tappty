@@ -4,7 +4,7 @@ The Session's Terminal is a FIXED 80x24 model (the program stays sealed in its e
 This renderer draws a VIEWPORT into it: the whole thing when the real terminal is big
 enough, a cursor-following sub-rectangle when it's smaller, and a full redraw on
 resize. Resize never touches the model or the program -- it's purely render-side
-(see [[sbterm-instrumentation]]). Path is VT52 -> our grid -> curses -> host-native;
+(see docs/DESIGN.md). Path is VT52 -> our grid -> curses -> host-native;
 curses/terminfo handles whatever terminal the user is actually on.
 """
 
@@ -96,4 +96,7 @@ def run(session, runner, title="tapterm", refresh_ms=50):
                 return
             _feed(session, ch)
 
-    curses.wrapper(_main)
+    try:
+        curses.wrapper(_main)
+    finally:
+        session.stop()  # owning renderer: stop the hosted source on quit

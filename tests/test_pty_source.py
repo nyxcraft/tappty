@@ -1,11 +1,16 @@
 """PtySource (b-lite): host an arbitrary external program on a pseudo-terminal and
 observe + control it through the Source seam -- the basis for driving real
-SIMH/TOPS-10 (or any CLI) via the bus. See [[sbterm-instrumentation]]."""
+SIMH/TOPS-10 (or any CLI) via the bus. See docs/DESIGN.md."""
 
+import os
 import sys
 import threading
 
+import pytest
+
 from tappty.source import PtySource
+
+pytestmark = pytest.mark.skipif(os.name == "nt", reason="PtySource is POSIX-only (pty/termios)")
 
 
 def test_pty_source_observe_and_control():

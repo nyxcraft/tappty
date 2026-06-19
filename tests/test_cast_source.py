@@ -3,6 +3,9 @@
 import json
 import time
 
+import pytest
+
+import tappty.source as source_mod
 from tappty.session import Session
 from tappty.source import CastSource
 from tappty.terminal import Terminal
@@ -13,6 +16,18 @@ def _write_v2(path, header, events):
         f.write(json.dumps(header) + "\n")
         for e in events:
             f.write(json.dumps(e) + "\n")
+
+
+def test_v1_cast_file_size_is_capped(tmp_path, monkeypatch):
+    """The unstreamable v1 path (whole-file json.load) refuses oversized files."""
+    monkeypatch.setattr(source_mod, "MAX_CAST_FILE", 50)  # tiny cap for the test
+    p = tmp_path / "big_v1.cast"
+    p.write_text(
+        json.dumps({"version": 1, "width": 80, "height": 24, "stdout": [[0.0, "x" * 200]]}),
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="exceeds"):
+        CastSource(str(p))
 
 
 def test_v2_replays_output_into_grid(tmp_path):
@@ -92,6 +107,21 @@ def test_loop_and_stop(tmp_path):
     cast.stop()
     cast.thread.join(timeout=2.0)
     assert not cast.thread.is_alive()  # stop() ends the loop
+
+
+def test_session_stop_stops_the_source(tmp_path):
+    """Session.stop() stops the hosted source and joins its thread (the owning-renderer
+    teardown path), using a cast whose long idle gap would otherwise keep it alive."""
+    p = tmp_path / "idle.cast"
+    _write_v2(
+        p, {"version": 2, "width": 80, "height": 24}, [[0.0, "o", "hi"], [3600.0, "o", "later"]]
+    )
+    sess = Session(Terminal(80, 24), source=CastSource(str(p), speed=1.0))
+    sess.start()
+    time.sleep(0.1)
+    assert sess.source.thread.is_alive()  # waiting out the 1-hour gap
+    sess.stop()
+    assert not sess.source.thread.is_alive()  # stop() woke + joined it
 
 
 def test_stop_interrupts_long_idle_gap(tmp_path):
