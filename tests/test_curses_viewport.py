@@ -2,8 +2,24 @@
 shown whole, or a cursor-following sub-rectangle when the terminal is smaller) and the SGR
 color mapping (pyte color -> curses color index / attributes). See docs/DESIGN.md."""
 
+import pytest
+
 from tappty import style
-from tappty.curses_ui import _cell_style, _curses_color, viewport
+from tappty.curses_ui import _cell_style, _curses_color, _raw_bytes, viewport
+
+
+def test_raw_bytes_translates_special_keys_to_vt_sequences():
+    curses = pytest.importorskip("curses")  # stdlib, but absent on stock Windows
+    from tappty import keys
+
+    assert _raw_bytes(curses, curses.KEY_UP) == keys.KEYS["up"]
+    assert _raw_bytes(curses, curses.KEY_F0 + 1) == keys.KEYS["f1"]  # KEY_F(1), pre-initscr-safe
+    assert _raw_bytes(curses, curses.KEY_PPAGE) == keys.KEYS["pageup"]
+    assert _raw_bytes(curses, 10) == "\r"  # Enter
+    assert _raw_bytes(curses, curses.KEY_BACKSPACE) == "\x7f"
+    assert _raw_bytes(curses, ord("a")) == "a"  # printable passes through
+    assert _raw_bytes(curses, 3) == "\x03"  # a Ctrl-C byte passes through
+    assert _raw_bytes(curses, 999999) is None  # unknown high keycode -> dropped
 
 
 def test_curses_color_maps_names_bright_and_hex():

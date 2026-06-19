@@ -219,6 +219,31 @@ would in a real terminal (interactive prompts, line editing, programs that check
 
 ---
 
+## Driving full-screen TUIs — `--raw`
+
+By default `tapterm` is **line-oriented**: it echoes your keystrokes locally and sends a whole
+line when you press Enter (good for prompts you want to *watch* being typed). Arrow keys,
+function keys, and Ctrl-combos aren't sent to the program.
+
+**`--raw`** switches to character-at-a-time input: every keystroke goes straight to the program
+with no local echo or line editing, and special keys are translated to their VT escape
+sequences — so full-screen programs like **`vim`**, **`htop`**, or **`less`** work. The program
+handles its own echo and redraw, exactly as under a real terminal.
+
+```sh
+tapterm --ansi --raw -- vim        # the usual combo: full-ANSI render + raw keys
+tapterm --ansi --raw -- htop
+```
+
+- Pair it with **`--ansi`** for anything that paints the screen with color and cursor moves —
+  that's the typical combination.
+- Mapped (normal cursor-key mode): arrows, Home/End, PageUp/Down, Insert/Delete, F1–F12, Tab,
+  Esc, and Ctrl-letters. In the CUI, Ctrl-C/Z/\\ reach the program (raw tty).
+- Still local: mouse-wheel scrollback, **Ctrl-]** to quit the CUI, the GUI close button, and
+  **F12** snapshots in the GUI.
+
+---
+
 ## Replaying recordings
 
 `tapterm` can replay an [asciinema](https://asciinema.org) `.cast` recording through the same
@@ -274,8 +299,8 @@ use the library; see [REFERENCE.md](REFERENCE.md).)
 | Host your shell, best available UI | `tapterm` |
 | Force the in-terminal curses UI | `tapterm --cui -- bash` |
 | Green-phosphor window | `tapterm --gui -- bash` |
-| A modern, colorful program | `tapterm --ansi -- htop` |
-| A bigger grid | `tapterm --cols 120 --rows 40 -- vim` |
+| A full-screen TUI (color + keys) | `tapterm --ansi --raw -- htop` |
+| A bigger grid | `tapterm --cols 120 --rows 40 --ansi --raw -- vim` |
 | Run a command, capture the final screen | `tapterm --headless -- make 2>&1` |
 | Same, save it to a file | `tapterm --headless --snapshot build.txt -- make` |
 | No pty (line-oriented / cross-platform) | `tapterm --no-pty -- python3 -u script.py` |
@@ -301,6 +326,7 @@ OPTIONS
   --cols N              terminal columns (default 80; positive integer)
   --rows N              terminal rows (default 24; positive integer)
   --ansi                full-ANSI/VT100+ backend (needs the 'ansi' extra); for modern programs
+  --raw                 forward keystrokes raw (arrows/Fn/Ctrl, no echo) for TUIs; pair with --ansi
   --no-pty              host over plain pipes, no pty (cross-platform; line-oriented programs)
   --snapshot PATH       GUI: mirror the screen to PATH (+PATH.png) each second;
                         headless: write the final screen to PATH

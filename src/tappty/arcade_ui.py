@@ -14,7 +14,7 @@ columns aligned), with the cursor and scrollback bar drawn as primitives.
 import logging
 import os
 
-from tappty import style
+from tappty import keys, style
 
 log = logging.getLogger(__name__)
 
@@ -133,6 +133,26 @@ def _window_class():
             self._tag_text = arcade.Text(
                 "", 0, 0, BG, font_size, font_name=self._font, anchor_y="top"
             )
+            # raw-mode key translation (full-TUI input): an arcade keycode -> VT key name
+            k = arcade.key
+            self._raw_special = {
+                k.UP: "up", k.DOWN: "down", k.LEFT: "left", k.RIGHT: "right",
+                k.HOME: "home", k.END: "end", k.PAGEUP: "pageup", k.PAGEDOWN: "pagedown",
+                k.INSERT: "insert", k.DELETE: "delete", k.RETURN: "enter", k.NUM_ENTER: "enter",
+                k.BACKSPACE: "backspace", k.TAB: "tab", k.ESCAPE: "escape",
+            }
+            for _i in range(1, 13):
+                self._raw_special[getattr(k, f"F{_i}")] = f"f{_i}"
+
+        def _raw_key(self, symbol, modifiers):
+            """Bytes to send the program for a non-text key in raw mode, or None (printable
+            text arrives via on_text)."""
+            name = self._raw_special.get(symbol)
+            if name is not None:
+                return keys.KEYS[name]
+            if modifiers & arcade.key.MOD_CTRL and 97 <= symbol <= 122:  # Ctrl-letter
+                return keys.ctrl(chr(symbol))
+            return None
 
         def _draw_text(self, text, x, y, color):
             if self._text_used < len(self._text_pool):
@@ -195,28 +215,38 @@ def _window_class():
                     (self._snapshot_path + ".png") if self._snapshot_path else "/tmp/tapterm.png",
                 )
 
-        def on_text(self, text):  # printable input; Enter/Backspace arrive via on_key_press
-            if text and text.isprintable():
-                self._scroll = 0  # any typing snaps back to live
-                for ch in text:
-                    self.session.feed_key(ch)
+        def on_text(self, text):  # printable input; specials/Enter/etc. via on_key_press
+            if not (text and text.isprintable()):
+                return
+            self._scroll = 0  # any typing snaps back to live
+            send = self.session.send_key if self.session.raw_keys else self.session.feed_key
+            for ch in text:
+                send(ch)
 
         def on_key_press(self, symbol, modifiers):
             k = arcade.key
+            if symbol == k.F12:
+                self._want_png = True  # save a screenshot (always local)
+                return
+            if symbol == k.BRACKETRIGHT and (modifiers & k.MOD_CTRL):
+                self.close()  # Ctrl-] : force quit (always local, parity with the curses UI)
+                return
+            if self.session.raw_keys:  # full-TUI mode: forward keystrokes raw
+                data = self._raw_key(symbol, modifiers)
+                if data is not None:
+                    self._scroll = 0
+                    self.session.send_key(data)
+                return
             if symbol in (k.RETURN, k.NUM_ENTER):
                 self._scroll = 0
                 self.session.feed_key("\r")
             elif symbol == k.BACKSPACE:
                 self._scroll = 0
                 self.session.feed_key("\b")
-            elif symbol == k.F12:
-                self._want_png = True  # save a screenshot
             elif symbol == k.PAGEUP:
                 self._scroll = min(self.session.term.max_scroll(), self._scroll + self._page)
             elif symbol == k.PAGEDOWN:
                 self._scroll = max(0, self._scroll - self._page)
-            elif symbol == k.BRACKETRIGHT and (modifiers & k.MOD_CTRL):
-                self.close()  # Ctrl-] : force quit (parity with the curses UI)
 
         def on_mouse_scroll(self, x, y, sx, sy):  # wheel up = back into the paper roll
             self._scroll = max(0, min(self.session.term.max_scroll(), self._scroll + sy))

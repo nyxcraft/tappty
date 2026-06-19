@@ -189,6 +189,13 @@ def build_parser():
         "programs). Default uses a pty -- ConPTY on Windows",
     )
     ap.add_argument(
+        "--raw",
+        action="store_true",
+        help="forward keystrokes raw -- arrows/function keys/Ctrl-combos go straight to "
+        "the program, no local echo or line-editing -- so full-screen TUIs (vim, htop) "
+        "work. Pair with --ansi. Without it, input is line-buffered with local echo",
+    )
+    ap.add_argument(
         "command",
         nargs=argparse.REMAINDER,
         help="the program to host (prefix with --), e.g. tapterm -- bash",
@@ -233,6 +240,7 @@ def main(argv=None):
         print(out)
         return sess.source.returncode or 0  # propagate the child's exit code (None -> 0)
 
+    sess.raw_keys = a.raw  # raw keystrokes for full-screen TUIs (no echo/line-edit)
     sess.claim_control("local", "human")  # a human is at the keyboard -> default driver
     if mode == "cui":
         if not _have_curses():

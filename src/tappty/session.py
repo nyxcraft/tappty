@@ -13,6 +13,7 @@ Observe taps (subscribe to taste):
 Control:
   send_input(text)         -- inject input into the program
   feed_key(ch)/feed_text   -- interactive keystrokes (local echo + line buffer)
+  send_key(data)           -- raw keystrokes straight to the program (no echo; raw_keys mode)
 
 The Source (engine, pty, ...) supplies the bytes; the Session fans them out to the
 Terminal and the taps, and routes control back to the Source. A renderer is just a
@@ -32,6 +33,7 @@ class Session:
         self.term = terminal or Terminal()
         self.source = source
         self.done = False
+        self.raw_keys = False  # True -> keystrokes go straight to the program (raw, for TUIs)
         self._line = []  # interactive keystroke -> line buffer
         self._stream_obs = []
         self._frame_obs = []
@@ -240,6 +242,21 @@ class Session:
     def feed_text(self, s, **kw):
         for ch in s:
             self.feed_key(ch, **kw)
+
+    def send_key(self, data, by="local", auto_take=True):
+        """Send key bytes straight to the program -- no local echo, no line buffer -- for
+        *raw* mode, where the program (a pty TUI) handles echo and editing itself. `data` is
+        already the bytes to send (a printable char, or a VT sequence from `tappty.keys`).
+        Stick-gated like feed_key; auto_take lets local typing grab the stick. Returns whether
+        it was applied."""
+        if auto_take:  # solo terminal: typing grabs the stick
+            if by == "local" and "local" not in self._controllers:
+                self.claim_control("local", "human")
+            if self.driver != by:
+                self.take(by)
+        if not self.has_control(by):  # only the stick-holder drives
+            return False
+        return self.send_input(data, by=by)
 
     # ---- lifecycle ---------------------------------------------------------
     def start(self):

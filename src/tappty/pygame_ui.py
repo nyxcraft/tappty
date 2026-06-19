@@ -10,7 +10,7 @@ an adapter over the UI-agnostic core; an arcade renderer would implement the sam
 import logging
 import os
 
-from tappty import style
+from tappty import keys, style
 
 log = logging.getLogger(__name__)
 
@@ -57,6 +57,24 @@ def run(
     screen = pygame.display.set_mode((cols * cw, rows * chh))
     pygame.display.set_caption(title)
 
+    # raw-mode key translation (full-TUI input): a pygame keycode -> VT bytes
+    raw_special = {
+        pygame.K_UP: "up", pygame.K_DOWN: "down", pygame.K_LEFT: "left",
+        pygame.K_RIGHT: "right", pygame.K_HOME: "home", pygame.K_END: "end",
+        pygame.K_PAGEUP: "pageup", pygame.K_PAGEDOWN: "pagedown",
+        pygame.K_INSERT: "insert", pygame.K_DELETE: "delete", pygame.K_RETURN: "enter",
+        pygame.K_KP_ENTER: "enter", pygame.K_BACKSPACE: "backspace", pygame.K_TAB: "tab",
+        pygame.K_ESCAPE: "escape",
+    }
+    for _i in range(1, 13):
+        raw_special[getattr(pygame, f"K_F{_i}")] = f"f{_i}"
+
+    def raw_key(e):
+        name = raw_special.get(e.key)
+        if name is not None:
+            return keys.KEYS[name]
+        return e.unicode or None  # printable, or a control char (Ctrl-letter, etc.)
+
     session.run_in_thread(runner)  # start the hosted program
     clock = pygame.time.Clock()
     running, frame, done_frames = True, 0, 0
@@ -71,7 +89,12 @@ def run(
                 scroll = max(0, min(session.term.max_scroll(), scroll + e.y))
             elif e.type == pygame.KEYDOWN:
                 if e.key == pygame.K_F12:
-                    e_f12 = True  # save a screenshot PNG
+                    e_f12 = True  # save a screenshot PNG (always local)
+                elif session.raw_keys:  # full-TUI mode: forward keystrokes raw
+                    data = raw_key(e)
+                    if data is not None:
+                        scroll = 0
+                        session.send_key(data)
                 elif e.key == pygame.K_PAGEUP:
                     scroll = min(session.term.max_scroll(), scroll + page)
                 elif e.key == pygame.K_PAGEDOWN:

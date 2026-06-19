@@ -50,6 +50,23 @@ def test_input_gating():
     assert s.send_input("z\n") and rec.got == ["x\n", "z\n"]  # by=None trusted/internal
 
 
+def test_send_key_is_raw_stick_gated_and_unechoed():
+    from tappty.terminal import Terminal
+
+    rec = _Rec()
+    s = Session(Terminal(20, 2), source=rec)
+    s.claim_control("drv", "ai")  # first claim -> driver
+    # raw bytes reach the program verbatim -- no line buffering, no newline appended
+    assert s.send_key("\x1b[A", by="drv", auto_take=False) is True
+    assert rec.got == ["\x1b[A"]
+    # and NOT echoed to the screen (unlike feed_key): the program redraws itself
+    assert s.term.rows_text()[0].strip() == ""
+    # gated like other input: a non-driver's raw key is dropped
+    s.claim_control("other", "ai")
+    assert s.send_key("x", by="other", auto_take=False) is False
+    assert rec.got == ["\x1b[A"]
+
+
 def test_socket_arbitration():
     def runner(emit, readline):
         emit("READY\r\n")

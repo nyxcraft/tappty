@@ -87,16 +87,46 @@ def _cell_style(cell, colors=16):
     return fi, bi, want_bold, cell.reverse
 
 
+def _raw_bytes(curses, ch):
+    """Translate a curses getch() code to the bytes to send the program in raw mode
+    (arrows/function keys -> VT sequences; control bytes pass through), or None to drop it."""
+    from tappty import keys
+
+    special = {
+        curses.KEY_UP: "up", curses.KEY_DOWN: "down", curses.KEY_LEFT: "left",
+        curses.KEY_RIGHT: "right", curses.KEY_HOME: "home", curses.KEY_END: "end",
+        curses.KEY_NPAGE: "pagedown", curses.KEY_PPAGE: "pageup",
+        curses.KEY_IC: "insert", curses.KEY_DC: "delete", curses.KEY_BTAB: "backtab",
+    }
+    name = special.get(ch)
+    if name is not None:
+        return keys.KEYS[name]
+    if curses.KEY_F0 + 1 <= ch <= curses.KEY_F0 + 12:  # F1..F12 (KEY_F0 is a constant)
+        return keys.KEYS[f"f{ch - curses.KEY_F0}"]
+    if ch in (curses.KEY_ENTER, 10, 13):
+        return "\r"
+    if ch in (curses.KEY_BACKSPACE, 127, 8):
+        return "\x7f"
+    if 0 <= ch < 256:  # printable + control bytes (Ctrl-A..Z = 1..26, Tab=9, Esc=27)
+        return chr(ch)
+    return None
+
+
 def _feed(session, ch):
     import curses
 
+    if session.raw_keys:  # full-TUI mode: forward keystrokes raw, no echo/line buffer
+        data = _raw_bytes(curses, ch)
+        if data is not None:
+            session.send_key(data)
+        return
     if ch in (curses.KEY_ENTER, 10, 13):
         session.feed_key("\r")
     elif ch in (curses.KEY_BACKSPACE, 127, 8):
         session.feed_key("\b")
     elif 32 <= ch < 127:
         session.feed_key(chr(ch))
-    # arrows / function keys: ignored (our programs are line-oriented)
+    # arrows / function keys: ignored in line mode (our programs are line-oriented)
 
 
 def run(session, runner, title="tapterm", refresh_ms=50):
@@ -106,6 +136,8 @@ def run(session, runner, title="tapterm", refresh_ms=50):
         curses.curs_set(1)
         stdscr.nodelay(True)
         stdscr.timeout(refresh_ms)
+        if session.raw_keys:
+            curses.raw()  # deliver Ctrl-C/Z/\ to the program instead of raising signals
         use_color = False
         default_bg = -1
         colors = 0

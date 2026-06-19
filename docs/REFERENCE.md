@@ -325,6 +325,7 @@ sess.on_event(lambda name, info: print("event:", name, info))
 send_input(text, by=None)              -> bool   # inject input; applied if by is None or driver
 feed_key(ch, by="local", auto_take=True)         # one interactive keystroke (local echo + line buffer)
 feed_text(s, **kw)                               # feed_key for each char of s
+send_key(data, by="local", auto_take=True) -> bool  # raw keystroke bytes, no echo/buffer (raw_keys mode)
 echo(text)                                       # show injected text on screen + to observers
 
 claim_control(name, role="ai")          -> name  # register a controller (first claim drives)
@@ -340,6 +341,11 @@ controller's input applies only while it holds the stick; returns whether it was
 `feed_key` assembles a line (echoing locally, sending on Enter); `auto_take=True` means typing
 implicitly grabs the stick (the local human preempts). Only the driver's keys register, so the
 line buffer is never raced. See DESIGN §2.3 for the courtesy rules.
+
+Set `session.raw_keys = True` (or `tapterm --raw`) for **full-screen TUIs**: a renderer then
+forwards every keystroke via `send_key` — no echo, no line buffer — translating special keys to
+VT sequences from the `tappty.keys` module (`KEYS["up"]` → `"\x1b[A"`, …; `ctrl("c")` → `"\x03"`).
+The program (a pty TUI like vim) handles its own echo and redraw.
 
 ### Lifecycle
 

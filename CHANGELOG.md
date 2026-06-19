@@ -53,6 +53,11 @@ The `0.1.0` line — the generic toolkit and the `tapterm` command. Built across
 - **Session.** Observe taps (`on_stream`/`on_frame`/`on_event`), control
   (`send_input`/`feed_key`), talking-stick arbitration (one driver at a time), and the
   bytes-on-the-wire / characters-on-the-glass decode.
+- **Full-screen TUI input (`--raw`).** A raw input mode (`Session.raw_keys` / `send_key`) sends
+  every keystroke straight to the program — no local echo or line buffer — translating special
+  keys to VT sequences via the `tappty.keys` table (arrows, Home/End, PageUp/Down, F1–F12,
+  Ctrl-combos). All three renderers honor it (the CUI also switches to `curses.raw()`), so
+  `tapterm --ansi --raw -- vim` drives a real TUI. The default stays line-oriented.
 - **Bus.** `BusServer`/`BusClient` carry the same observe/control contract over a Unix-domain
   socket *or* TCP, with a synchronous `CMD` capture primitive (send a line, get its output to
   the next prompt) for automated drivers.
@@ -61,9 +66,9 @@ The `0.1.0` line — the generic toolkit and the `tapterm` command. Built across
   `pygame_ui` (pygame; lazy glyph cache, scrollback, optional text+PNG snapshots) and
   `arcade_ui` (the arcade/OpenGL twin, the `arcade` extra); the `compositor` tiles local
   (`SessionBacking`) and remote (`BusBacking`) panels in one window with per-tile pan/zoom.
-- **`tapterm` CLI.** `--cui` / `--gui` / `--headless`, `--ansi`, `--no-pty`, `--cast`
-  (`--speed` / `--loop`), `--cols` / `--rows`, `--snapshot`, `--exit-when-done`. Headless
-  prints the final screen and exits with the child's own status.
+- **`tapterm` CLI.** `--cui` / `--gui` / `--arcade` / `--headless`, `--ansi`, `--raw`,
+  `--no-pty`, `--cast` (`--speed` / `--loop`), `--cols` / `--rows`, `--snapshot`,
+  `--exit-when-done`. Headless prints the final screen and exits with the child's own status.
 - **Packaging & tooling.** `pyproject.toml` (extras `gui` / `ansi` / `win` / `dev`; `win`
   bundles pywinpty *and* windows-curses so `tappty[win]` gives both the ConPTY host and the
   curses CUI on Windows), MIT license, `src/` layout, a pytest suite (92 tests), ruff lint +

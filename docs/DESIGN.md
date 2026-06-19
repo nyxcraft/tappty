@@ -224,6 +224,10 @@ defensively too (and never via `_fanout`, so an `ERROR` for a failing observer c
   implicitly grabs the stick (the local human preempts). Local echo goes through `_echo_local`,
   which writes to the grid **and fans out a frame** (so a remote renderer sees typed characters
   immediately) but not to the stream tap (local echo isn't program output).
+- `send_key(data, by="local", auto_take=True)` — the **raw** counterpart for full-screen TUIs:
+  send `data` (a printable char, or a VT sequence from `tappty.keys`) straight to the program,
+  with **no echo and no line buffer** (the program redraws itself). Same stick gating. A
+  renderer in raw mode (`raw_keys`) translates each keystroke and calls this (see §2.5, §9).
 - `echo(text)` — show injected text on the screen and to observers (so a watcher sees what a
   remote controller "typed"); routed through the same protected fan-out.
 
@@ -314,8 +318,10 @@ rejects non-`str` payloads and embedded newlines (which would inject frames).
 ### 2.5 Renderers — `curses_ui.py` (CUI), `pygame_ui.py` / `arcade_ui.py` (GUI)
 
 Each is a Session client exposing `run(session, runner, title=…)`: start the hosted program,
-then loop — read the grid, draw it, forward keystrokes. Both are *owning* renderers: they call
-`session.stop()` on exit (in a `finally`), so closing the window stops the hosted program.
+then loop — read the grid, draw it, forward keystrokes. All are *owning* renderers: they call
+`session.stop()` on exit (in a `finally`), so closing the window stops the hosted program. Each
+honors `session.raw_keys`: in line mode it feeds keys via `feed_key`; in raw mode it translates
+its native key events (arrows/function/Ctrl) through `tappty.keys` and `send_key`s them raw.
 
 - **`curses_ui`** draws a **viewport** into the fixed model: the whole 80×24 when the real
   terminal is big enough, a cursor-following sub-rectangle when it's smaller, plus a status
@@ -425,6 +431,7 @@ Session to a renderer. The pieces it wires:
 | `terminal.py` | the fixed-size VT52 character grid model | none |
 | `pyte_terminal.py` | `PyteTerminal` — full-ANSI/VT100+ backend, drop-in for `Terminal` | `pyte` (deferred; `ansi` extra) |
 | `style.py` | `Cell` + the ANSI palette / `rgb`/`resolve`/`runs` shared by `cells()` and the GUI renderers | none |
+| `keys.py` | VT/xterm key sequences (`KEYS`, `ctrl`) for raw-mode TUI input, shared by the renderers | none |
 | `source.py` | `Source` base (+ `_pump`) and the 5 sources (pty / engine / cast / pipe / ConPTY) | stdlib `pty`/`subprocess`/`json`; `pywinpty` (deferred; `win` extra) |
 | `session.py` | Session: observe taps, control, talking stick, the bytes↔chars decode | terminal, source |
 | `bus.py` | `BusServer` / `BusClient` — the contract over a unix socket or TCP | stdlib `socket`/`hmac` |
@@ -550,11 +557,15 @@ Conscious scope choices, recorded so they aren't mistaken for defects:
   renderers blit one glyph per cell. CJK full-width, emoji, and combining marks can drift or
   overwrite neighbors. Faithful width would need a `wcwidth`-style helper in the model and
   renderers.
-- **Line-oriented input.** Renderers forward Enter/Backspace/printable text (and pygame's
-  scrollback keys); arrows, function keys, Esc, and Ctrl-combos are not yet mapped to VT
-  sequences for the hosted program. Right for the toolkit's line-oriented heritage; hosting full
-  interactive TUIs would need a renderer→session key map (pairs naturally with the full-ANSI
-  backend).
+- **Two input modes.** The default is **line-oriented** (the toolkit's heritage): renderers
+  forward Enter/Backspace/printable text with local echo + a line buffer, sending on Enter, and
+  arrows/function keys are ignored — right for in-process line-readers (`EngineSource`).
+  **Raw mode** (`Session.raw_keys`, `tapterm --raw`) instead forwards every keystroke straight
+  to the program with no echo or buffering, translating special keys to VT sequences
+  (`tappty.keys`) — so a full-screen TUI (vim, htop) on a pty works, the program handling its
+  own echo and redraw. The CUI additionally switches to `curses.raw()` so Ctrl-C/Z/\\ reach the
+  program. *Normal* cursor-key sequences only; DECCKM application-cursor mode is a future
+  refinement.
 - **Frame fan-out is per-chunk.** A subscribed bus client gets a full screen snapshot on every
   output chunk. Fine at the default 80×24; a busy remote dashboard would want frame coalescing /
   rate-limiting (send the latest at a bounded tick, drop stale frames).
