@@ -341,7 +341,7 @@ class PipeSource(Source):
     """Hosts an external program over plain pipes -- no pseudo-terminal. Cross-platform
     (POSIX and Windows) and zero extra deps: subprocess.Popen, a reader thread forwarding
     stdout (+stderr) to on_output, and send_input -> stdin. This is the "non-pty Source"
-    of docs/WINDOWS.md -- use it where a pty isn't available or isn't wanted. Caveat: with
+    (`--no-pty`) -- use it where a pty isn't available or isn't wanted. Caveat: with
     no tty the child detects it is not interactive, so many programs block-buffer output
     and skip prompts/raw mode; it suits cooperative, line-oriented programs. Output is
     forwarded raw (byte-transparent latin-1, lossless on the stream tap); the Session decodes
@@ -400,7 +400,7 @@ class ConPtySource(Source):
     emits) is forwarded to on_output; pair this with `PyteTerminal` (`tapterm --ansi`) to
     render it, since the VT52 Terminal can't. send_input writes to the console; on_exit
     fires when the child ends; on_wait is not fired (no readline boundary). Needs the 'win'
-    extra (pywinpty) and Windows 10 / Server 2019+ -- see docs/WINDOWS.md.
+    extra (pywinpty) and Windows 10 / Server 2019+. See docs/DESIGN.md.
 
     NOTE: written against the pywinpty `PtyProcess` API and structurally mirrors PtySource,
     but it is UNTESTED from the POSIX dev environment (no ConPTY, and pywinpty does not

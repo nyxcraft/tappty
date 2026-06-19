@@ -43,6 +43,9 @@ open a window over SSH/cron. `--ansi` swaps the built-in VT52 grid for the
 (colors, cursor addressing). On Windows the pty path uses ConPTY (the `win` extra); pair it
 with `--ansi`, since ConPTY emits VT100+.
 
+Every flag, the three modes, recordings, snapshots, recipes, and troubleshooting are in the
+[tapterm user's guide](docs/TAPTERM.md).
+
 ## Library
 
 ```python
@@ -53,6 +56,9 @@ sess.source = PtySource(["bash"])
 sess.claim_control("local", "human")
 curses_ui.run(sess, None, title="bash")
 ```
+
+Full API — classes, signatures, the observe/control contract, and worked examples — is in
+[docs/REFERENCE.md](docs/REFERENCE.md).
 
 The pieces:
 
@@ -86,11 +92,25 @@ The core (Terminal/Session/taps/talking-stick), `EngineSource`, `CastSource`, `P
 the renderers, and the TCP bus are cross-platform. `PtySource` uses `pty`/`termios`
 (POSIX-only); on Windows, host via `ConPtySource` (the `win` extra, ConPTY — paired with
 `--ansi`) or `PipeSource` (`--no-pty`), and use the TCP bus rather than a Unix socket. The
-Windows ConPTY path is implemented but not yet exercised on real Windows — see
-[docs/WINDOWS.md](docs/WINDOWS.md). The GUI needs a display; the CUI needs a terminal
-(`windows-curses` on Windows); `--headless` needs neither.
+Windows ConPTY path is implemented but not yet exercised on real Windows — finishing it is
+open work (see [docs/HISTORY.md](docs/HISTORY.md)). The GUI needs a display; the CUI needs a
+terminal (`windows-curses` on Windows); `--headless` needs neither.
 
-## Tests
+## Documentation
+
+- **[docs/TAPTERM.md](docs/TAPTERM.md)** — the `tapterm` command in depth: every flag,
+  the CUI / GUI / headless modes, the terminal model, recordings, snapshots, recipes, and
+  troubleshooting. For *using* tapterm.
+- **[docs/REFERENCE.md](docs/REFERENCE.md)** — the programming/API reference: every public
+  class and method with signatures, the observe/control contracts (snapshot dict, events,
+  roles), and worked examples. For *building on* the library.
+- **[docs/DESIGN.md](docs/DESIGN.md)** — the architecture: the Source → Terminal → Session →
+  renderer/bus pipeline, the concurrency and security/trust models, and the design rationale.
+  For *modifying* tappty.
+- **[docs/HISTORY.md](docs/HISTORY.md)** — how the project got here, with dates — and
+  *what's left*: the open-work roadmap (CI, the `sixbit/term` rewire, PyPI, finishing Windows).
+
+## Tests & tooling
 
 ```sh
 pip install -e '.[dev]'            # quick: core suite (pyte + GUI tests skip)
@@ -98,7 +118,17 @@ pytest
 
 pip install -e '.[dev,ansi,gui]'   # full: also the ANSI backend + headless GUI smoke
 pytest
+
+ruff check src tests               # lint (E,F,W,I,B,UP); must be clean
+ruff format src tests              # format (line-length 99, black-style)
+
+# no install needed, straight from a checkout:
+PYTHONPATH=src python3 -m tappty.cli --headless -- echo hello
 ```
+
+Without the `ansi`/`gui` extras, `pytest` skips the pyte and pygame tests (so it reports
+fewer passes plus a couple of skips); install `.[dev,ansi,gui]` to run the whole suite. CI
+runs ruff + the full matrix on Python 3.9–3.13.
 
 ## License
 

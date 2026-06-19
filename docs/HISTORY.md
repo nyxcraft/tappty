@@ -76,8 +76,8 @@ A working session in the standalone repo (under WSLg, with `pygame-ce` + `pyte` 
   drop-in for the VT52 `Terminal`. `tapterm --ansi`.
 - **Windows (mostly):** `PipeSource` (non-pty, cross-platform), the **TCP bus transport**,
   and platform source-selection in `cli.py` — all tested on POSIX. `ConPtySource` (ConPTY via
-  pywinpty, `win` extra) written against the documented API but **not yet run on Windows**.
-  See [WINDOWS.md](WINDOWS.md).
+  pywinpty, `win` extra) written against the documented API but **not yet run on Windows**
+  (finishing it on real Windows is open work — see *What's left* below).
 - **39 tests green**; `import tappty` still works with no optional deps. Decoupling held — the
   three new Sources and the second Terminal backend slotted in with no change to Session or
   renderers.
@@ -94,6 +94,48 @@ A working session in the standalone repo (under WSLg, with `pygame-ce` + `pyte` 
 - **In the parent (`~/pdp10-empire/sixbit/term`):** untouched — the DECWAR galaxy/arena/
   `sbterm` launcher still run on the in-tree copy. So tappty and `sixbit/term` are **two
   copies** until the parent is rewired to consume tappty (the same drift the project is
-  managing with `pyf66`).
+  managing with `pyf66`). **A fix in one must land in the other** until then — the top live
+  hazard.
 
-See [HANDOFF.md](HANDOFF.md) for how to pick the work up.
+---
+
+## What's left
+
+Roughly in priority order — the actionable work that remained when the doc set was
+consolidated (this used to live in a separate handoff doc):
+
+1. **Push to a GitHub remote so CI runs.** `~/tappty` is a git repo (initial commit on
+   `main`) with `.github/workflows/ci.yml` — ruff lint/format + the pytest matrix on Python
+   3.9–3.13, with `pygame-ce` + `pyte` so the GUI-smoke and ANSI tests run headlessly under
+   the SDL `dummy` driver. The workflow has **never actually run** (no remote yet): create
+   it, push, and confirm green — the pygame-ce-in-CI step in particular is unverified.
+2. **Rewire `~/pdp10-empire/sixbit/term` to consume `tappty`** (an editable install or a
+   namespace shim) instead of its own copy, so the two stop drifting (see "two copies"
+   above). The game-specific bits left behind — the DECWAR galaxy view (`draw_galaxy` /
+   `GalaxyPanel`) and the `decwar_runner` / `bot_runner` / `decwar_script_runner` factories
+   — become consumers that import from `tappty` (a `GalaxyPanel` is just another panel
+   `kind`; a game runner is just an `EngineSource`).
+3. **Publish:** build the sdist/wheel and publish to PyPI once happy.
+4. **Finish Windows on a real Windows box.** Done & tested on POSIX: `PyteTerminal`
+   (`--ansi`), `PipeSource` (`--no-pty`), the TCP bus, and platform source-selection
+   (`cli.py` picks `ConPtySource` on `os.name=="nt"` and auto-enables `--ansi`). **Untested:**
+   `ConPtySource` (`win` extra, pywinpty) has never run on Windows — it's coded from the
+   documented `PtyProcess` API and flagged provisional in the source. To finish:
+   - `pip install -e '.[ansi,win]'` on Windows; drive `tapterm --ansi -- cmd` / `powershell`.
+   - Verify the pywinpty details coded-from-docs-but-unconfirmed: does `.read()` raise
+     `EOFError` at child exit, are `dimensions` row-major `(rows, cols)`, does `.write()`
+     want `str`, what does `.wait()` return for the exit status.
+   - Add a `windows-latest` CI lane (the pty tests already `skipif(os.name=="nt")`; a few
+     others still assume a POSIX shell `sh` and would need guarding too).
+   - Broaden the `Operating System` classifiers in `pyproject.toml` (POSIX-only today) and
+     flip the README/DESIGN Windows wording from "provisional" to "verified".
+   - Optional: `windows-curses` makes `curses_ui` work on Windows (the stdlib ships no
+     `curses` there) — as an extra or a documented manual install.
+5. **Possible features:** an arcade or web renderer (same `run(session, runner, …)` shape —
+   `terminado` / `pyxtermjs` are references); and the deliberate gaps in [DESIGN.md](DESIGN.md)
+   §9 if they ever bite (SGR color via `styled_rows()`/`cells()`, `wcwidth`-style cell widths,
+   a renderer→session key map for full TUIs).
+
+The deeper *why* — the design-decision narrative behind the observe/control bus, the Source
+seam, and the talking stick — lives in the parent SIXBIT FORTRAN 66 project's Claude memory
+notes (the `sbterm-instrumentation` and `decwar-port` notes, at `~/pdp10-empire`).

@@ -8,9 +8,8 @@ Session and the renderers use -- `cols`/`rows`/`cx`/`cy`/`write()`/`snapshot()`/
 `rows_text()`/`view_rows()`/`max_scroll()` -- so it slots in wherever a `Terminal` goes
 (`Session(PyteTerminal())`, `tapterm --ansi`) with nothing else changing.
 
-This is the "b-full" backend the design always anticipated (DESIGN.md), and the
-prerequisite for hosting a Windows ConPTY, which emits VT100+ rather than VT52
-(see docs/WINDOWS.md).
+This is the "b-full" backend the design always anticipated, and the prerequisite for
+hosting a Windows ConPTY, which emits VT100+ rather than VT52. See docs/DESIGN.md.
 
 `pyte` is an optional dependency (the `ansi` extra) imported lazily in __init__, so
 `import tappty` works without it. pyte is LGPLv3 -- fine as a separately-installed,

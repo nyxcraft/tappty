@@ -3,8 +3,7 @@ client (an AI, a logger, a remote renderer) attach to a Session to observe its s
 and inject input -- the externalized form of the in-process taps. One server = one
 Session; N clients. Newline-delimited messages, payloads JSON (debuggable with
 socat, trivial for an AI). The address is a filesystem path (Unix-domain socket, POSIX)
-or a (host, port) tuple (TCP -- works anywhere, including Windows where AF_UNIX is
-absent; see docs/WINDOWS.md).
+or a (host, port) tuple (TCP -- works anywhere, including Windows where AF_UNIX is absent).
 
 Protocol
   client -> server
@@ -27,7 +26,7 @@ Security: the bus is a terminal control plane and TRUSTED-LOCAL by default -- a 
 client gets terminal read/write as the tappty user. Unix socket is owner-only (0600 file),
 TCP is loopback-only unless allow_remote=True, an optional non-empty `token` gates HELLO,
 and frames/captures are bounded. It is not transport security (no TLS). The full model and
-rationale are canonical in docs/DESIGN.md §7.
+rationale are canonical in docs/DESIGN.md §8.
 """
 
 import contextlib
