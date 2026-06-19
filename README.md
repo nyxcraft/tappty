@@ -1,0 +1,98 @@
+# tappty
+
+**Host a program on a pseudo-terminal, then observe, control, and render it** — in a
+plain terminal (curses, CUI) or a green-phosphor window (pygame, GUI).
+
+`tappty` is a small instrumented-terminal toolkit. A program's bytes (a subprocess on a
+PTY, or any in-process runner) flow into a fixed-size character `Terminal`; a `Session`
+fans that output out to any number of observers and routes input back. A renderer is just
+one more observer/controller — which is what lets a human *and* an automated client watch
+and drive the very same session. Several sessions tile into one window via the compositor.
+
+It was factored out of the *SIXBIT FORTRAN 66* project's `sbterm` (a period VT52 emulator
+hosting 1970s PDP-10 games), generalized to host any command.
+
+## Install
+
+```sh
+pip install tappty          # core (CUI works out of the box)
+pip install 'tappty[gui]'   # add the pygame window
+pip install 'tappty[ansi]'  # add the full-ANSI/VT100+ backend (pyte) for --ansi
+pip install 'tappty[win]'   # Windows: add the ConPTY source (pywinpty)
+# from a checkout:
+pip install -e '.[gui,ansi,dev]'
+```
+
+## The `tapterm` program
+
+```sh
+tapterm                    # host your $SHELL (GUI if pygame is installed, else CUI)
+tapterm -- python3 -i      # host a specific command (everything after -- is its argv)
+tapterm --cui -- bash      # force the curses character UI (takes over this terminal)
+tapterm --gui -- bash      # force the pygame green-phosphor window
+tapterm --headless -- ls   # run to completion, print the final screen (scripting/CI)
+tapterm --cast rec.cast    # replay an asciinema recording (--speed N, --loop)
+tapterm --ansi -- vim      # use the full-ANSI/VT100+ backend (pyte) instead of VT52
+tapterm --no-pty -- ls     # host over plain pipes, no pty (cross-platform, incl. Windows)
+```
+
+`--cui` works anywhere; `--gui` needs the `gui` extra. With no mode flag, `tapterm` picks
+GUI when pygame is installed, otherwise CUI. `--ansi` swaps the built-in VT52 grid for the
+`pyte` full-ANSI model (needs the `ansi` extra) — use it for programs that emit modern ANSI
+(colors, cursor addressing). On Windows the pty path uses ConPTY (the `win` extra); pair it
+with `--ansi`, since ConPTY emits VT100+.
+
+## Library
+
+```python
+from tappty import Session, Terminal, PtySource, curses_ui
+
+sess = Session(Terminal(cols=80, rows=24))
+sess.source = PtySource(["bash"])
+sess.claim_control("local", "human")
+curses_ui.run(sess, None, title="bash")
+```
+
+The pieces:
+
+- **`Terminal` / `PyteTerminal`** — the screen model. `Terminal` is a fixed-size character
+  grid (VT52 spirit: wrap/scroll, the common control chars, a handful of VT52 escapes), with
+  scrollback and no deps. `PyteTerminal` is a drop-in full-ANSI/VT100+ backend (wraps `pyte`,
+  the `ansi` extra) for programs that speak modern ANSI; same read interface, so renderers
+  don't change.
+- **`Source` / `PtySource` / `EngineSource` / `CastSource` / `PipeSource` / `ConPtySource`**
+  — byte producers. `PtySource` runs an external command on a real pty (POSIX); `EngineSource`
+  wraps any in-process `runner(emit, readline)` callable; `CastSource` replays a recorded
+  asciinema `.cast` session through the same pipeline (original timing, `speed`/`loop`);
+  `PipeSource` hosts a command over plain pipes (no pty, any OS); `ConPtySource` hosts one on
+  a Windows pseudo-console (ConPTY, the `win` extra).
+- **`Session`** — hosts a Source, drives the Terminal, and exposes **observe taps**
+  (`on_stream`, `on_frame`, `on_event`) and **control** (`send_input`, `feed_key`) plus a
+  talking-stick arbitration so exactly one controller types at a time.
+- **`BusServer` / `BusClient`** — the same observe/control contract over a Unix-domain
+  socket *or* TCP (a `(host, port)` tuple — works on Windows too), so an out-of-process
+  client (a logger, an automated driver, a remote renderer) can attach to a session.
+- **`curses_ui` / `pygame_ui`** — renderers; each exposes `run(session, runner, title=…)`.
+- **`compositor`** — tile several panels (`SessionBacking` for in-process, `BusBacking`
+  for remote) in one pygame window, with per-tile pan/zoom and focus.
+
+## Platform
+
+The core (Terminal/Session/taps/talking-stick), `EngineSource`, `CastSource`, `PipeSource`,
+the renderers, and the TCP bus are cross-platform. `PtySource` uses `pty`/`termios`
+(POSIX-only); on Windows, host via `ConPtySource` (the `win` extra, ConPTY — paired with
+`--ansi`) or `PipeSource` (`--no-pty`), and use the TCP bus rather than a Unix socket. The
+Windows ConPTY path is implemented but not yet exercised on real Windows — see
+[docs/WINDOWS.md](docs/WINDOWS.md). The GUI needs a display; the CUI needs a terminal
+(`windows-curses` on Windows); `--headless` needs neither.
+
+## Tests
+
+```sh
+pip install -e '.[dev]'
+pytest
+```
+
+## License
+
+MIT © Nicholas J. Kisseberth. See [LICENSE](LICENSE).

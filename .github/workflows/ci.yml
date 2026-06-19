@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install ruff
+      - run: ruff check src tests
+      - run: ruff format --check src tests
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+    env:
+      # Headless GUI: pygame-ce + the SDL dummy driver let test_gui_smoke drive the real
+      # pygame draw path with no display. pyte (the `ansi` extra) lets the ANSI tests run.
+      SDL_VIDEODRIVER: dummy
+      SDL_AUDIODRIVER: dummy
+      PYGAME_HIDE_SUPPORT_PROMPT: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: pip install -e '.[dev,ansi]' pygame-ce
+      - run: pytest -q
+
+# NOTE: no Windows job yet. The pty-based tests (test_pty_source, the PtySource half of
+# test_source_encoding) are POSIX-only and would error on Windows, and ConPtySource has
+# never been exercised on real Windows. Add a `windows-latest` job once those tests skip
+# on `os.name == "nt"` and ConPtySource is validated -- see docs/WINDOWS.md.
