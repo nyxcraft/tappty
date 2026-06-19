@@ -6,6 +6,16 @@ hardcopy-style scrollback "paper roll". No GUI dependency -- the renderer
 from tappty.terminal import Terminal
 
 
+def test_cells_are_default_styled_and_match_the_text():
+    """The VT52 model has no color: cells() reports the default style for every cell, with
+    the same characters as view_rows -- so a renderer draws it in the phosphor color."""
+    t = Terminal(cols=10, rows=2)
+    t.write("Hi")
+    rows = t.cells()
+    assert "".join(c.char for c in rows[0]) == t.view_rows()[0]
+    assert all(c.fg == "default" and c.bg == "default" and not c.reverse for c in rows[0])
+
+
 def test_scrollback_captures_lines_that_scroll_off():
     t = Terminal(cols=20, rows=4, scrollback=100)
     for i in range(10):  # 10 lines into a 4-row screen

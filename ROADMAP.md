@@ -6,12 +6,12 @@ completed work is in [CHANGELOG.md](CHANGELOG.md); the architecture is in
 
 ## Status
 
-The generic toolkit and the `tapterm` command exist and are green: **94 tests**, a full-ANSI
-backend (with scrollback), `.cast` replay, non-pty and Windows sources, a Unix + TCP bus, two
-interchangeable GUI backends (pygame and arcade/OpenGL) alongside the curses CUI, and ruff
-lint/format. `~/tappty` is a git repo on `main` with a CI workflow. **Not yet shipped:** no
-tagged or PyPI release; CI has never actually run (no remote pushed); and the Windows ConPTY
-source is written but unverified on real Windows.
+The generic toolkit and the `tapterm` command exist and are green: **107 tests**, a full-ANSI
+backend (with scrollback and SGR color in all three renderers), `.cast` replay, non-pty and Windows
+sources, a Unix + TCP bus, two interchangeable GUI backends (pygame and arcade/OpenGL)
+alongside the curses CUI, and ruff lint/format. `~/tappty` is a git repo on `main` with a CI
+workflow. **Not yet shipped:** no tagged or PyPI release; CI has never actually run (no remote
+pushed); and the Windows ConPTY source is written but unverified on real Windows.
 
 ## What's left (roughly in priority order)
 
@@ -34,6 +34,7 @@ source is written but unverified on real Windows.
      unverified on real Windows; confirm `tapterm --cui` renders there.
 3. **Possible features:** a web renderer (same `run(session, runner, …)` shape — `terminado` /
    `pyxtermjs` are references; the arcade renderer is done — `arcade_ui`, the `arcade` extra);
-   and the deliberate gaps in [docs/DESIGN.md](docs/DESIGN.md) §9 if they ever bite (SGR color
-   via `styled_rows()` / `cells()`, `wcwidth`-style cell widths, a renderer→session key map for
-   full TUIs).
+   and the remaining deliberate gaps in [docs/DESIGN.md](docs/DESIGN.md) §9 if they ever bite
+   (`wcwidth`-style cell widths for CJK/emoji, a renderer→session key map for full TUIs, and
+   color over the bus). *Done: SGR color across all three renderers — the GUI backends and the
+   curses CUI (`cells()` + the `style` palette).*

@@ -139,6 +139,7 @@ renderers work with either:
 | `snapshot()` | `str` | whole screen as one `"\n"`-joined string |
 | `rows_text()` | `list[str]` | one string per row |
 | `view_rows(offset=0)` | `list[str]` | `rows` lines scrolled back `offset` into history (0 = live) |
+| `cells(offset=0)` | `list[list[style.Cell]]` | same window, styled — each `Cell(char, fg, bg, bold, reverse)` |
 | `max_scroll()` | `int` | how many scrolled-off lines are available |
 | `clear()` | — | blank the grid, home the cursor |
 
@@ -158,8 +159,20 @@ edits and keeps scrollback. Use it for programs that emit modern ANSI (`tapterm 
 Importing `pyte` is deferred to the constructor, so this raises `ModuleNotFoundError` if the
 `ansi` extra isn't installed. Same `ValueError` on bad dimensions.
 
-> Note: attributes (SGR color/bold/inverse) are parsed but not exposed by the read interface;
-> the renderers draw one phosphor color. See DESIGN §9.
+> Note: SGR attributes (color/bold/inverse) are exposed via `cells()` and drawn by **all three
+> renderers** — the GUI backends (`pygame_ui`, `arcade_ui`) in RGB and `curses_ui` via color
+> pairs; the `cells()` cell carries pyte's `fg`/`bg`/`bold`/`reverse`. Only the bus
+> (`snapshot()`/`FRAME`) remains text-only. See DESIGN §9.
+
+### `style` — cell color helpers
+
+`style.Cell(char, fg, bg, bold, reverse)` is what `cells()` returns; `fg`/`bg` are pyte color
+strings (`"default"`, `"red"`, `"brightred"`, `"brown"` = yellow, or a 6-hex string from
+256-color/truecolor). Helpers (no dependencies): **`rgb(color, bold=False)`** → an `(r,g,b)` or
+`None` for `"default"`; **`resolve(cell, fg_default, bg_default)`** → a cell's concrete
+`(fg, bg)` with `"default"` filled in and `reverse` applied; **`runs(row, …)`** → maximal
+same-color runs `(x, text, fg, bg)` for a renderer that draws a run as one string. `style.FG` /
+`style.BG` are the phosphor defaults. Use these to write a color-aware renderer of your own.
 
 ---
 
@@ -411,7 +424,9 @@ the user quits. Pass `runner=None` when the session already has a `source`.
 ### `curses_ui.run(session, runner, title="tapterm", refresh_ms=50)`  *(POSIX terminal)*
 
 Draws a cursor-following viewport into the fixed grid with a status line; takes over the
-current terminal. Maps Enter/Backspace/printable ASCII to the session; `Ctrl-]` quits.
+current terminal. Renders SGR color via curses color pairs where the terminal supports it
+(else the default foreground). Maps Enter/Backspace/printable ASCII to the session; `Ctrl-]`
+quits.
 
 Also exported: **`viewport(model_w, model_h, screen_w, screen_h, cx, cy, status=1)`** →
 `(ox, oy, vw, vh)` — the pure, unit-tested function that computes the visible sub-rectangle

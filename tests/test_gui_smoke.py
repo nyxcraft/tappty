@@ -68,6 +68,29 @@ def test_pygame_ui_draws_headless(tmp_path):
     assert os.path.getsize(snap + ".png") > 0
 
 
+def test_pygame_ui_draws_sgr_color_headless(tmp_path):
+    """The color path runs: a PyteTerminal session with SGR colors (fg/bg/bold/reverse)
+    renders without error and the text still reaches the snapshot."""
+    pytest.importorskip("pyte")  # color needs the full-ANSI backend
+    from tappty.pyte_terminal import PyteTerminal
+
+    cast = tmp_path / "color.cast"
+    with open(cast, "w", encoding="utf-8") as f:
+        f.write(json.dumps({"version": 2, "width": 80, "height": 24}) + "\n")
+        f.write(json.dumps([0.0, "o", "\x1b[31mRED\x1b[0m \x1b[1;32mGREEN\x1b[0m "]) + "\n")
+        f.write(json.dumps([0.01, "o", "\x1b[7mREV\x1b[0m \x1b[44mBLUEBG\x1b[0m done> "]) + "\n")
+    snap = str(tmp_path / "color_snap")
+    sess = Session(PyteTerminal(80, 24), source=CastSource(str(cast), speed=1000.0))
+
+    pygame_ui.run(
+        sess, None, title="color", snapshot_path=snap, exit_when_done=True, fps=20, max_seconds=3
+    )
+
+    text = open(snap, encoding="utf-8").read()
+    assert "RED" in text and "GREEN" in text and "BLUEBG" in text
+    assert os.path.getsize(snap + ".png") > 0
+
+
 def test_compositor_draws_headless(tmp_path):
     """The compositor tiles + draws two live-backed panels through its full draw path."""
     left = Session(Terminal(80, 24), source=CastSource(_cast(tmp_path / "l.cast"), speed=1000.0))

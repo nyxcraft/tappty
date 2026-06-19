@@ -123,10 +123,22 @@ class Terminal:
         scrollback length). The hosted program never sees this -- it always writes
         to the live grid; this only changes what the renderer shows."""
         with self.lock:
-            if offset <= 0:
-                return ["".join(row) for row in self.grid]
-            offset = min(offset, len(self.scrollback))
-            combined = self.scrollback + self.grid
-            end = len(combined) - offset
-            window = combined[end - self.rows : end]
-            return ["".join(row) for row in window]
+            return ["".join(row) for row in self._window(offset)]
+
+    def cells(self, offset=0):
+        """`rows` rows of styled `style.Cell`s, scrolled back `offset` lines (parallels
+        view_rows). The VT52 model has no color, so every cell carries the default style --
+        renderers draw it in the phosphor color, exactly as before."""
+        from tappty import style
+
+        with self.lock:
+            return [[style.default_cell(ch) for ch in row] for row in self._window(offset)]
+
+    def _window(self, offset):
+        """The `rows` grid rows to show at scrollback `offset` (0 = live), as lists of chars."""
+        if offset <= 0:
+            return self.grid
+        offset = min(offset, len(self.scrollback))
+        combined = self.scrollback + self.grid
+        end = len(combined) - offset
+        return combined[end - self.rows : end]

@@ -93,7 +93,8 @@ tapterm -- bash -lc 'top -b -n1'
 
 Takes over the current terminal and draws the hosted program's fixed grid, green on your
 terminal's background, with a status line at the bottom. Works anywhere a terminal does, no
-extras.
+extras. With `--ansi`, colored programs render in **color** where your terminal supports it
+(uncolored text stays phosphor green).
 
 ```sh
 tapterm --cui -- bash
@@ -186,8 +187,10 @@ tapterm --ansi -- vim
 tapterm --ansi -- bash      # colored prompts/output render cleanly
 ```
 
-> Note: `--ansi` gives **text and cursor** fidelity. Colors/bold/inverse are parsed but the
-> render is monochrome green — that's a deliberate aesthetic, not a bug.
+> Note: `--ansi` renders **color** in every interactive renderer — the GUI (`--gui` /
+> `--arcade`) in full RGB, and the CUI (`--cui`) via your terminal's colors where it supports
+> them — covering foreground/background, bold (as a brighter shade), and inverse, while
+> uncolored text stays phosphor green. Only `--headless`/`--snapshot` output is plain text.
 
 **Unicode** works in both backends by default: a program printing `café` or `→ ✓` shows those
 characters (UTF-8 is decoded for the screen; pass-through is correct end to end).

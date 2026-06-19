@@ -137,9 +137,17 @@ write(text)          # the hosted program's output goes here
 snapshot()           # whole screen as one "\n"-joined string
 rows_text()          # list of row strings
 view_rows(offset=0)  # `rows` lines scrolled back `offset` into history (0 = live)
+cells(offset=0)      # same window as styled `style.Cell`s (char + fg/bg/bold/reverse)
 max_scroll()         # how many scrolled-off lines are available
 clear()              # blank the grid, home the cursor
 ```
+
+`cells()` is the colored parallel to `view_rows()`: each cell carries SGR attributes, which the
+GUI renderers draw (see §2.5). The VT52 `Terminal` reports every cell with the *default* style
+(it has no color); `PyteTerminal` reports pyte's per-cell `fg`/`bg`/`bold`/`reverse`. The shared
+`style` module (`Cell`, the ANSI palette, `rgb()`/`resolve()`/`runs()`) maps `"default"` to the
+renderer's phosphor color, so uncolored text stays green and color shows only where a program
+asks — the green-phosphor identity survives the addition of color.
 
 Both are thread-safe (an `RLock`): the program thread writes while a render thread reads.
 There is no shared base class or `Protocol` — with only two implementations the implicit
@@ -312,21 +320,26 @@ then loop — read the grid, draw it, forward keystrokes. Both are *owning* rend
 - **`curses_ui`** draws a **viewport** into the fixed model: the whole 80×24 when the real
   terminal is big enough, a cursor-following sub-rectangle when it's smaller, plus a status
   line. The geometry is a pure, unit-tested function — `viewport(model_w, model_h, screen_w,
-  screen_h, cx, cy, status=1) → (ox, oy, vw, vh)` — so resize never touches the model. Input
-  maps Enter/Backspace/printable ASCII to the Session; arrows/function keys are ignored;
-  `Ctrl-]` force-quits.
-- **`pygame_ui`** draws a green-phosphor grid in a monospace font with a blinking block cursor.
-  Glyphs are rendered lazily and cached (any Unicode the font has, not a fixed ASCII range).
+  screen_h, cx, cy, status=1) → (ox, oy, vw, vh)` — so resize never touches the model. It reads
+  `cells()` too, so it draws **SGR color** via curses color pairs (pure-mapped to indices,
+  allocated lazily, capped at `COLOR_PAIRS`) where the terminal supports it, degrading to the
+  phosphor/default foreground otherwise. Input maps Enter/Backspace/printable ASCII to the
+  Session; arrows/function keys are ignored; `Ctrl-]` force-quits.
+- **`pygame_ui`** draws the grid in a monospace font with a blinking block cursor, reading
+  `cells()` so each glyph takes its SGR **color** (fg/bg, bold→bright, reverse) — `"default"`
+  resolving to phosphor green, so uncolored output looks exactly as before. Glyphs are rendered
+  lazily and cached by `(char, color)`; a non-default background is filled per cell.
   Scrollback is mouse-wheel / PageUp-PageDown; typing snaps back to live. Optional per-second
   text + PNG snapshots (and `F12` on demand) let an automated observer watch the same session;
   `max_seconds` is a hard loop cap for scripting/tests, `exit_when_done` closes when the
   program ends. `fps` is validated `>= 1`.
 - **`arcade_ui`** is the same renderer on the arcade (pyglet/OpenGL) stack — the *same*
-  `run(...)` signature and green-phosphor look as `pygame_ui`, sharing nothing but the Session
-  contract (the proof that a renderer is just an adapter). Each grid row is drawn as one pooled
-  `arcade.Text` (a monospace font keeps the columns aligned); the cursor and the scrollback bar
-  are primitives. Same scrollback / snapshots / `F12` / `exit_when_done` / `max_seconds` / `fps`
-  as pygame. `arcade` is imported lazily — the `arcade.Window` subclass is built on first `run()`
+  `run(...)` signature, color, and green-phosphor look as `pygame_ui`, sharing nothing but the
+  Session contract (the proof that a renderer is just an adapter). Each row is drawn as
+  `style.runs()` — maximal runs of same-colored cells, one pooled `arcade.Text` each (a
+  monospace font keeps the columns aligned); the cursor and the scrollback bar are primitives.
+  Same color / scrollback / snapshots / `F12` / `exit_when_done` / `max_seconds` / `fps` as
+  pygame. `arcade` is imported lazily — the `arcade.Window` subclass is built on first `run()`
   via a cached factory, since a class can't subclass `arcade.Window` until arcade is imported —
   and pyglet's audio driver is forced to `silent` before that import (an absent sound server
   otherwise stalls it ~55 s). It needs a real GL context (a display), where the pure-software
@@ -411,6 +424,7 @@ Session to a renderer. The pieces it wires:
 |--------|------|------|
 | `terminal.py` | the fixed-size VT52 character grid model | none |
 | `pyte_terminal.py` | `PyteTerminal` — full-ANSI/VT100+ backend, drop-in for `Terminal` | `pyte` (deferred; `ansi` extra) |
+| `style.py` | `Cell` + the ANSI palette / `rgb`/`resolve`/`runs` shared by `cells()` and the GUI renderers | none |
 | `source.py` | `Source` base (+ `_pump`) and the 5 sources (pty / engine / cast / pipe / ConPTY) | stdlib `pty`/`subprocess`/`json`; `pywinpty` (deferred; `win` extra) |
 | `session.py` | Session: observe taps, control, talking stick, the bytes↔chars decode | terminal, source |
 | `bus.py` | `BusServer` / `BusClient` — the contract over a unix socket or TCP | stdlib `socket`/`hmac` |
@@ -523,10 +537,15 @@ toolkit; the recommendation is a private Unix socket, or loopback+token behind a
 
 Conscious scope choices, recorded so they aren't mistaken for defects:
 
-- **Monochrome render — no SGR attributes.** `PyteTerminal` parses ANSI position/erase/edit
-  correctly, but the read interface exposes only text; the renderers draw one phosphor color.
-  So `--ansi` gives text/cursor fidelity, not color/bold/inverse. A future `styled_rows()` /
-  `cells()` API could expose attributes without changing `rows_text()`.
+- **Color renders; only the bus stays monochrome.** The `cells()` API exposes SGR attributes
+  (fg/bg, bold→bright, reverse), and **all three renderers draw them** — the GUI backends
+  (`pygame_ui`, `arcade_ui`) in RGB, and the **curses CUI** via lazily-allocated color pairs
+  where the terminal supports it (a 256/truecolor cell approximates to the nearest ANSI-16;
+  `reverse` uses `A_REVERSE`; a colorless terminal falls back to its default foreground). So
+  `--ansi` shows color/inverse, not just text/cursor fidelity. Still text-only: the **bus** —
+  `OUT` carries raw bytes, but `FRAME`/`snapshot()` is plain text, so color over the wire would
+  be a protocol change. Bold renders as a brighter color, not a heavier font weight (so glyph
+  widths stay uniform).
 - **Single-cell Unicode.** Both Terminal models treat each Python code point as one cell, and
   renderers blit one glyph per cell. CJK full-width, emoji, and combining marks can drift or
   overwrite neighbors. Faithful width would need a `wcwidth`-style helper in the model and

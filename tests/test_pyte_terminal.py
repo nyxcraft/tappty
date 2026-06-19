@@ -15,6 +15,32 @@ from tappty.source import EngineSource
 from tappty.terminal import Terminal
 
 
+def test_cells_carry_sgr_color_bold_and_reverse():
+    """cells() exposes per-cell SGR attributes (what the GUI renderers draw in color)."""
+    t = PyteTerminal(40, 2)
+    t.write("\x1b[31mRED\x1b[0m \x1b[1;32mB\x1b[0m\x1b[7mV\x1b[0m")
+    row = t.cells()[0]
+    assert "".join(c.char for c in row).rstrip() == "RED BV"
+    assert row[0].char == "R" and row[0].fg == "red" and not row[0].bold
+    assert row[4].char == "B" and row[4].fg == "green" and row[4].bold  # 1;32 = bold green
+    assert row[5].char == "V" and row[5].reverse
+    # plain text is the default style, so a renderer draws it in the phosphor color
+    plain = PyteTerminal(10, 1)
+    plain.write("hi")
+    assert all(c.fg == "default" and c.bg == "default" for c in plain.cells()[0])
+
+
+def test_cells_include_scrollback_with_color():
+    """cells(offset) windows into history like view_rows, keeping each line's color."""
+    t = PyteTerminal(20, 2)
+    t.write("\x1b[34mTOP\x1b[0m\r\n")  # blue, will scroll into history
+    for i in range(5):
+        t.write(f"line{i}\r\n")
+    assert t.max_scroll() >= 4
+    back = t.cells(t.max_scroll())  # the oldest window
+    assert back[0][0].char == "T" and back[0][0].fg == "blue"
+
+
 def test_sgr_color_is_parsed_not_printed():
     """ANSI color codes affect attributes, not text -- the VT52 model would print them."""
     t = PyteTerminal(40, 5)

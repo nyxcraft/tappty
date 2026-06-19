@@ -37,7 +37,14 @@ The `0.1.0` line — the generic toolkit and the `tapterm` command. Built across
   contract, so a human and a bot can watch and take turns driving the same session.
 - **Terminal backends.** `Terminal` — a fixed-size VT52 character grid with scrollback and no
   dependencies; `PyteTerminal` — a drop-in full-ANSI/VT100+ backend wrapping `pyte` (the
-  `ansi` extra), with scrollback via `HistoryScreen`.
+  `ansi` extra), with scrollback via `HistoryScreen`. Both expose `cells(offset)` — the styled
+  parallel to `view_rows()` — carrying per-cell SGR attributes (`style.Cell`).
+- **SGR color.** All three renderers draw color: `cells()` + the dependency-free `style`
+  module (the ANSI palette, `rgb`/`resolve`/`runs`) map a program's foreground/background, bold
+  (→bright), and reverse onto the screen, with `"default"` resolving to phosphor green — so
+  `--ansi` shows real color while uncolored output stays green. The GUI backends draw RGB; the
+  curses CUI uses color pairs where the terminal supports it (256/truecolor approximated to the
+  nearest ANSI-16). Only the bus (`snapshot()`/`FRAME`) stays text-only.
 - **Sources.** `PtySource` (POSIX pty), `EngineSource` (in-process `runner(emit, readline)`),
   `CastSource` (asciinema `.cast` replay — v1/v2, original timing, `speed`/`loop`),
   `PipeSource` (plain pipes, any OS), and `ConPtySource` (Windows ConPTY via pywinpty, the
@@ -50,10 +57,10 @@ The `0.1.0` line — the generic toolkit and the `tapterm` command. Built across
   socket *or* TCP, with a synchronous `CMD` capture primitive (send a line, get its output to
   the next prompt) for automated drivers.
 - **Renderers.** `curses_ui` (the CUI plus the pure, unit-tested `viewport()` math) and two
-  interchangeable GUI backends with the same `run(...)` signature — `pygame_ui` (pygame; lazy
-  glyph cache, scrollback, optional text+PNG snapshots) and `arcade_ui` (the arcade/OpenGL twin,
-  the `arcade` extra); the `compositor` tiles local (`SessionBacking`) and remote (`BusBacking`)
-  panels in one window with per-tile pan/zoom.
+  interchangeable GUI backends with the same `run(...)` signature, both drawing SGR color —
+  `pygame_ui` (pygame; lazy glyph cache, scrollback, optional text+PNG snapshots) and
+  `arcade_ui` (the arcade/OpenGL twin, the `arcade` extra); the `compositor` tiles local
+  (`SessionBacking`) and remote (`BusBacking`) panels in one window with per-tile pan/zoom.
 - **`tapterm` CLI.** `--cui` / `--gui` / `--headless`, `--ansi`, `--no-pty`, `--cast`
   (`--speed` / `--loop`), `--cols` / `--rows`, `--snapshot`, `--exit-when-done`. Headless
   prints the final screen and exits with the child's own status.

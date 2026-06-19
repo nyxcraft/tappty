@@ -67,8 +67,8 @@ The pieces:
 - **`Terminal` / `PyteTerminal`** — the screen model. `Terminal` is a fixed-size character
   grid (VT52 spirit: wrap/scroll, the common control chars, a handful of VT52 escapes), with
   scrollback and no deps. `PyteTerminal` is a drop-in full-ANSI/VT100+ backend (wraps `pyte`,
-  the `ansi` extra) for programs that speak modern ANSI; same read interface, so renderers
-  don't change.
+  the `ansi` extra) for programs that speak modern ANSI; same read interface (plus a `cells()`
+  view of per-cell SGR color), so the GUI renderers show color while the rest is unchanged.
 - **`Source` / `PtySource` / `EngineSource` / `CastSource` / `PipeSource` / `ConPtySource`**
   — byte producers. `PtySource` runs an external command on a real pty (POSIX); `EngineSource`
   wraps any in-process `runner(emit, readline)` callable; `CastSource` replays a recorded

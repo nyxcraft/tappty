@@ -30,9 +30,10 @@ Public API:
     BusServer, BusClient            -- out-of-process observe/control over a unix socket
     curses_ui, pygame_ui, arcade_ui -- renderers; each: run(session, runner, title=...)
     compositor                      -- multi-panel single-window dashboard
+    style                           -- Cell + color helpers behind the backends' cells() / the GUIs
 """
 
-from tappty import arcade_ui, compositor, curses_ui, pygame_ui
+from tappty import arcade_ui, compositor, curses_ui, pygame_ui, style
 from tappty.bus import BusClient, BusServer
 from tappty.pyte_terminal import PyteTerminal
 from tappty.session import Session
@@ -57,5 +58,6 @@ __all__ = [
     "pygame_ui",
     "arcade_ui",
     "compositor",
+    "style",
     "__version__",
 ]

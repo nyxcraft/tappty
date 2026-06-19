@@ -89,3 +89,26 @@ class PyteTerminal:
             combined = top + display
             end = len(combined) - offset
             return combined[end - self.rows : end]
+
+    def _cell_row(self, line):
+        """A line (column->Char mapping) -> a full-width list of styled `style.Cell`s,
+        carrying each pyte Char's fg/bg/bold/reverse."""
+        from tappty.style import Cell
+
+        return [
+            Cell(line[x].data or " ", line[x].fg, line[x].bg, line[x].bold, line[x].reverse)
+            for x in range(self.cols)
+        ]
+
+    def cells(self, offset=0):
+        """`rows` rows of styled `style.Cell`s scrolled back `offset` into the history
+        (0 = live) -- the colored parallel to view_rows, same windowing."""
+        with self.lock:
+            live = [self._cell_row(self._screen.buffer[y]) for y in range(self.rows)]
+            if offset <= 0:
+                return live
+            top = [self._cell_row(ln) for ln in self._screen.history.top]
+            offset = min(offset, len(top))
+            combined = top + live
+            end = len(combined) - offset
+            return combined[end - self.rows : end]

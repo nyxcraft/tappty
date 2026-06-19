@@ -10,11 +10,13 @@ an adapter over the UI-agnostic core; an arcade renderer would implement the sam
 import logging
 import os
 
+from tappty import style
+
 log = logging.getLogger(__name__)
 
 FONT_PATH = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf"
-FG = (90, 255, 130)  # phosphor green
-BG = (6, 20, 8)
+FG = style.FG  # phosphor green -- the "default" SGR color resolves to this
+BG = style.BG
 
 
 def run(
@@ -38,15 +40,18 @@ def run(
     # glyph pre-rendered once and blitted at its exact cell (no whole-row drift).
     cw = font.size("M")[0]
     chh = font.get_linesize()
-    glyphs = {}  # lazily-rendered cache (any Unicode glyph)
+    glyphs = {}  # lazily-rendered cache, keyed by (char, fg) so colored cells reuse glyphs
 
-    def glyph(ch):
+    def glyph(ch, fg):
         if ch == " " or not ch.isprintable():
             return None  # space + control chars: nothing to draw
-        g = glyphs.get(ch)
+        key = (ch, fg)
+        g = glyphs.get(key)
         if g is None:
-            g = font.render(ch, True, FG)
-            glyphs[ch] = g
+            if len(glyphs) > 4000:  # bound the cache across many colors/glyphs
+                glyphs.clear()
+            g = font.render(ch, True, fg)
+            glyphs[key] = g
         return g
 
     screen = pygame.display.set_mode((cols * cw, rows * chh))
@@ -81,10 +86,13 @@ def run(
                     scroll = 0
                     session.feed_key(e.unicode)
         screen.fill(BG)
-        for y, line in enumerate(session.term.view_rows(scroll)):
+        for y, row in enumerate(session.term.cells(scroll)):
             base_y = y * chh
-            for x, ch in enumerate(line):
-                g = glyph(ch)  # render-on-demand; space/ctrl -> None
+            for x, cell in enumerate(row):
+                fg, bg = style.resolve(cell, FG, BG)  # "default" -> phosphor; reverse swaps
+                if bg != BG:  # fill only non-default backgrounds (screen is already BG)
+                    pygame.draw.rect(screen, bg, (x * cw, base_y, cw, chh))
+                g = glyph(cell.char, fg)  # render-on-demand; space/ctrl -> None
                 if g is not None:
                     screen.blit(g, (x * cw, base_y))
         if scroll == 0:

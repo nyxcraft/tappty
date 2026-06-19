@@ -14,11 +14,13 @@ columns aligned), with the cursor and scrollback bar drawn as primitives.
 import logging
 import os
 
+from tappty import style
+
 log = logging.getLogger(__name__)
 
 FONT_PATH = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf"
-FG = (90, 255, 130)  # phosphor green
-BG = (6, 20, 8)
+FG = style.FG  # phosphor green -- the "default" SGR color resolves to this
+BG = style.BG
 
 # Monospace families to try by name when the bundled DejaVu path is absent (a
 # non-monospace fallback would misalign the grid, so we look hard before giving up).
@@ -121,15 +123,28 @@ def _window_class():
             self._font = _load_mono_font()
             self._cw, self._chh = _cell_metrics(self._font, font_size)
             self.set_size(int(cols * self._cw), int(rows * self._chh))
-            # one reused Text per row (monospace -> a whole row is one string), plus the
-            # inverted scrollback tag; pooled so we don't build Text objects per frame.
-            self._row_text = [
-                arcade.Text("", 0, 0, FG, font_size, font_name=self._font, anchor_y="top")
-                for _ in range(rows)
-            ]
+            self._font_size = font_size
+            # A pool of reused arcade.Text objects -- one per style-run drawn this frame
+            # (a run = consecutive same-colored cells; a monospace font keeps them aligned).
+            # The pool grows to the frame's peak run count, then stops allocating. The
+            # inverted scrollback tag is its own reused Text.
+            self._text_pool = []
+            self._text_used = 0
             self._tag_text = arcade.Text(
                 "", 0, 0, BG, font_size, font_name=self._font, anchor_y="top"
             )
+
+        def _draw_text(self, text, x, y, color):
+            if self._text_used < len(self._text_pool):
+                t = self._text_pool[self._text_used]
+                t.text, t.x, t.y, t.color = text, x, y, color
+            else:
+                t = arcade.Text(
+                    text, x, y, color, self._font_size, font_name=self._font, anchor_y="top"
+                )
+                self._text_pool.append(t)
+            self._text_used += 1
+            t.draw()
 
         def on_update(self, dt):
             self._t += dt
@@ -147,13 +162,16 @@ def _window_class():
         def on_draw(self):
             self.clear()
             term = self.session.term
-            for r, line in enumerate(term.view_rows(self._scroll)):
-                t = self._row_text[r]
-                t.text = line or " "  # arcade.Text dislikes an empty string
-                t.x = 0
-                t.y = self.height - r * self._chh
-                t.color = FG
-                t.draw()
+            self._text_used = 0  # rewind the Text pool for this frame
+            for r, row in enumerate(term.cells(self._scroll)):
+                top = self.height - r * self._chh
+                for x, text, fg, bg in style.runs(row, FG, BG):  # "default" -> phosphor
+                    left = x * self._cw
+                    if bg != BG:  # fill only non-default backgrounds
+                        arcade.draw_lrbt_rectangle_filled(
+                            left, left + len(text) * self._cw, top - self._chh, top, bg
+                        )
+                    self._draw_text(text, left, top, fg)
             if self._scroll == 0:
                 if int(self._t * 2) % 2 == 0:  # blink ~1 Hz (live only)
                     left = term.cx * self._cw
