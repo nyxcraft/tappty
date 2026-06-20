@@ -109,11 +109,13 @@ The `0.1.0` line — the generic toolkit and the `tapterm` command. Built across
   xterm spellings where they fit: `-e CMD …` (run a command, like `-- CMD`), `-T` / `-title`,
   `-geometry COLSxROWS` (a `+X+Y` offset is parsed but ignored), `-cd` / `--cwd DIR`, and `-hold`.
 - **Demos & examples.** `demos/` holds runnable showpieces — single-file apps you run to *see*
-  a feature (the SGR color chart, the green digital rain, the compositor "mission control"),
-  plus `demos/recordings/*.cast`: short sessions of real ANSI programs (`nyancat`, `cbonsai`)
-  recorded with `--record`, which replay with zero dependencies and feed the gallery's "real
-  programs" shots. `examples/` holds short, commented coding examples of the API — the observe
-  taps, writing a custom `Source`, and driving a session over the bus.
+  a feature (the SGR color chart, the green digital rain, the compositor "mission control", and
+  `drive_vim` — an autopilot typing into a live `vim` over the control tap), plus
+  `demos/recordings/*.cast`: short sessions (`nyancat`, `cbonsai`, the driven `vim`) recorded with
+  `--record`, which replay with zero dependencies and feed the gallery's shots and clips.
+  `examples/` holds short, commented coding examples of the API — the observe taps, writing a
+  custom `Source`, driving a session over the bus, and a closed observe→decide→control loop
+  (`watch_and_drive` — a bot that reads the output stream and binary-searches a guessing game).
 - **Packaging & tooling.** `pyproject.toml` (extras `gui` / `arcade` / `web` / `video` / `ansi` /
   `win` / `dev`; `win` bundles pywinpty *and* windows-curses so `tappty[win]` gives both the
   ConPTY host and the curses CUI on Windows; `video` bundles ffmpeg for `--render`), MIT license,
@@ -138,6 +140,10 @@ The `0.1.0` line — the generic toolkit and the `tapterm` command. Built across
 - `tapterm` reports a missing optional dependency (`--ansi` → pyte, `--gui` → pygame, `--cui`
   → curses, default Windows hosting → pywinpty) with a clear `pip install` hint and an exit
   code, instead of letting a raw `ModuleNotFoundError` traceback escape.
+- A hosted program can no longer kill the reader thread with a sequence the ANSI backend can't
+  parse: `PyteTerminal` tolerates a private SGR (`CSI > … m`, e.g. xterm's modifyOtherKeys, which
+  `vim` emits) instead of raising, and rebuilds its parser on any other feed error rather than
+  letting the exception unwind the source's reader loop.
 
 ### Security
 

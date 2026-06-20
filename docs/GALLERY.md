@@ -25,6 +25,28 @@ GitHub's markdown view:
 tapterm --play demos/recordings/nyancat.cast --render nyan.gif --zoom 0.5
 ```
 
+## A program driving a terminal app
+
+This is what tappty is *for* — observe **and** control. No human touches the keyboard: an
+autopilot holds tappty's talking stick and types into a live `vim` over the control tap, while
+every renderer/observer watches the same session. Text appears as if typed by a ghost, then
+ex-commands run (`:set number`, duplicate a line, jump around). The autopilot is an in-process
+thread here, but it only calls `send_input` — the same primitive the bus relays for a *remote*
+bot — and it's an `ai` controller, so a human watching the GUI can press a key to take the stick.
+
+<video autoplay loop muted playsinline width="528" style="max-width:100%;border-radius:6px">
+  <source src="media/drive_vim.mp4" type="video/mp4">
+  <img src="media/drive_vim.png" alt="an autopilot typing into a live vim hosted in tappty">
+</video>
+
+```sh
+python demos/drive_vim.py                          # watch it drive vim live (needs vim)
+tapterm --play demos/recordings/drive_vim.cast     # replay the recording (zero deps)
+```
+
+That demo drives a *fixed* script. For a closed loop that **reads the screen/stream and decides
+what to type next**, see [`examples/watch_and_drive.py`](https://github.com/nyxbitco/tappty/blob/main/examples/watch_and_drive.py).
+
 ## Color & SGR attributes
 
 The full SGR palette — the 8 + 8 colors, backgrounds, **bold**, *italic*, underline, strike,

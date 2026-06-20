@@ -23,6 +23,28 @@ text it's handed (Unicode included). Scrollback is kept too (via `HistoryScreen`
 
 import threading
 
+_SCREEN_CLS = None
+
+
+def _screen_class():
+    """A `pyte.HistoryScreen` subclass that tolerates a *private* SGR. pyte routes a private
+    `CSI > … m` (e.g. xterm's modifyOtherKeys, which vim emits) to `select_graphic_rendition`
+    with `private=True`, but the stock handler's signature rejects that keyword and raises --
+    killing the reader thread. It isn't a real color/attribute request, so ignore the private
+    form instead of crashing. Built lazily so `pyte` stays an optional import."""
+    global _SCREEN_CLS
+    if _SCREEN_CLS is None:
+        import pyte
+
+        class _HistoryScreen(pyte.HistoryScreen):
+            def select_graphic_rendition(self, *attrs, private=False, **kwargs):
+                if private:
+                    return
+                super().select_graphic_rendition(*attrs)
+
+        _SCREEN_CLS = _HistoryScreen
+    return _SCREEN_CLS
+
 
 class PyteTerminal:
     def __init__(self, cols=80, rows=24, scrollback=5000):
@@ -35,7 +57,7 @@ class PyteTerminal:
         self.dirty = True
         # HistoryScreen accumulates scrolled-off lines in `.history.top` automatically as
         # the program scrolls -- the scrollback "paper roll", read non-mutatingly below.
-        self._screen = pyte.HistoryScreen(cols, rows, history=scrollback)
+        self._screen = _screen_class()(cols, rows, history=scrollback)
         self._stream = pyte.Stream(self._screen)  # parses full ANSI on a code-point str
 
     # cursor position mirrors the VT52 Terminal's plain cx/cy attributes (read-only here)
@@ -53,7 +75,14 @@ class PyteTerminal:
         # treats it -- so text renders as written (e.g. "café"). The Session has already
         # decoded a byte source's bytes to characters, so this just renders text.
         with self.lock:
-            self._stream.feed(text)
+            try:
+                self._stream.feed(text)
+            except Exception:
+                # A hosted program must never kill the reader thread with a sequence pyte
+                # can't parse: drop it and rebuild the parser so later output still renders.
+                import pyte
+
+                self._stream = pyte.Stream(self._screen)
             self.dirty = True
 
     def clear(self):

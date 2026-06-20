@@ -20,6 +20,7 @@ Each runs in its own subprocess; the byproduct text dump beside the PNG is remov
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -35,6 +36,8 @@ SHOTS = [
     ("matrix_rain.py", "matrix_rain", 2.0),
     ("mission_control.py", "mission_control", 2.5),
 ]
+if shutil.which("vim") or shutil.which("vi"):  # drive_vim's still is captured live; needs vim
+    SHOTS.append(("drive_vim.py", "drive_vim", 5.0))
 
 # (recording under demos/recordings/, PNG stem) -- replayed to a frame via the CLI
 CAST_SHOTS = [
@@ -47,6 +50,7 @@ CAST_SHOTS = [
 # (which renders <img> but strips <video>).
 MOVIES = [
     ("nyancat.cast", "nyancat.gif", 12, 0.5),
+    ("drive_vim.cast", "drive_vim.mp4", 12, 0.6),  # the bundled cast replays without vim
 ]
 
 

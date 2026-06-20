@@ -34,3 +34,8 @@ def test_custom_source():
 def test_bus_capture():
     out = _run("bus_capture.py")
     assert "HELLO" in out and "NEAT" in out
+
+
+def test_watch_and_drive():
+    out = _run("watch_and_drive.py")
+    assert "guess 50" in out and "Correct!" in out  # binary search starts at the midpoint and wins

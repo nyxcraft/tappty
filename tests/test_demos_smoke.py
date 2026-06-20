@@ -7,6 +7,7 @@ when the gui/ansi backends aren't installed (same as the other GUI smoke tests).
 """
 
 import os
+import shutil
 import subprocess
 import sys
 
@@ -20,12 +21,15 @@ ENV = {**os.environ, "SDL_VIDEODRIVER": "dummy", "SDL_AUDIODRIVER": "dummy",
 
 
 @pytest.mark.parametrize(
-    "script, needs_pyte",
-    [("color_chart.py", True), ("matrix_rain.py", False), ("mission_control.py", True)],
+    "script, needs_pyte, needs_vim",
+    [("color_chart.py", True, False), ("matrix_rain.py", False, False),
+     ("mission_control.py", True, False), ("drive_vim.py", True, True)],
 )
-def test_demo_renders_a_png_headless(tmp_path, script, needs_pyte):
+def test_demo_renders_a_png_headless(tmp_path, script, needs_pyte, needs_vim):
     if needs_pyte:
         pytest.importorskip("pyte")  # color demos need the full-ANSI backend
+    if needs_vim and not (shutil.which("vim") or shutil.which("vi")):
+        pytest.skip("drive_vim needs vim/vi on PATH")
     out = tmp_path / (script + ".png")
     subprocess.run(
         [sys.executable, os.path.join(DEMOS, script),
