@@ -16,7 +16,12 @@ but unverified on real Windows.
 
 ## What's left (roughly in priority order)
 
-1. **Publish:** build the sdist/wheel and publish to PyPI once happy.
+1. **Publish to PyPI.** Packaging is ready and validated: `MANIFEST.in` ships the
+   docs/CHANGELOG/ROADMAP/tests in the sdist, `python -m build` produces a clean sdist + wheel,
+   `twine check dist/*` passes (README renders), and the wheel installs into a bare venv (no
+   optional deps) with `import tappty` and the `tapterm` entry point both working. Remaining: a
+   PyPI account + token, then `python -m build && twine upload dist/*` (after confirming the
+   version). Optionally test-publish to TestPyPI first.
 2. **Finish Windows on a real Windows box.** Done & tested on POSIX: `PyteTerminal`
    (`--ansi`), `PipeSource` (`--no-pty`), the TCP bus, and platform source-selection
    (`cli.py` picks `ConPtySource` on `os.name=="nt"` and auto-enables `--ansi`). **Untested:**
