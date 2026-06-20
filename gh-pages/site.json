@@ -1,0 +1,36 @@
+{
+  "site_name": "tappty",
+  "site_tagline": "Instrument any terminal program — observe, control, and render it.",
+  "site_description": "tappty hosts a program on a pseudo-terminal, fans its output to any number of observers — a window, a socket, an automated driver — and routes input back, so a human and a bot can watch and drive the very same session.",
+  "github_href": "https://github.com/nyxbitco/tappty",
+  "docs": [
+    {
+      "slug": "guide",
+      "title": "Command guide",
+      "source": "docs/TAPTERM.md",
+      "summary": "The tapterm command in depth: the CUI / GUI / web / headless modes, the terminal model, recordings, snapshots, and recipes.",
+      "featured": true
+    },
+    {
+      "slug": "reference",
+      "title": "Programming reference",
+      "source": "docs/REFERENCE.md",
+      "summary": "The library API: Session, the five Sources, both Terminal backends, the bus, the renderers and compositor, with the shared contracts.",
+      "featured": true
+    },
+    {
+      "slug": "design",
+      "title": "Architecture & design",
+      "source": "docs/DESIGN.md",
+      "summary": "How it works inside and why: the Source → Terminal → Session → renderer/bus pipeline, concurrency, the trust model, and the known limits.",
+      "featured": true
+    },
+    {
+      "slug": "changelog",
+      "title": "Changelog",
+      "source": "CHANGELOG.md",
+      "summary": "Dated history, newest first: when tappty started, when it first worked, and what has changed since.",
+      "featured": true
+    }
+  ]
+}

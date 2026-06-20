@@ -105,6 +105,9 @@ terminal (and, on Windows, the `win` extra's `windows-curses`); `--headless` nee
 
 ## Documentation
 
+The rendered docs site is at **[nyxbitco.github.io/tappty](https://nyxbitco.github.io/tappty/)**
+(built from `docs/` by `gh-pages/build_site.py` and published via GitHub Actions). The sources:
+
 - **[docs/TAPTERM.md](docs/TAPTERM.md)** — the `tapterm` command in depth: every flag,
   the CUI / GUI / headless modes, the terminal model, recordings, snapshots, recipes, and
   troubleshooting. For *using* tapterm.

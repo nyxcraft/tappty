@@ -1,6 +1,6 @@
 """The instrumentation bus over TCP (the cross-platform / Windows transport): same
 contract as the Unix-socket bus, addressed by a (host, port) tuple. Port 0 lets the OS
-pick a free port; the client connects to the actually-bound port. See docs/WINDOWS.md."""
+pick a free port; the client connects to the actually-bound port. See docs/DESIGN.md (§11)."""
 
 import threading
 

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ site_name }} | Instrumented terminal toolkit</title>
+  <meta name="description" content="{{ site_description }}">
+  <link rel="stylesheet" href="assets/site.css">
+</head>
+<body class="site-home">
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  <div class="page-shell">
+    <header class="site-header">
+      <a class="brand" href="index.html">
+        <img class="brand__icon" src="{{ logo_href }}" alt="" aria-hidden="true">
+        <span class="brand__name">{{ site_name }}</span>
+      </a>
+      <nav class="top-nav" aria-label="Primary">
+        <a href="{{ github_href }}">GitHub</a>
+        <a href="{{ docs_href }}">Docs</a>
+      </nav>
+    </header>
+
+    <main id="main-content" tabindex="-1">
+      <section class="hero">
+        <div class="hero__copy">
+          <p class="eyebrow">Instrumented terminal toolkit</p>
+          <h1>Watch and drive any terminal program — together.</h1>
+          <p class="hero__lede">{{ site_description }}</p>
+          <div class="hero__actions">
+            <a class="button button--primary" href="{{ primary_href }}">Get started</a>
+            <a class="button" href="{{ secondary_href }}">Read the API</a>
+          </div>
+        </div>
+        <div class="hero__visual" role="img" aria-label="The tappty pipeline: a source feeds a terminal grid and a session, which fans out to renderers and a bus.">
+          <div class="flow">
+            <div class="flow__node"><span>Source</span><strong>pty · pipe · cast · engine</strong></div>
+            <div class="flow__arrow" aria-hidden="true">↓</div>
+            <div class="flow__node"><span>Terminal</span><strong>fixed grid · scrollback</strong></div>
+            <div class="flow__arrow" aria-hidden="true">↓</div>
+            <div class="flow__node flow__node--hub"><span>Session</span><strong>observe · control · talking stick</strong></div>
+            <div class="flow__fan">
+              <span>curses</span><span>pygame</span><span>arcade</span><span>web</span><span>bus</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="feature-strip" aria-label="Core ideas">
+        <article>
+          <h2>One observe / control contract</h2>
+          <p>Every consumer — a window, a socket logger, an automated driver — is an equal client of the same Session. A human and a bot take turns driving via the talking stick.</p>
+        </article>
+        <article>
+          <h2>Render it four ways</h2>
+          <p>A curses CUI, two green-phosphor GUI windows (pygame and arcade/OpenGL), and a browser tab over a WebSocket — all from the same styled <code>cells()</code>, color included.</p>
+        </article>
+        <article>
+          <h2>Drive it over a bus</h2>
+          <p>A Unix-socket or TCP bus carries the same contract off-box: subscribe to frames, capture a command's output, hand off the stick — with color over the wire.</p>
+        </article>
+      </section>
+
+      <section class="docs-panel">
+        <div class="section-heading">
+          <p class="eyebrow">Documentation</p>
+          <h2>Use it, build on it, and see how it works.</h2>
+        </div>
+        <div class="doc-grid">
+{{ docs_cards }}
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

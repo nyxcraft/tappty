@@ -40,4 +40,4 @@ jobs:
 # test_source_encoding) now skip on os.name == "nt", but other tests still assume a POSIX
 # shell, and ConPtySource has never been exercised on real Windows. Add a `windows-latest`
 # job once the remaining POSIX assumptions are guarded and ConPtySource is validated --
-# see docs/WINDOWS.md.
+# see docs/DESIGN.md §11.
