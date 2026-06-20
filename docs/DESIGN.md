@@ -205,11 +205,15 @@ its final `�`. `encoding="latin-1"` makes the screen byte-transparent too.
 **`snapshot()` shape** — the tap-2 / bus-`FRAME` payload, a plain dict:
 
 ```python
-{"rows": [str, ...], "cx": int, "cy": int, "cols": int, "rows_n": int}
+{"rows": [str, ...],           # plain text per row (for text consumers / loggers)
+ "cells": [[run, ...], ...],   # the styled form: per-row run-length runs, color + attributes
+ "cx": int, "cy": int, "cols": int, "rows_n": int}
 ```
 
-(It is a dict rather than a typed object because it crosses the bus's JSON boundary, where a
-type wouldn't survive.)
+`cells` is `style.encode_row` per row — the *same* run encoding the web renderer uses (`[col,
+text, fg_hex, bg_hex, bold, italic, underline, strike, blink]`), so a remote bus client (e.g. a
+compositor `BusBacking` panel) draws full color, not just text. (It is a dict rather than a
+typed object because it crosses the bus's JSON boundary, where a type wouldn't survive.)
 
 **Observer isolation.** Output and frame observers are dispatched through `_fanout`, which
 catches a misbehaving callback, emits an `ERROR` event as a breadcrumb, and keeps going — one
@@ -281,7 +285,8 @@ most verbs, or rest-of-line literal text for `LINE`/`CMD`. Frames are read with 
 | `EVENT <json>` | `{name: WAIT\|BELL\|CLOSED\|DRIVER\|ERROR, ...}` (tap 3) |
 
 So the bytes/characters split carries over the wire: `OUT` is raw bytes, `FRAME`/`SNAP` is the
-decoded screen. The protocol is identical over either transport.
+decoded screen — as both plain-text `rows` and styled `cells` (color + attributes), so a remote
+client renders in full color. The protocol is identical over either transport.
 
 **Server internals.** A daemon accept thread spawns one daemon serve thread per connection.
 Per-connection state is a small `@dataclass _Conn(name, lock, sub, role, claimed, authed)`;
@@ -384,8 +389,11 @@ where its bytes come from; local and remote sessions tile together:
   frames a few per tick instead of jumping to the newest, so a remote program's output scrolls
   in like a live terminal.
 
-Rendering: a shared `DrawCtx` caches a per-size glyph atlas and the fit font size, keyed on
-*(tile size, grid size)* so a non-80×24 cast/terminal fits correctly. Each tile supports mouse
+Rendering: `draw_terminal` paints each tile from the grid's styled `cells` runs in **full SGR
+color** (the same per-cell color + bold/italic/underline/strike + blink the standalone GUI
+renderers draw), so a remote `BusBacking` panel looks like the local session, color and all. A
+shared `DrawCtx` caches a per-size glyph atlas (keyed by char + color + attributes) and the fit
+font size, keyed on *(tile size, grid size)* so a non-80×24 cast/terminal fits correctly. Each tile supports mouse
 **pan + zoom** (wheel zooms the font, left-drag pans, right-click resets to fit); the default
 is the largest font at which the whole grid fits the tile. Keys route to the focused tile (the
 talking stick, per tile); `Tab` cycles focus, `Esc` quits, `fps` is validated `>= 1`.
@@ -566,7 +574,7 @@ toolkit; the recommendation is a private Unix socket, or loopback+token behind a
 
 Conscious scope choices, recorded so they aren't mistaken for defects:
 
-- **Color + attributes render; only the bus stays monochrome.** The `cells()` API exposes
+- **Full SGR color + attributes, everywhere — including over the bus.** The `cells()` API exposes
   per-cell SGR — fg/bg, **bold**, *italic*, underline, strikethrough, blink, reverse — and **all
   four renderers draw them**: the GUI backends (`pygame_ui`, `arcade_ui`, `web_ui`) via the font
   (bold/italic weight) plus drawn underline/strike rules, a blink phase, and bg fills; and the
@@ -575,9 +583,9 @@ Conscious scope choices, recorded so they aren't mistaken for defects:
   terminal falls back to its default foreground). Bold also brightens a *named* color (a
   deliberate extra, on top of the heavier weight). **Not representable:** SGR `faint` (2),
   `rapid-blink` (6), and `conceal` (8) — pyte doesn't model them; and curses has no
-  strikethrough attribute, so `strike` is dropped in the CUI only. Still text-only: the **bus** —
-  `OUT` carries raw bytes, but `FRAME`/`snapshot()` is plain text, so color over the wire would
-  be a protocol change.
+  strikethrough attribute, so `strike` is dropped in the CUI only. The **bus** carries color too:
+  `snapshot()`/`FRAME` includes styled `cells`, so a remote `BusBacking` panel renders in full
+  color, not just text (`MAX_FRAME` was raised to 256 KiB to fit a styled frame).
 - **Single-cell Unicode.** Both Terminal models treat each Python code point as one cell, and
   renderers blit one glyph per cell. CJK full-width, emoji, and combining marks can drift or
   overwrite neighbors. Faithful width would need a `wcwidth`-style helper in the model and

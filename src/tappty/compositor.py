@@ -45,15 +45,36 @@ def clamp_view(cols, rows_n, fit_c, fit_r, ox, oy):
 
 
 # ---- draw-into-rect widgets ------------------------------------------------
-def draw_terminal(surface, rect, grid, font, glyphs, pan=None):
-    """Draw a grid dict into the tile. pan=None follows the cursor (fit view); a
-    (ox, oy) pan shows that region (clamped). Returns (ox, oy, vw, vh, cw, chh)."""
+def _expand(row_runs, cols):
+    """A row's RLE runs (`style.encode_row`) -> a per-column list of
+    (ch, fg_rgb, bg_rgb, bold, italic, underline, strike, blink); None for unset columns."""
+    line = [None] * cols
+    for run in row_runs:
+        col, text, fg_hex, bg_hex, bold, italic, underline, strike, blink = run
+        fg = (int(fg_hex[0:2], 16), int(fg_hex[2:4], 16), int(fg_hex[4:6], 16))
+        bg = (int(bg_hex[0:2], 16), int(bg_hex[2:4], 16), int(bg_hex[4:6], 16))
+        for i, ch in enumerate(text):
+            c = col + i
+            if 0 <= c < cols:
+                line[c] = (ch, fg, bg, bool(bold), bool(italic),
+                           bool(underline), bool(strike), bool(blink))
+    return line
+
+
+def draw_terminal(surface, rect, grid, font, glyphs, pan=None, blink_on=True):
+    """Draw a styled grid dict (its `cells` runs) into the tile, in full SGR color. pan=None
+    follows the cursor (fit view); a (ox, oy) pan shows that region (clamped). Returns
+    (ox, oy, vw, vh, cw, chh)."""
+    import pygame
+
+    from tappty import style
     from tappty.curses_ui import viewport
 
     x0, y0, w, h = rect
     cw, chh = font.size("M")[0], font.get_linesize()
     cols = grid.get("cols", 80)
-    rows_n = grid.get("rows_n", len(grid["rows"]))
+    cells = grid.get("cells") or []
+    rows_n = grid.get("rows_n", len(cells))
     fit_c, fit_r = max(1, w // cw), max(1, h // chh)
     if pan is None:
         ox, oy, vw, vh = viewport(
@@ -61,18 +82,31 @@ def draw_terminal(surface, rect, grid, font, glyphs, pan=None):
         )
     else:
         ox, oy, vw, vh = clamp_view(cols, rows_n, fit_c, fit_r, pan[0], pan[1])
-    rows = grid["rows"]
+    has_strike = hasattr(font, "set_strikethrough")
     for yy in range(vh):
-        line = rows[oy + yy] if oy + yy < len(rows) else ""
+        line = _expand(cells[oy + yy], cols) if 0 <= oy + yy < len(cells) else []
         base = y0 + yy * chh
         for xx in range(vw):
-            ch = line[ox + xx] if ox + xx < len(line) else " "
-            g = glyphs.get(ch)
-            if g is None and ch != " " and ch.isprintable():
-                g = font.render(ch, True, FG)  # render-on-demand (any Unicode glyph)
-                glyphs[ch] = g
-            if g is not None:
-                surface.blit(g, (x0 + xx * cw, base))
+            cell = line[ox + xx] if ox + xx < len(line) else None
+            if cell is None:
+                continue
+            ch, fg, bg, bold, italic, underline, strike, blink = cell
+            px = x0 + xx * cw
+            if bg != style.BG:  # fill only non-default backgrounds
+                pygame.draw.rect(surface, bg, (px, base, cw, chh))
+            if (blink and not blink_on) or ch == " " or not ch.isprintable():
+                continue
+            key = (ch, fg, bold, italic, underline, strike)
+            g = glyphs.get(key)
+            if g is None:  # render-on-demand per glyph + style
+                font.set_bold(bold)
+                font.set_italic(italic)
+                font.set_underline(underline)
+                if has_strike:
+                    font.set_strikethrough(strike)
+                g = font.render(ch, True, fg)
+                glyphs[key] = g
+            surface.blit(g, (px, base))
     return ox, oy, vw, vh, cw, chh
 
 
@@ -126,7 +160,9 @@ class BusBacking:
         self.client.hello(role=role, name=name)
         self.client.sub()
         self.client.send("SNAP")
-        self._frame = {"rows": [""] * 24, "cx": 0, "cy": 0, "cols": 80, "rows_n": 24}
+        # placeholder until the first FRAME/SNAP arrives (styled `cells`, like a real frame)
+        self._frame = {"rows": [""] * 24, "cells": [[] for _ in range(24)],
+                       "cx": 0, "cy": 0, "cols": 80, "rows_n": 24}
         self._pending = deque(maxlen=240)  # frames awaiting paced replay
         self._driver = None  # who holds the remote stick (tracked)
         self._run = True
@@ -224,7 +260,7 @@ class TerminalPanel:
         self._cw = self._chh = 1
         self._fit = ZMIN
 
-    def draw(self, surface, ctx):
+    def draw(self, surface, ctx, blink_on=True):
         # default = the largest font at which the FULL grid fits the tile; zoom in from
         # there magnifies a region and pan moves it. Use the backing's actual dimensions
         # (a cast/terminal need not be 80x24) so the fit font size is right.
@@ -233,7 +269,9 @@ class TerminalPanel:
             self.rect[2], self.rect[3], grid.get("cols", 80), grid.get("rows_n", 24)
         )
         font, glyphs = ctx.atlas(self.zoom or self._fit)
-        ox, oy, vw, vh, cw, chh = draw_terminal(surface, self.rect, grid, font, glyphs, self.pan)
+        ox, oy, vw, vh, cw, chh = draw_terminal(
+            surface, self.rect, grid, font, glyphs, self.pan, blink_on
+        )
         self._cw, self._chh = cw, chh
         self.pan = [ox, oy]  # store the clamped offset
 
@@ -344,8 +382,9 @@ def run(
                         else e.unicode
                     )
         screen.fill(BG)
+        blink_on = (frame // max(1, fps // 2)) % 2 == 0  # blink phase, ~1 Hz
         for i, p in enumerate(panels):
-            p.draw(screen, ctx)
+            p.draw(screen, ctx, blink_on)
             col = FOCUS if i == focus else IDLE
             pygame.draw.rect(screen, col, p.rect, 1)
             label = p.title

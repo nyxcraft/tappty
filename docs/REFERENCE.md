@@ -95,7 +95,8 @@ return a plain dict describing the screen:
 
 ```python
 {
-    "rows":   ["...", ...],   # list[str], one per row, each `cols` wide
+    "rows":   ["...", ...],   # list[str], one per row, each `cols` wide (text consumers)
+    "cells":  [[run, ...], ...],  # styled runs per row (color+attrs); the renderers draw these
     "cx":     int,            # cursor column (0-based)
     "cy":     int,            # cursor row (0-based)
     "cols":   int,            # grid width
@@ -162,9 +163,10 @@ Importing `pyte` is deferred to the constructor, so this raises `ModuleNotFoundE
 > Note: SGR attributes — color, **bold**, *italic*, underline, strikethrough, blink, inverse — are exposed via
 > `cells()` and drawn by **all four renderers** (the GUI backends via the font + bg fills,
 > `curses_ui` via `A_*` attributes + color pairs); the `cells()` cell carries pyte's
-> `fg`/`bg`/`bold`/`italic`/`underline`/`strike`/`blink`/`reverse`. SGR faint/rapid-blink/
-> conceal aren't modelled by pyte (curses also lacks strikethrough), and
-> the bus (`snapshot()`/`FRAME`) remains text-only. See DESIGN §9.
+> `fg`/`bg`/`bold`/`italic`/`underline`/`strike`/`blink`/`reverse`. The bus carries color too —
+> `snapshot()`/`FRAME` includes styled `cells` (`style.encode_row`), so a remote `BusBacking`
+> panel renders in color. SGR faint/rapid-blink/conceal aren't modelled by pyte (curses also
+> lacks strikethrough). See DESIGN §9.
 
 ### `style` — cell color helpers
 

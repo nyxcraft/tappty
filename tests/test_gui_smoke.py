@@ -110,3 +110,24 @@ def test_compositor_draws_headless(tmp_path):
     # run() returned (every panel drew) and a frame was saved
     assert os.path.exists(snap + ".png")
     assert os.path.getsize(snap + ".png") > 0
+
+
+def test_compositor_draws_color_headless(tmp_path):
+    """The compositor's colored draw path runs: a PyteTerminal panel with SGR color (the
+    `cells` runs) tiles + draws without error (the local equivalent of color over the bus)."""
+    pytest.importorskip("pyte")
+    from tappty.pyte_terminal import PyteTerminal
+
+    cast = tmp_path / "color.cast"
+    colored = "\x1b[31mRED\x1b[0m \x1b[1;34mBLUE\x1b[0m \x1b[7mREV\x1b[0m"
+    with open(cast, "w", encoding="utf-8") as f:
+        f.write(json.dumps({"version": 2, "width": 80, "height": 24}) + "\n")
+        f.write(json.dumps([0.0, "o", colored]) + "\n")
+    sess = Session(PyteTerminal(80, 24), source=CastSource(str(cast), speed=1000.0))
+    sess.start()
+    snap = str(tmp_path / "comp_color")
+    panels = [compositor.TerminalPanel(compositor.SessionBacking(sess), (10, 24, 1260, 680), "c")]
+    compositor.run(
+        panels, title="color", size=(1280, 720), fps=10, snapshot_path=snap, max_seconds=1
+    )
+    assert os.path.exists(snap + ".png") and os.path.getsize(snap + ".png") > 0

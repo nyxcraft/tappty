@@ -46,6 +46,15 @@ def test_runs_group_consecutive_same_style():
     assert runs[2] == (4, "G", (0, 205, 0), style.BG, False, False, False, False, False)
 
 
+def test_encode_row_is_rle_with_hex_and_attr_bits():
+    row = [_c("R", "red"), _c("E", "red"), _c(" "),
+           _c("x", "blue", italic=True, underline=True)]
+    enc = style.encode_row(row)  # runs: [col, text, fg_hex, bg_hex, bold, italic, underline, ...]
+    assert len(enc) == 3
+    assert enc[0] == [0, "RE", "cd0000", style.hex_rgb(style.BG), 0, 0, 0, 0, 0]
+    assert enc[2] == [3, "x", "0000ee", style.hex_rgb(style.BG), 0, 1, 1, 0, 0]
+
+
 def test_runs_break_on_attributes_and_carry_them():
     row = [_c("a"), _c("b", italic=True), _c("c", underline=True),
            _c("d", strike=True), _c("e", blink=True)]

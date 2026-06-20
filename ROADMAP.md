@@ -40,10 +40,9 @@ but unverified on real Windows.
      unverified on real Windows; confirm `tapterm --cui` renders there.
 3. **Possible features:** the remaining deliberate gaps in [docs/DESIGN.md](docs/DESIGN.md) §9
    if they ever bite — `wcwidth`-style cell widths for CJK/emoji (wide glyphs still take one
-   cell), and color over the bus (the local renderers show color, but the bus
-   `FRAME`/`snapshot()` is still plain text, so a remote `BusBacking` panel is monochrome).
-   *Out of reach:* SGR faint/rapid-blink/conceal — pyte doesn't model them.
+   cell). *Out of reach:* SGR faint/rapid-blink/conceal — pyte doesn't model them.
    *Done:* SGR color **and** the bold/italic/underline/strikethrough/blink/reverse attributes
    across all four renderers (`cells()` + the `style` palette); raw-mode TUI input (`--raw` /
    `send_key` + the `keys` table) so vim/htop work; the **web renderer** (`web_ui`, `--web`, the
-   `web` extra — a browser over a WebSocket, built on `websockets`).
+   `web` extra — a browser over a WebSocket, built on `websockets`); and **color over the bus**
+   (styled `cells` in `snapshot()`/`FRAME`) so remote `BusBacking` panels render in full color.

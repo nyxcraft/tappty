@@ -40,7 +40,7 @@ import threading
 from dataclasses import dataclass, field
 
 _AF_UNIX = getattr(socket, "AF_UNIX", None)  # absent on Windows
-MAX_FRAME = 65536  # max bytes per protocol line (oversized -> drop the connection)
+MAX_FRAME = 1 << 18  # 256 KiB max per protocol line (a styled FRAME carries per-cell color)
 MAX_CAPTURE = 1 << 20  # max bytes a single CMD capture will buffer (1 MiB)
 
 

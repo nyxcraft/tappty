@@ -71,9 +71,13 @@ class Session:
             self._event_obs.remove(cb)
 
     def snapshot(self):
-        """The current grid + cursor (tap 2 payload)."""
+        """The current grid + cursor (tap 2 payload). `rows` is plain text (for text consumers);
+        `cells` is the styled run-length form (color + attributes) that the renderers draw."""
+        from tappty import style
+
         return {
             "rows": self.term.rows_text(),
+            "cells": [style.encode_row(r) for r in self.term.cells()],
             "cx": self.term.cx,
             "cy": self.term.cy,
             "cols": self.term.cols,

@@ -69,7 +69,10 @@ The `0.1.0` line — the generic toolkit and the `tapterm` command. Built across
   renderer over HTTP + a WebSocket (the `web` extra, `websockets`): a stdlib `http.server`
   serves one canvas page, the browser paints the `cells()` grid (color) and sends keystrokes
   back, several clients can connect, loopback-bound + optional `token`. The `compositor` tiles
-  local (`SessionBacking`) and remote (`BusBacking`) panels in one window with per-tile pan/zoom.
+  local (`SessionBacking`) and remote (`BusBacking`) panels in one window with per-tile
+  pan/zoom, **in full color** — `Session.snapshot()`/the bus `FRAME` carry styled `cells`
+  (`style.encode_row`, the same encoding the web renderer uses), so a remote panel isn't
+  monochrome (`MAX_FRAME` raised to 256 KiB to fit a styled frame).
 - **`tapterm` CLI.** `--cui` / `--gui` / `--arcade` / `--web` / `--headless`, `--ansi`, `--raw`,
   `--no-pty`, `--cast` (`--speed` / `--loop`), `--cols` / `--rows`, `--port`, `--snapshot`,
   `--exit-when-done`. Headless prints the final screen and exits with the child's own status.

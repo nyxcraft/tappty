@@ -15,6 +15,31 @@ def _sock():
     return os.path.join(tempfile.mkdtemp(), "s")
 
 
+def test_snapshot_cells_carry_color_over_the_socket():
+    """A styled FRAME crosses the bus: a remote client sees per-cell color, not just text."""
+    import pytest
+
+    pytest.importorskip("pyte")
+    from tappty.pyte_terminal import PyteTerminal
+
+    s = Session(PyteTerminal(40, 2))
+    s.run_in_thread(lambda emit, readline: emit("\x1b[31mRED\x1b[0m hi") or readline())
+    path = _sock()
+    srv = BusServer(s, path).start()
+    try:
+        time.sleep(0.2)  # let the runner emit before we snap
+        c = BusClient(path).connect()
+        c.hello("ai", "bot")
+        assert c.wait_for("OK", 2)
+        snap = c.snap()
+        run0 = snap["cells"][0][0]  # [col, text, fg_hex, bg_hex, bold, italic, underline, ...]
+        assert run0[1] == "RED" and run0[2] == "cd0000"  # red text + red fg arrived over the wire
+        assert snap["rows"][0].startswith("RED hi")  # plain text still there for text consumers
+        c.close()
+    finally:
+        srv.stop()
+
+
 def test_stop_unsubscribes_session_taps():
     """start() registers 3 Session taps; stop() must remove them so a stopped server
     doesn't linger as a stale observer on a long-lived Session."""

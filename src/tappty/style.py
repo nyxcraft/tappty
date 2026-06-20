@@ -95,3 +95,20 @@ def runs(row, fg_default=FG, bg_default=BG):
     if buf:
         out.append((start, "".join(buf)) + key)
     return out
+
+
+def hex_rgb(rgb):
+    """An (r, g, b) tuple as a 6-digit hex string, no leading '#'."""
+    return f"{rgb[0]:02x}{rgb[1]:02x}{rgb[2]:02x}"
+
+
+def encode_row(row, fg_default=FG, bg_default=BG):
+    """A row of Cells -> JSON-able run-length runs for the wire: each run is
+    `[col, text, fg_hex, bg_hex, bold, italic, underline, strike, blink]`. This is the single
+    styled-frame encoding shared by `Session.snapshot()`, the web renderer, and the bus."""
+    out = []
+    for run in runs(row, fg_default, bg_default):
+        x, text, fg, bg, bold, italic, underline, strike, blink = run
+        out.append([x, text, hex_rgb(fg), hex_rgb(bg),
+                    int(bold), int(italic), int(underline), int(strike), int(blink)])
+    return out

@@ -87,11 +87,6 @@ document.addEventListener("keydown", e=>{
 """
 
 
-def _hex(rgb):
-    """An (r, g, b) tuple as a 6-digit hex string (no leading '#')."""
-    return f"{rgb[0]:02x}{rgb[1]:02x}{rgb[2]:02x}"
-
-
 def _render_page(title, ws_port, cols, rows, token):
     from tappty import style
 
@@ -101,8 +96,8 @@ def _render_page(title, ws_port, cols, rows, token):
         "__COLS__": str(cols),
         "__ROWS__": str(rows),
         "__TOKEN__": json.dumps(token or ""),  # a JS string literal (safely encoded)
-        "__FG__": _hex(style.FG),
-        "__BG__": _hex(style.BG),
+        "__FG__": style.hex_rgb(style.FG),
+        "__BG__": style.hex_rgb(style.BG),
     }
     page = _PAGE
     for k, v in repl.items():
@@ -111,18 +106,11 @@ def _render_page(title, ws_port, cols, rows, token):
 
 
 def _frame_json(session):
-    """The current grid as a compact run-length-encoded frame: each row is a list of
-    [col, text, fg_hex, bg_hex] runs (sharing one resolved color), with the cursor."""
+    """The current grid as a styled frame for the browser: `rows` is the shared run-length
+    encoding (`style.encode_row`), plus the cursor."""
     from tappty import style
 
-    rows = []
-    for row in session.term.cells():
-        out = []
-        for run in style.runs(row, style.FG, style.BG):
-            x, text, fg, bg, bold, italic, underline, strike, blink = run
-            out.append([x, text, _hex(fg), _hex(bg),
-                        int(bold), int(italic), int(underline), int(strike), int(blink)])
-        rows.append(out)
+    rows = [style.encode_row(r) for r in session.term.cells()]
     return json.dumps({"t": "frame", "rows": rows, "cx": session.term.cx, "cy": session.term.cy})
 
 
