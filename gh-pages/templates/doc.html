@@ -13,13 +13,20 @@
     <header class="site-header site-header--compact">
       <a class="brand" href="{{ home_href }}">
         <img class="brand__icon" src="{{ logo_href }}" alt="" aria-hidden="true">
-        <span class="brand__name">{{ site_name }}</span>
+        <span class="brand__name">{{ site_name }}</span>{{ status_badge }}
       </a>
       <nav class="top-nav" aria-label="Primary">
         <a href="{{ docs_href }}">Docs</a>
+        <a href="{{ gallery_href }}">Gallery</a>
         <a href="{{ github_href }}">GitHub</a>
       </nav>
     </header>
+
+    <nav class="breadcrumbs" aria-label="Breadcrumb">
+      <a href="{{ home_href }}">Home</a>
+      <span class="breadcrumbs__sep" aria-hidden="true">›</span>
+      <span aria-current="page">{{ page_title }}</span>
+    </nav>
 
     <main id="main-content" class="docs-layout" tabindex="-1">
       <aside class="docs-sidebar">
@@ -41,6 +48,10 @@
         </div>
       </article>
     </main>
+
+    <footer class="site-footer">
+      <p>© {{ year }} {{ copyright }} · <a href="{{ home_href }}">{{ site_name }}</a> is MIT-licensed.</p>
+    </footer>
   </div>
 
   <script>

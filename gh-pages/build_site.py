@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import datetime
 import json
 import os
 import re
@@ -234,10 +235,19 @@ def main() -> int:
     # The "Docs" link in every header points at the index page (rendered from docs/README.md);
     # fall back to the first page if no explicit index is configured.
     index_page = next((p for p in docs_pages if p["slug"] == "docs"), docs_pages[0])
+    # The "Gallery" link in every header points at the gallery page, if there is one.
+    gallery_page = next((p for p in docs_pages if p["slug"] == "gallery"), None)
     content_pages = [p for p in docs_pages if p is not index_page]
     hero_primary = content_pages[0]["href"] if content_pages else "#"   # "Get started" -> guide
     hero_secondary = content_pages[1]["href"] if len(content_pages) > 1 else hero_primary
     github_href = config.get("github_href", "#")
+    year = str(datetime.date.today().year)
+    copyright_holder = config.get("copyright", config["site_name"])
+    # An optional status stamp ("beta") shown next to the brand on every page; omit the key to drop
+    status = config.get("status")
+    status_badge = (
+        f'<span class="brand__badge">{escape(status)}</span>' if status else ""
+    )
 
     home_html = render_template(
         SOURCE_DIR / "templates" / "home.html",
@@ -246,13 +256,21 @@ def main() -> int:
             "site_tagline": escape(config["site_tagline"]),
             "site_description": escape(config["site_description"]),
             "logo_href": escape(HEADER_LOGO),
+            "home_href": escape("index.html"),
+            "status_badge": status_badge,
             "github_href": escape(github_href),
             "docs_href": escape(
                 relative_href(output_dir / "index.html", output_dir / index_page["output"])
             ),
+            "gallery_href": escape(
+                relative_href(output_dir / "index.html", output_dir / gallery_page["output"])
+                if gallery_page else "#"
+            ),
             "primary_href": escape(hero_primary),
             "secondary_href": escape(hero_secondary),
             "docs_cards": "\n".join(docs_cards),
+            "year": year,
+            "copyright": escape(copyright_holder),
         },
     )
     write_text(output_dir / "index.html", home_html)
@@ -270,6 +288,10 @@ def main() -> int:
         logo_href = relative_href(output_path, output_dir / HEADER_LOGO)
         home_href = relative_href(output_path, output_dir / "index.html")
         docs_href = relative_href(output_path, output_dir / index_page["output"])
+        gallery_href = (
+            relative_href(output_path, output_dir / gallery_page["output"])
+            if gallery_page else docs_href
+        )
         template = "page.html" if page["template"] == "page" else "doc.html"
 
         doc_html = render_template(
@@ -282,11 +304,15 @@ def main() -> int:
                 "assets_href": escape(asset_href),
                 "logo_href": escape(logo_href),
                 "home_href": escape(home_href),
+                "status_badge": status_badge,
                 "github_href": escape(github_href),
                 "docs_href": escape(docs_href),
+                "gallery_href": escape(gallery_href),
                 "toc": toc_html,
                 "source_title": escape(str(rendered["title"] or "")),
                 "content": content_html,
+                "year": year,
+                "copyright": escape(copyright_holder),
             },
         )
         write_text(output_path, doc_html)

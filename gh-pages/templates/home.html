@@ -13,10 +13,11 @@
     <header class="site-header">
       <a class="brand" href="index.html">
         <img class="brand__icon" src="{{ logo_href }}" alt="" aria-hidden="true">
-        <span class="brand__name">{{ site_name }}</span>
+        <span class="brand__name">{{ site_name }}</span>{{ status_badge }}
       </a>
       <nav class="top-nav" aria-label="Primary">
         <a href="{{ docs_href }}">Docs</a>
+        <a href="{{ gallery_href }}">Gallery</a>
         <a href="{{ github_href }}">GitHub</a>
       </nav>
     </header>
@@ -71,6 +72,10 @@
         </div>
       </section>
     </main>
+
+    <footer class="site-footer">
+      <p>© {{ year }} {{ copyright }} · <a href="{{ home_href }}">{{ site_name }}</a> is MIT-licensed.</p>
+    </footer>
   </div>
 </body>
 </html>

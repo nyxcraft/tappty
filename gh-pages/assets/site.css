@@ -10,6 +10,7 @@
   --accent: #5aff82;
   --accent-strong: #7dffa0;
   --gold: #ffb000;
+  --stamp: #ff4d4d;
   --code: #02100a;
   --shadow: 0 22px 60px rgba(0, 0, 0, .55);
   --content: 76rem;
@@ -110,6 +111,26 @@ pre {
 
 .brand__name {
   font-size: 1.08rem;
+}
+
+/* "beta" status stamp next to the brand, on every page (site.json -> "status") --
+   a tilted, red, inked rubber-stamp look: outlined box, no fill, slightly faded. */
+.brand__badge {
+  display: inline-block;
+  margin-left: .6rem;
+  padding: .08rem .34rem;
+  border: 2px solid var(--stamp);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--stamp);
+  font-size: .62rem;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  transform: rotate(-8deg);
+  transform-origin: center;
+  opacity: .85;
+  vertical-align: middle;
 }
 
 .top-nav {
@@ -521,4 +542,53 @@ pre {
   .flow__fan {
     grid-template-columns: repeat(3, 1fr);
   }
+}
+
+/* Breadcrumb trail (a band below the header on doc / page views) */
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .7rem clamp(1rem, 3vw, 2rem);
+  border-bottom: 1px solid var(--line);
+  font-size: .82rem;
+  color: var(--ink-soft);
+}
+
+.breadcrumbs a {
+  color: var(--ink-soft);
+  text-decoration: none;
+}
+
+.breadcrumbs a:hover {
+  color: var(--accent);
+}
+
+.breadcrumbs [aria-current="page"] {
+  color: var(--ink);
+}
+
+.breadcrumbs__sep {
+  color: var(--line);
+}
+
+/* Copyright footer (foot of the page-shell card, on every page) */
+.site-footer {
+  padding: 1.25rem clamp(1rem, 3vw, 2rem);
+  border-top: 1px solid var(--line);
+  color: var(--ink-soft);
+  font-size: .82rem;
+  text-align: center;
+}
+
+.site-footer p {
+  margin: 0;
+}
+
+.site-footer a {
+  color: var(--ink-soft);
+}
+
+.site-footer a:hover {
+  color: var(--accent);
 }
