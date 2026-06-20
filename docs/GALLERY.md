@@ -1,99 +1,81 @@
 # Gallery
 
-A few things tappty can do — each backed by a **runnable example** you can read and reproduce,
-not just a screenshot. Every demo here is in-process (no external program needed) and lives in
-[`demos/`](https://github.com/nyxbitco/tappty/tree/main/demos). Install the GUI and ANSI
-extras first:
+What tappty looks like. Each demo below is a runnable single-file app in
+[`demos/`](https://github.com/nyxbitco/tappty/tree/main/demos) — install the GUI and ANSI extras,
+run one, and watch:
 
 ```sh
 pip install 'tappty[gui,ansi]'
+python demos/color_chart.py        # or any demo below
 ```
 
-Each example also takes `--snapshot out.png` to render headless and write the PNG instead of
-opening a window — that's exactly how the images below were produced.
+The pictures here are rendered headless (`--snapshot out.png`); the movie is rendered straight to
+video with `tapterm --render`. Want to *write* code against the API instead of watch it? See the
+[coding examples](https://github.com/nyxbitco/tappty/tree/main/examples).
+
+## In motion
+
+`nyancat` hosted in tappty and rendered straight to an **animated GIF** — no terminal, no X11,
+just the grid drawn to frames and piped through ffmpeg. It loops, so it moves here *and* in
+GitHub's markdown view:
+
+![nyancat hosted in tappty, rendered to an animated GIF](media/nyancat.gif)
+
+```sh
+tapterm --play demos/recordings/nyancat.cast --render nyan.gif --zoom 0.5
+```
 
 ## Color & SGR attributes
 
-A tiny in-process program prints the full SGR palette — the 8 + 8 colors, backgrounds,
-**bold**, *italic*, underline, strike, blink, and reverse, plus a 256-color strip. Uncolored
-text stays phosphor green; color appears only where the program asks for it.
+The full SGR palette — the 8 + 8 colors, backgrounds, **bold**, *italic*, underline, strike,
+blink, and reverse, plus a 256-color strip. Uncolored text stays phosphor green; color appears
+only where the program asks for it.
 
 ![tappty rendering an ANSI color and SGR-attribute chart](media/color_chart.png)
 
-```sh
-python demos/color_chart.py
-```
-
-[View source on GitHub →](https://github.com/nyxbitco/tappty/blob/main/demos/color_chart.py)
-
-<!--include: demos/color_chart.py-->
+`python demos/color_chart.py` · [source →](https://github.com/nyxbitco/tappty/blob/main/demos/color_chart.py)
 
 ## Green-phosphor digital rain
 
-An animation drawn on the dependency-free VT52 `Terminal` — columns of glyphs falling in
-phosphor green. No color backend, no external program; just the green the terminal already
-renders. (It needs only `pip install 'tappty[gui]'`.)
+Columns of glyphs falling in phosphor green, drawn on the dependency-free VT52 `Terminal` — no
+color backend, no external program, just the green the terminal already renders. Here it is as an
+mp4 (rendered through the VT52 backend, since this demo speaks VT52, not ANSI):
 
-![tappty drawing a green digital-rain animation](media/matrix_rain.png)
+<video autoplay loop muted playsinline width="440" style="max-width:100%;border-radius:6px">
+  <source src="media/matrix.mp4" type="video/mp4">
+  <img src="media/matrix_rain.png" alt="tappty drawing a green digital-rain animation">
+</video>
 
-```sh
-python demos/matrix_rain.py
-```
-
-[View source on GitHub →](https://github.com/nyxbitco/tappty/blob/main/demos/matrix_rain.py)
-
-<!--include: demos/matrix_rain.py-->
+`python demos/matrix_rain.py` · [source →](https://github.com/nyxbitco/tappty/blob/main/demos/matrix_rain.py)
 
 ## Mission control — the compositor
 
-Four independent sessions tiled in one window by the compositor: the color chart, the digital
-rain, a live colored log tail, and a clock with sweeping bars. Each tile is its own hosted
-program, and each shows the `[F2: take control]` affordance — the talking stick that lets a
-human or a driver take over a tile.
+Four independent sessions tiled in one window: the color chart, the digital rain, a live colored
+log tail, and a clock with sweeping bars. Each tile is its own hosted program and shows the
+`[F2: take control]` affordance — the talking stick that lets a human or a driver take over.
 
 ![tappty compositor tiling four live terminal sessions in one window](media/mission_control.png)
 
-```sh
-python demos/mission_control.py
-```
-
-[View source on GitHub →](https://github.com/nyxbitco/tappty/blob/main/demos/mission_control.py)
-
-<!--include: demos/mission_control.py-->
+`python demos/mission_control.py` · [source →](https://github.com/nyxbitco/tappty/blob/main/demos/mission_control.py)
 
 ## Hosting real terminal programs
 
-tappty hosts any ANSI program faithfully — 256/truecolor SGR, block-glyph art, full-screen
-TUIs. The two below are real programs (`nyancat`, `cbonsai`) **recorded once and replayed here**:
-the screenshots are produced by replaying bundled `.cast` files, so they reproduce with none of
-those programs installed.
-
-### nyancat
-
-![nyancat hosted in tappty](media/nyancat.png)
-
-```sh
-tapterm -- nyancat                                # host it live (needs nyancat installed)
-tapterm --play demos/recordings/nyancat.cast   # replay the bundled recording (zero deps)
-```
-
-### cbonsai
+tappty hosts any ANSI program faithfully — 256/truecolor SGR, block-glyph art, full-screen TUIs.
+The shot below is `cbonsai` **recorded once and replayed here**, so it reproduces with nothing
+installed (the movie above is `nyancat`, the same way):
 
 ![a cbonsai tree hosted in tappty](media/cbonsai.png)
 
 ```sh
-tapterm -- cbonsai -li
-tapterm --play demos/recordings/cbonsai.cast
+tapterm --play demos/recordings/cbonsai.cast   # replay the bundled recording (zero deps)
+tapterm -- cbonsai -li                         # or host it live (needs cbonsai installed)
 ```
 
-**Record your own.** `--record` captures the live output stream as it runs; replay it anywhere
-with `--play`, no program required:
+**Record your own.** `--record` captures the live output stream with timing; replay it anywhere
+with `--play`, or turn it into a video with `--render`:
 
 ```sh
-tapterm --record cmatrix.cast -- cmatrix     # record a live session
-tapterm --play cmatrix.cast                  # replay it later (zero deps)
+tapterm --record cmatrix.cast -- cmatrix       # record a live session
+tapterm --play cmatrix.cast                    # replay it later (zero deps)
+tapterm --play cmatrix.cast --render out.mp4   # …or render it to a movie
 ```
-
-[`chafa`](https://hpjansson.org/chafa/) turns images (and video frames) into truecolor ANSI you
-can host the same way — `tapterm -- chafa picture.png`. And tappty's own
-[digital rain](#green-phosphor-digital-rain) covers the Matrix effect with no dependencies at all.

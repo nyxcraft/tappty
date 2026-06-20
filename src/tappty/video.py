@@ -68,7 +68,7 @@ class VideoWriter:
 
 
 def render_video(recording, out_path, fps=30, font_size=18, font_path=None, zoom=1.0,
-                 speed=1.0, tail=1.0, max_seconds=None, crop=None):
+                 speed=1.0, tail=1.0, max_seconds=None, crop=None, terminal=None):
     """Render `recording` (a .cast/.ttyrec/.ans/.3a path) to `out_path` (a video file).
 
     Options:
@@ -82,8 +82,12 @@ def render_video(recording, out_path, fps=30, font_size=18, font_path=None, zoom
       max_seconds  cap the duration (required for a never-ending source).
       crop         `(col, row, cols, rows)` -- render only that region of the grid (area of
                    interest) instead of the whole screen.
+      terminal     terminal backend factory `(cols, rows) -> backend`; defaults to PyteTerminal
+                   (the ANSI/VT100+ backend recordings expect). Pass `tappty.Terminal` to render
+                   a VT52 recording drawn on the dependency-free grid (e.g. the digital-rain demo).
 
-    Returns `out_path`."""
+    The output format follows `out_path`'s extension: `.mp4`/`.webm`/`.mov` (H.264/VP9, yuv420p)
+    or `.gif` (an animated, infinitely-looping GIF via a two-pass palette). Returns `out_path`."""
     os.environ.setdefault("SDL_VIDEODRIVER", "dummy")  # rasterize off-screen
     os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
     os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
@@ -91,12 +95,14 @@ def render_video(recording, out_path, fps=30, font_size=18, font_path=None, zoom
     import pygame
 
     from tappty import compositor
-    from tappty.pyte_terminal import PyteTerminal
     from tappty.session import Session
     from tappty.source import replay_source
 
     src = replay_source(recording, speed=1.0, loop=False)  # we do the timing ourselves
-    term = PyteTerminal(src.width, src.height)
+    if terminal is None:
+        from tappty.pyte_terminal import PyteTerminal
+        terminal = PyteTerminal
+    term = terminal(src.width, src.height)
     sess = Session(term)  # used only for its snapshot() of the grid
     events = list(src._events())  # [(abs_seconds, data), ...]
     wire = getattr(src, "encoding", None)  # byte sources (ttyrec) decode; text sources don't

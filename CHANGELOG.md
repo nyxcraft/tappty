@@ -62,9 +62,12 @@ The `0.1.0` line — the generic toolkit and the `tapterm` command. Built across
 - **Render to video.** `render_video()` / `tapterm --play X --render out.mp4` renders any
   recording (`.cast`/`.ttyrec`/`.ans`/`.3a`) to a real video file (`.mp4`/`.webm`/`.gif`/…) via
   ffmpeg — deterministic and faster-than-real-time, with controls for size (`--font-size`), zoom,
-  font, speed, and a crop (`--crop`, an area of interest). `--render` also takes a **live
-  command** (`tapterm --render out.mp4 --seconds 5 -- cmatrix`) — hosted, recorded, and rendered
-  in one step. ffmpeg is found on the system or bundled by the `video` extra (imageio-ffmpeg).
+  font, speed, and a crop (`--crop`, an area of interest). `.gif` output is a proper animated,
+  infinitely-looping GIF (two-pass palette); `render_video()` also takes an optional `terminal=`
+  backend, so a VT52 recording (e.g. the dependency-free digital-rain demo) renders too, not just
+  ANSI ones. `--render` also takes a **live command** (`tapterm --render out.mp4 --seconds 5 --
+  cmatrix`) — hosted, recorded, and rendered in one step. ffmpeg is found on the system or bundled
+  by the `video` extra (imageio-ffmpeg).
 - **Session.** Observe taps (`on_stream`/`on_frame`/`on_event`), control
   (`send_input`/`feed_key`), talking-stick arbitration (one driver at a time), and the
   bytes-on-the-wire / characters-on-the-glass decode.

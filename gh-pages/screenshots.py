@@ -9,9 +9,12 @@ docs/media/<name>.png (which are committed; the Pages build only copies them):
     shots of real programs (nyancat, cbonsai) regenerate from the committed casts, with the
     programs themselves NOT required.
 
+It also renders the gallery's "in motion" clip (docs/media/nyancat.mp4) straight from a cast via
+`tapterm --render` (needs the `video` extra or a system ffmpeg).
+
 Each runs in its own subprocess; the byproduct text dump beside the PNG is removed.
 
-    pip install 'tappty[gui,ansi]'
+    pip install 'tappty[gui,ansi,video]'
     python gh-pages/screenshots.py
 """
 from __future__ import annotations
@@ -39,11 +42,47 @@ CAST_SHOTS = [
     ("cbonsai.cast", "cbonsai"),
 ]
 
+# (recording, movie file, fps, zoom) -- ANSI recordings rendered to a clip via the CLI. nyancat
+# becomes an animated GIF so the gallery's "in motion" clip moves on the docs site AND on GitHub
+# (which renders <img> but strips <video>).
+MOVIES = [
+    ("nyancat.cast", "nyancat.gif", 12, 0.5),
+]
+
 
 def _drop_byproduct(stem):
     byproduct = MEDIA / stem  # pygame_ui writes a text screen-dump beside the PNG
     if byproduct.exists():
         byproduct.unlink()
+
+
+def _render_matrix_movie(out="matrix.mp4", seconds=5.0, fps=15, zoom=0.5):
+    """The digital-rain demo speaks VT52 on the dependency-free Terminal, which pyte (the default
+    render backend) can't replay. So record the live demo to a throwaway cast, then render it
+    through the VT52 backend (`terminal=Terminal`). Each run is a fresh, random rain."""
+    import sys
+    import tempfile
+    import time
+
+    from tappty import Recorder, Session, Terminal, render_video
+    from tappty.source import EngineSource
+
+    sys.path.insert(0, str(ROOT / "demos"))
+    from matrix_rain import runner
+
+    fd, tmp = tempfile.mkstemp(suffix=".cast")
+    os.close(fd)
+    try:
+        sess = Session(Terminal(80, 24), source=EngineSource(runner))
+        rec = Recorder(sess, tmp)
+        rec.start()
+        sess.run_in_thread()
+        time.sleep(seconds)
+        rec.close()  # stop recording before stop()'s join, so it doesn't over-record
+        sess.stop()
+        render_video(tmp, str(MEDIA / out), fps=fps, zoom=zoom, tail=0.3, terminal=Terminal)
+    finally:
+        os.remove(tmp)
 
 
 def main() -> int:
@@ -65,6 +104,16 @@ def main() -> int:
             check=True, env=ENV,
         )
         _drop_byproduct(stem)
+    for cast, movie, fps, zoom in MOVIES:
+        print(f"rendering {cast} -> docs/media/{movie}")
+        subprocess.run(
+            [sys.executable, "-m", "tappty.cli", "--play",
+             str(ROOT / "demos" / "recordings" / cast),
+             "--render", str(MEDIA / movie), "--fps", str(fps), "--zoom", str(zoom)],
+            check=True, env=ENV,
+        )
+    print("rendering digital-rain demo -> docs/media/matrix.mp4")
+    _render_matrix_movie()
     print(f"done -> {MEDIA.relative_to(ROOT)}/")
     return 0
 
