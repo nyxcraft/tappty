@@ -117,7 +117,10 @@ The `0.1.0` line — the generic toolkit and the `tapterm` command. Built across
 
 ---
 
-The feature surface is complete; packaging is validated (a clean `python -m build` sdist + wheel,
-`twine check` passes, a bare-venv install works). The remaining work is the PyPI upload itself
-and verifying Windows on a real box ([docs/DESIGN.md](docs/DESIGN.md) §11). See [docs/](docs/) for
-the design, the API reference, and the `tapterm` guide.
+The feature surface is complete; packaging is validated. This repo publishes **two**
+distributions, both built and `twine check`-clean via `packaging/build-dists.sh`: **`tappty`**
+(the library + the `tapterm` command) and **`tapterm`** (a thin alias that ships no code and
+just depends on `tappty`, so `pip install tapterm` resolves to it). A bare-venv install of each
+works. The remaining work is the PyPI upload itself (`twine upload dist/*`) and verifying Windows
+on a real box ([docs/DESIGN.md](docs/DESIGN.md) §11). See [docs/](docs/) for the design, the API
+reference, and the `tapterm` guide.

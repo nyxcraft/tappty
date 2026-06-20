@@ -25,6 +25,9 @@ pip install 'tappty[win]'   # Windows: add the ConPTY source (pywinpty)
 pip install -e '.[gui,ansi,dev]'
 ```
 
+`pip install tapterm` works too — it's a convenience alias that just pulls in `tappty` (which
+provides the `tapterm` command). The library, the extras, and the docs all live under `tappty`.
+
 ## The `tapterm` program
 
 ```sh
