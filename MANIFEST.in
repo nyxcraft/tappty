@@ -2,4 +2,6 @@
 # (pyproject.toml, README.md, and the LICENSE are included automatically).
 include LICENSE CHANGELOG.md
 recursive-include docs *.md
+recursive-include docs/media *.png
+recursive-include examples *.py *.md
 recursive-include tests *.py

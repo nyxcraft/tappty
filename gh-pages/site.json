@@ -26,6 +26,14 @@
       "featured": true
     },
     {
+      "slug": "gallery",
+      "title": "Gallery",
+      "source": "docs/gallery.md",
+      "summary": "See it in action — screenshots of color, the digital-rain animation, and the compositor, each with runnable source.",
+      "template": "page",
+      "featured": true
+    },
+    {
       "slug": "changelog",
       "title": "Changelog",
       "source": "CHANGELOG.md",

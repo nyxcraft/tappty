@@ -132,6 +132,40 @@ def rewrite_md_links(html: str, current_output: Path, output_dir: Path,
     return re.sub(r'href="([^"]+\.md(?:#[^"]*)?)"', replace, html)
 
 
+INCLUDE_LANGS = {".py": "python", ".sh": "bash", ".json": "json", ".toml": "toml",
+                 ".md": "markdown", ".js": "javascript", ".css": "css", ".html": "html"}
+
+
+def expand_includes(text: str) -> str:
+    """Expand `<!--include: path-->` (path relative to the repo root) into a fenced code block
+    of that file's current contents -- so demo source lives in one runnable place (examples/)
+    and is shown on the page without copy-paste drift. Runs before Markdown rendering."""
+    def replace(match: re.Match[str]) -> str:
+        rel = match.group(1).strip()
+        try:
+            body = (ROOT / rel).read_text(encoding="utf-8").rstrip("\n")
+        except OSError:
+            return match.group(0)  # leave the directive untouched if the file is missing
+        lang = INCLUDE_LANGS.get(Path(rel).suffix, "")
+        return f"```{lang}\n{body}\n```"
+
+    return re.sub(r"<!--\s*include:\s*([^>]+?)\s*-->", replace, text)
+
+
+def rewrite_img_src(html: str, current_output: Path, output_dir: Path) -> str:
+    """Rewrite content `<img src="...">` -- authored relative to docs/ (e.g. `media/foo.png`,
+    which also resolves on GitHub) -- to a path relative to the page being written. The
+    `docs/media/` tree is copied to `<site>/media/` at build time."""
+    def replace(match: re.Match[str]) -> str:
+        src = match.group(1)
+        if "://" in src or src.startswith(("/", "data:")):
+            return match.group(0)
+        norm = src[2:] if src.startswith("./") else src
+        return f'src="{escape(relative_href(current_output, output_dir / norm))}"'
+
+    return re.sub(r'src="([^"]+)"', replace, html)
+
+
 def build_toc(entries: list[dict[str, object]]) -> str:
     if not entries:
         return ""
@@ -157,6 +191,7 @@ def main() -> int:
 
     ensure_clean_dir(output_dir)
     copy_tree(SOURCE_DIR / "assets", output_dir / "assets")
+    copy_tree(ROOT / "docs" / "media", output_dir / "media")  # screenshots/gifs for the gallery
     write_text(output_dir / ".nojekyll", "")
 
     docs_pages: list[dict[str, str]] = []
@@ -224,11 +259,12 @@ def main() -> int:
 
     for page in docs_pages:
         source_path = ROOT / page["source"]
-        rendered = renderer.render(source_path.read_text(encoding="utf-8"))
+        rendered = renderer.render(expand_includes(source_path.read_text(encoding="utf-8")))
         output_path = output_dir / page["output"]
         content_html = rewrite_md_links(
             str(rendered["html"]), output_path, output_dir, basename_to_output
         )
+        content_html = rewrite_img_src(content_html, output_path, output_dir)
         toc_html = build_toc(rendered["toc"])  # type: ignore[arg-type]
         asset_href = relative_href(output_path, output_dir / "assets" / "site.css")
         logo_href = relative_href(output_path, output_dir / HEADER_LOGO)
