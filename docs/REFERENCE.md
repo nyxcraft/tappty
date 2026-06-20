@@ -139,7 +139,7 @@ renderers work with either:
 | `snapshot()` | `str` | whole screen as one `"\n"`-joined string |
 | `rows_text()` | `list[str]` | one string per row |
 | `view_rows(offset=0)` | `list[str]` | `rows` lines scrolled back `offset` into history (0 = live) |
-| `cells(offset=0)` | `list[list[style.Cell]]` | same window, styled — each `Cell(char, fg, bg, bold, reverse)` |
+| `cells(offset=0)` | `list[list[style.Cell]]` | same window, styled — `Cell(char, fg, bg, bold, italic, underline, strike, blink, reverse)` |
 | `max_scroll()` | `int` | how many scrolled-off lines are available |
 | `clear()` | — | blank the grid, home the cursor |
 
@@ -159,20 +159,22 @@ edits and keeps scrollback. Use it for programs that emit modern ANSI (`tapterm 
 Importing `pyte` is deferred to the constructor, so this raises `ModuleNotFoundError` if the
 `ansi` extra isn't installed. Same `ValueError` on bad dimensions.
 
-> Note: SGR attributes (color/bold/inverse) are exposed via `cells()` and drawn by **all three
-> renderers** — the GUI backends (`pygame_ui`, `arcade_ui`) in RGB and `curses_ui` via color
-> pairs; the `cells()` cell carries pyte's `fg`/`bg`/`bold`/`reverse`. Only the bus
-> (`snapshot()`/`FRAME`) remains text-only. See DESIGN §9.
+> Note: SGR attributes — color, **bold**, *italic*, underline, strikethrough, blink, inverse — are exposed via
+> `cells()` and drawn by **all four renderers** (the GUI backends via the font + bg fills,
+> `curses_ui` via `A_*` attributes + color pairs); the `cells()` cell carries pyte's
+> `fg`/`bg`/`bold`/`italic`/`underline`/`strike`/`blink`/`reverse`. SGR faint/rapid-blink/
+> conceal aren't modelled by pyte (curses also lacks strikethrough), and
+> the bus (`snapshot()`/`FRAME`) remains text-only. See DESIGN §9.
 
 ### `style` — cell color helpers
 
-`style.Cell(char, fg, bg, bold, reverse)` is what `cells()` returns; `fg`/`bg` are pyte color
+`style.Cell(char, fg, bg, bold, italic, underline, strike, blink, reverse)` is what `cells()` returns; `fg`/`bg` are pyte color
 strings (`"default"`, `"red"`, `"brightred"`, `"brown"` = yellow, or a 6-hex string from
 256-color/truecolor). Helpers (no dependencies): **`rgb(color, bold=False)`** → an `(r,g,b)` or
 `None` for `"default"`; **`resolve(cell, fg_default, bg_default)`** → a cell's concrete
 `(fg, bg)` with `"default"` filled in and `reverse` applied; **`runs(row, …)`** → maximal
-same-color runs `(x, text, fg, bg)` for a renderer that draws a run as one string. `style.FG` /
-`style.BG` are the phosphor defaults. Use these to write a color-aware renderer of your own.
+same-style runs `(x, text, fg, bg, bold, italic, underline, strike, blink)` for a renderer that draws a run at
+once. `style.FG` / `style.BG` are the phosphor defaults. Use these to write your own renderer.
 
 ---
 

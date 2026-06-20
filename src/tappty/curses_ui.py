@@ -158,9 +158,16 @@ def run(session, runner, title="tapterm", refresh_ms=50):
 
         def cell_attr(cell):
             """The curses attribute for one styled cell: its color pair (lazily allocated,
-            capped at the terminal's COLOR_PAIRS) plus A_BOLD / A_REVERSE as needed."""
-            if not use_color:
-                return 0  # colorless terminal: the terminal's own default foreground
+            capped at COLOR_PAIRS) plus A_BOLD / A_REVERSE / A_UNDERLINE / A_ITALIC as needed."""
+            a = 0
+            if cell.underline:
+                a |= curses.A_UNDERLINE
+            if cell.italic:
+                a |= getattr(curses, "A_ITALIC", 0)  # A_ITALIC is ncurses-6 / not everywhere
+            if cell.blink:
+                a |= curses.A_BLINK  # curses has no strikethrough attr, so strike is dropped here
+            if not use_color:  # colorless terminal: attributes only, default foreground
+                return a | (curses.A_BOLD if cell.bold else 0)
             fi, bi, want_bold, rev = _cell_style(cell, colors)
             bg = default_bg if bi is None else bi
             key = (fi, bg)
@@ -175,7 +182,7 @@ def run(session, runner, title="tapterm", refresh_ms=50):
                         pair = 0
                 else:
                     pair = 0  # out of pairs -> terminal default
-            a = curses.color_pair(pair)
+            a |= curses.color_pair(pair)
             if want_bold:
                 a |= curses.A_BOLD
             if rev:

@@ -36,13 +36,13 @@ def test_cell_style_default_is_phosphor_green():
 
 
 def test_cell_style_bright_uses_high_index_on_16_color_else_bold():
-    red_bold = style.Cell("x", "red", "default", True, False)
+    red_bold = style.default_cell("x")._replace(fg="red", bold=True)  # bold red
     assert _cell_style(red_bold, colors=256) == (9, None, False, False)  # red+8 = bright red
     assert _cell_style(red_bold, colors=8) == (1, None, True, False)  # 8-color -> A_BOLD instead
 
 
 def test_cell_style_background_and_reverse():
-    c = style.Cell("x", "default", "blue", False, True)
+    c = style.default_cell("x")._replace(bg="blue", reverse=True)  # reverse on blue bg
     assert _cell_style(c, colors=256) == (2, 4, False, True)  # green on blue, reverse flagged
 
 

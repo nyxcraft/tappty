@@ -30,6 +30,17 @@ def test_cells_carry_sgr_color_bold_and_reverse():
     assert all(c.fg == "default" and c.bg == "default" for c in plain.cells()[0])
 
 
+def test_cells_carry_italic_underline_strike_blink():
+    """cells() exposes italic (SGR 3), underline (4), strikethrough (9), blink (5)."""
+    t = PyteTerminal(20, 1)
+    t.write("\x1b[3mI\x1b[0m\x1b[4mU\x1b[0m\x1b[9mS\x1b[0m\x1b[5mB\x1b[0m")
+    row = t.cells()[0]
+    assert row[0].char == "I" and row[0].italic and not row[0].underline
+    assert row[1].char == "U" and row[1].underline
+    assert row[2].char == "S" and row[2].strike and not row[2].blink
+    assert row[3].char == "B" and row[3].blink and not row[3].strike
+
+
 def test_cells_include_scrollback_with_color():
     """cells(offset) windows into history like view_rows, keeping each line's color."""
     t = PyteTerminal(20, 2)

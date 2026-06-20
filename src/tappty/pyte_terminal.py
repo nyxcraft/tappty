@@ -95,10 +95,14 @@ class PyteTerminal:
         carrying each pyte Char's fg/bg/bold/reverse."""
         from tappty.style import Cell
 
-        return [
-            Cell(line[x].data or " ", line[x].fg, line[x].bg, line[x].bold, line[x].reverse)
-            for x in range(self.cols)
-        ]
+        out = []
+        for x in range(self.cols):
+            c = line[x]
+            out.append(
+                Cell(c.data or " ", c.fg, c.bg, c.bold, c.italics, c.underscore,
+                     c.strikethrough, c.blink, c.reverse)
+            )
+        return out
 
     def cells(self, offset=0):
         """`rows` rows of styled `style.Cell`s scrolled back `offset` into the history

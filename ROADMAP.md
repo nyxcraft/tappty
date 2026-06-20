@@ -6,7 +6,7 @@ completed work is in [CHANGELOG.md](CHANGELOG.md); the architecture is in
 
 ## Status
 
-The generic toolkit and the `tapterm` command exist and are green: **116 tests**, a full-ANSI
+The generic toolkit and the `tapterm` command exist and are green: **118 tests**, a full-ANSI
 backend (with scrollback, SGR color, and raw-key input for full TUIs), `.cast` replay, non-pty
 and Windows sources, a Unix + TCP bus, and four renderers — the curses CUI, two GUI backends
 (pygame and arcade/OpenGL), and a browser renderer over a WebSocket — plus ruff lint/format.
@@ -33,9 +33,12 @@ but unverified on real Windows.
    - CUI on Windows: `windows-curses` is now bundled in the `win` extra (the stdlib ships no
      `curses` there), and `curses_ui` is already portable — but, like `ConPtySource`, it's
      unverified on real Windows; confirm `tapterm --cui` renders there.
-3. **Possible features:** the remaining deliberate gaps in [docs/DESIGN.md](docs/DESIGN.md) §9 if
-   they ever bite — `wcwidth`-style cell widths for CJK/emoji, and color over the bus (the
-   browser already shows color; the in-process bus `FRAME`/`snapshot()` is still text). *Done:
-   SGR color across all renderers (`cells()` + the `style` palette); raw-mode TUI input (`--raw`
-   / `send_key` + the `keys` table) so vim/htop work; the **web renderer** (`web_ui`, `--web`,
-   the `web` extra — browser over a WebSocket, built on `websockets`).*
+3. **Possible features:** the remaining deliberate gaps in [docs/DESIGN.md](docs/DESIGN.md) §9
+   if they ever bite — `wcwidth`-style cell widths for CJK/emoji (wide glyphs still take one
+   cell), and color over the bus (the local renderers show color, but the bus
+   `FRAME`/`snapshot()` is still plain text, so a remote `BusBacking` panel is monochrome).
+   *Out of reach:* SGR faint/rapid-blink/conceal — pyte doesn't model them.
+   *Done:* SGR color **and** the bold/italic/underline/strikethrough/blink/reverse attributes
+   across all four renderers (`cells()` + the `style` palette); raw-mode TUI input (`--raw` /
+   `send_key` + the `keys` table) so vim/htop work; the **web renderer** (`web_ui`, `--web`, the
+   `web` extra — a browser over a WebSocket, built on `websockets`).

@@ -17,7 +17,7 @@ from collections import namedtuple
 FG = (90, 255, 130)
 BG = (6, 20, 8)
 
-Cell = namedtuple("Cell", "char fg bg bold reverse")
+Cell = namedtuple("Cell", "char fg bg bold italic underline strike blink reverse")
 
 # The 8 ANSI colors (xterm-ish RGB) and their bright variants. pyte names yellow "brown".
 # Bold brightens a base color, as most terminals do.
@@ -44,8 +44,8 @@ _BRIGHT = {
 
 
 def default_cell(char):
-    """A Cell with no color -- what the VT52 `Terminal` reports for every cell."""
-    return Cell(char, "default", "default", False, False)
+    """A Cell with no color or attributes -- what the VT52 `Terminal` reports for every cell."""
+    return Cell(char, "default", "default", False, False, False, False, False, False)
 
 
 def rgb(color, bold=False):
@@ -77,19 +77,21 @@ def resolve(cell, fg_default=FG, bg_default=BG):
 
 
 def runs(row, fg_default=FG, bg_default=BG):
-    """Group a row of Cells into maximal runs that share one resolved (fg, bg), for a renderer
-    that draws a run of same-styled cells as a single string. Yields (x, text, fg_rgb, bg_rgb)."""
+    """Group a row of Cells into maximal runs that share one resolved style, for a renderer that
+    draws a run of same-styled cells at once. Yields (x, text, fg_rgb, bg_rgb, bold, italic,
+    underline, strike, blink) -- a run breaks when any of those style bits changes."""
     out = []
     start, buf, key = 0, [], None
     for x, cell in enumerate(row):
         fg, bg = resolve(cell, fg_default, bg_default)
-        if key is None or (fg, bg) == key:
+        k = (fg, bg, cell.bold, cell.italic, cell.underline, cell.strike, cell.blink)
+        if key is None or k == key:
             if key is None:
-                start, key = x, (fg, bg)
+                start, key = x, k
             buf.append(cell.char)
         else:
-            out.append((start, "".join(buf), key[0], key[1]))
-            start, buf, key = x, [cell.char], (fg, bg)
+            out.append((start, "".join(buf)) + key)
+            start, buf, key = x, [cell.char], k
     if buf:
-        out.append((start, "".join(buf), key[0], key[1]))
+        out.append((start, "".join(buf)) + key)
     return out

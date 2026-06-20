@@ -39,12 +39,13 @@ The `0.1.0` line — the generic toolkit and the `tapterm` command. Built across
   dependencies; `PyteTerminal` — a drop-in full-ANSI/VT100+ backend wrapping `pyte` (the
   `ansi` extra), with scrollback via `HistoryScreen`. Both expose `cells(offset)` — the styled
   parallel to `view_rows()` — carrying per-cell SGR attributes (`style.Cell`).
-- **SGR color.** All three renderers draw color: `cells()` + the dependency-free `style`
-  module (the ANSI palette, `rgb`/`resolve`/`runs`) map a program's foreground/background, bold
-  (→bright), and reverse onto the screen, with `"default"` resolving to phosphor green — so
-  `--ansi` shows real color while uncolored output stays green. The GUI backends draw RGB; the
-  curses CUI uses color pairs where the terminal supports it (256/truecolor approximated to the
-  nearest ANSI-16). Only the bus (`snapshot()`/`FRAME`) stays text-only.
+- **SGR color + attributes.** All four renderers draw the cell's full style: `cells()` + the
+  dependency-free `style` module (the ANSI palette, `rgb`/`resolve`/`runs`) carry
+  foreground/background, **bold**, *italic*, underline, strikethrough, blink, and reverse. The GUI backends
+  (`pygame_ui`/`arcade_ui`/`web_ui`) render color in RGB, bold/italic via the font, and underline/strikethrough rules + a blink phase; `curses_ui` uses color pairs + `A_BOLD`/`A_ITALIC`/`A_UNDERLINE`/`A_BLINK`/`A_REVERSE`
+  (256/truecolor approximated to the nearest ANSI-16). `"default"` resolves to phosphor green so
+  uncolored output stays green; bold also brightens a named color. SGR faint/rapid-blink/conceal
+  aren't modelled by pyte (and curses has no strikethrough), and the bus stays text-only.
 - **Sources.** `PtySource` (POSIX pty), `EngineSource` (in-process `runner(emit, readline)`),
   `CastSource` (asciinema `.cast` replay — v1/v2, original timing, `speed`/`loop`),
   `PipeSource` (plain pipes, any OS), and `ConPtySource` (Windows ConPTY via pywinpty, the
@@ -56,7 +57,7 @@ The `0.1.0` line — the generic toolkit and the `tapterm` command. Built across
 - **Full-screen TUI input (`--raw`).** A raw input mode (`Session.raw_keys` / `send_key`) sends
   every keystroke straight to the program — no local echo or line buffer — translating special
   keys to VT sequences via the `tappty.keys` table (arrows, Home/End, PageUp/Down, F1–F12,
-  Ctrl-combos). All three renderers honor it (the CUI also switches to `curses.raw()`), so
+  Ctrl-combos). Every renderer honors it (the CUI also switches to `curses.raw()`), so
   `tapterm --ansi --raw -- vim` drives a real TUI. The default stays line-oriented.
 - **Bus.** `BusServer`/`BusClient` carry the same observe/control contract over a Unix-domain
   socket *or* TCP, with a synchronous `CMD` capture primitive (send a line, get its output to
@@ -74,7 +75,7 @@ The `0.1.0` line — the generic toolkit and the `tapterm` command. Built across
   `--exit-when-done`. Headless prints the final screen and exits with the child's own status.
 - **Packaging & tooling.** `pyproject.toml` (extras `gui` / `arcade` / `web` / `ansi` / `win` /
   `dev`; `win` bundles pywinpty *and* windows-curses so `tappty[win]` gives both the ConPTY host
-  and the curses CUI on Windows), MIT license, `src/` layout, a pytest suite (116 tests), ruff
+  and the curses CUI on Windows), MIT license, `src/` layout, a pytest suite (118 tests), ruff
   lint + format (line length 99), and a GitHub Actions CI matrix on Python 3.9–3.13 (pyte +
   pygame-ce so the ANSI and headless-GUI tests run).
 

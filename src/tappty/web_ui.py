@@ -46,9 +46,14 @@ function draw(){
   ctx.font=FONT; ctx.textBaseline="top";
   if(rows){ for(let r=0;r<rows.length;r++){ for(const run of rows[r]){
     const x=run[0], text=run[1], fg=run[2], bg=run[3];
+    const bold=run[4], italic=run[5], underline=run[6], strike=run[7], blinkAttr=run[8];
     if(bg!==BG){ ctx.fillStyle="#"+bg; ctx.fillRect(x*CW, r*CH, text.length*CW, CH); }
+    if(blinkAttr && !blink) continue;   // blinking run is hidden this phase (bg still shows)
+    ctx.font=(italic?"italic ":"")+(bold?"bold ":"")+FONT;
     ctx.fillStyle="#"+fg;
     for(let i=0;i<text.length;i++){ ctx.fillText(text[i], (x+i)*CW, r*CH+2); }
+    if(underline){ ctx.fillRect(x*CW, r*CH+CH-2, text.length*CW, 1); }
+    if(strike){ ctx.fillRect(x*CW, r*CH+Math.floor(CH/2), text.length*CW, 1); }
   }}}
   if(blink){ ctx.strokeStyle="#"+FG; ctx.strokeRect(cx*CW+0.5, cy*CH+0.5, CW-1, CH-1); }
 }
@@ -112,12 +117,12 @@ def _frame_json(session):
 
     rows = []
     for row in session.term.cells():
-        rows.append(
-            [
-                [x, text, _hex(fg), _hex(bg)]
-                for x, text, fg, bg in style.runs(row, style.FG, style.BG)
-            ]
-        )
+        out = []
+        for run in style.runs(row, style.FG, style.BG):
+            x, text, fg, bg, bold, italic, underline, strike, blink = run
+            out.append([x, text, _hex(fg), _hex(bg),
+                        int(bold), int(italic), int(underline), int(strike), int(blink)])
+        rows.append(out)
     return json.dumps({"t": "frame", "rows": rows, "cx": session.term.cx, "cy": session.term.cy})
 
 

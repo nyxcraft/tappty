@@ -40,16 +40,23 @@ def run(
     # glyph pre-rendered once and blitted at its exact cell (no whole-row drift).
     cw = font.size("M")[0]
     chh = font.get_linesize()
-    glyphs = {}  # lazily-rendered cache, keyed by (char, fg) so colored cells reuse glyphs
+    glyphs = {}  # lazily-rendered cache, keyed by (char, fg, bold, italic, underline)
 
-    def glyph(ch, fg):
+    has_strike = hasattr(font, "set_strikethrough")  # pygame-ce >= 2.1.3
+
+    def glyph(ch, fg, bold, italic, underline, strike):
         if ch == " " or not ch.isprintable():
             return None  # space + control chars: nothing to draw
-        key = (ch, fg)
+        key = (ch, fg, bold, italic, underline, strike)
         g = glyphs.get(key)
         if g is None:
-            if len(glyphs) > 4000:  # bound the cache across many colors/glyphs
+            if len(glyphs) > 4000:  # bound the cache across many colors/glyphs/attrs
                 glyphs.clear()
+            font.set_bold(bold)
+            font.set_italic(italic)
+            font.set_underline(underline)
+            if has_strike:
+                font.set_strikethrough(strike)
             g = font.render(ch, True, fg)
             glyphs[key] = g
         return g
@@ -109,13 +116,16 @@ def run(
                     scroll = 0
                     session.feed_key(e.unicode)
         screen.fill(BG)
+        blink_on = (frame // max(1, fps // 2)) % 2 == 0  # blink toggles ~1 Hz
         for y, row in enumerate(session.term.cells(scroll)):
             base_y = y * chh
             for x, cell in enumerate(row):
                 fg, bg = style.resolve(cell, FG, BG)  # "default" -> phosphor; reverse swaps
                 if bg != BG:  # fill only non-default backgrounds (screen is already BG)
                     pygame.draw.rect(screen, bg, (x * cw, base_y, cw, chh))
-                g = glyph(cell.char, fg)  # render-on-demand; space/ctrl -> None
+                if cell.blink and not blink_on:  # blinking cell on its hidden phase
+                    continue
+                g = glyph(cell.char, fg, cell.bold, cell.italic, cell.underline, cell.strike)
                 if g is not None:
                     screen.blit(g, (x * cw, base_y))
         if scroll == 0:

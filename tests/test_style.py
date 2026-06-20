@@ -28,20 +28,30 @@ def test_hex_colors_from_256_and_truecolor():
 def test_resolve_default_to_phosphor_then_reverse_swaps():
     plain = style.default_cell("x")
     assert style.resolve(plain) == (style.FG, style.BG)
-    rev = style.Cell("x", "default", "default", False, True)
+    rev = plain._replace(reverse=True)
     assert style.resolve(rev) == (style.BG, style.FG)  # inverse video
     assert style.resolve(plain, (1, 2, 3), (4, 5, 6)) == ((1, 2, 3), (4, 5, 6))  # custom defaults
 
 
+def _c(char, fg="default", bg="default", bold=False, italic=False, underline=False,
+       strike=False, blink=False, reverse=False):
+    return style.Cell(char, fg, bg, bold, italic, underline, strike, blink, reverse)
+
+
 def test_runs_group_consecutive_same_style():
-    row = [
-        style.Cell("R", "red", "default", False, False),
-        style.Cell("E", "red", "default", False, False),
-        style.Cell("D", "red", "default", False, False),
-        style.default_cell(" "),
-        style.Cell("G", "green", "default", False, False),
-    ]
+    row = [_c("R", "red"), _c("E", "red"), _c("D", "red"), _c(" "), _c("G", "green")]
+    runs = style.runs(row)  # (x, text, fg, bg, bold, italic, underline, strike, blink)
+    assert runs[0] == (0, "RED", (205, 0, 0), style.BG, False, False, False, False, False)
+    assert runs[1] == (3, " ", style.FG, style.BG, False, False, False, False, False)
+    assert runs[2] == (4, "G", (0, 205, 0), style.BG, False, False, False, False, False)
+
+
+def test_runs_break_on_attributes_and_carry_them():
+    row = [_c("a"), _c("b", italic=True), _c("c", underline=True),
+           _c("d", strike=True), _c("e", blink=True)]
     runs = style.runs(row)
-    assert runs[0] == (0, "RED", (205, 0, 0), style.BG)
-    assert runs[1] == (3, " ", style.FG, style.BG)
-    assert runs[2] == (4, "G", (0, 205, 0), style.BG)
+    assert len(runs) == 5  # same color, but each attribute forces a separate run
+    assert runs[1] == (1, "b", style.FG, style.BG, False, True, False, False, False)
+    assert runs[2] == (2, "c", style.FG, style.BG, False, False, True, False, False)
+    assert runs[3] == (3, "d", style.FG, style.BG, False, False, False, True, False)
+    assert runs[4] == (4, "e", style.FG, style.BG, False, False, False, False, True)

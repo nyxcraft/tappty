@@ -144,7 +144,8 @@ clear()              # blank the grid, home the cursor
 
 `cells()` is the colored parallel to `view_rows()`: each cell carries SGR attributes, which the
 GUI renderers draw (see §2.5). The VT52 `Terminal` reports every cell with the *default* style
-(it has no color); `PyteTerminal` reports pyte's per-cell `fg`/`bg`/`bold`/`reverse`. The shared
+(it has no color); `PyteTerminal` reports pyte's per-cell `fg`/`bg`/`bold`/`italic`/`underline`/
+`strike`/`blink`/`reverse`. The shared
 `style` module (`Cell`, the ANSI palette, `rgb()`/`resolve()`/`runs()`) maps `"default"` to the
 renderer's phosphor color, so uncolored text stays green and color shows only where a program
 asks — the green-phosphor identity survives the addition of color.
@@ -332,9 +333,11 @@ its native key events (arrows/function/Ctrl) through `tappty.keys` and `send_key
   phosphor/default foreground otherwise. Input maps Enter/Backspace/printable ASCII to the
   Session; arrows/function keys are ignored; `Ctrl-]` force-quits.
 - **`pygame_ui`** draws the grid in a monospace font with a blinking block cursor, reading
-  `cells()` so each glyph takes its SGR **color** (fg/bg, bold→bright, reverse) — `"default"`
-  resolving to phosphor green, so uncolored output looks exactly as before. Glyphs are rendered
-  lazily and cached by `(char, color)`; a non-default background is filled per cell.
+  `cells()` so each glyph takes its full SGR style — color (fg/bg, reverse), **bold**/*italic*/
+  underline/strikethrough via the font flags, and a blink phase — with `"default"` resolving to
+  phosphor green, so uncolored output looks exactly as before. Glyphs are rendered lazily and
+  cached by `(char, fg, bold, italic, underline, strike)`; a non-default background is filled
+  per cell.
   Scrollback is mouse-wheel / PageUp-PageDown; typing snaps back to live. Optional per-second
   text + PNG snapshots (and `F12` on demand) let an automated observer watch the same session;
   `max_seconds` is a hard loop cap for scripting/tests, `exit_when_done` closes when the
@@ -563,15 +566,18 @@ toolkit; the recommendation is a private Unix socket, or loopback+token behind a
 
 Conscious scope choices, recorded so they aren't mistaken for defects:
 
-- **Color renders; only the bus stays monochrome.** The `cells()` API exposes SGR attributes
-  (fg/bg, bold→bright, reverse), and **all three renderers draw them** — the GUI backends
-  (`pygame_ui`, `arcade_ui`) in RGB, and the **curses CUI** via lazily-allocated color pairs
-  where the terminal supports it (a 256/truecolor cell approximates to the nearest ANSI-16;
-  `reverse` uses `A_REVERSE`; a colorless terminal falls back to its default foreground). So
-  `--ansi` shows color/inverse, not just text/cursor fidelity. Still text-only: the **bus** —
+- **Color + attributes render; only the bus stays monochrome.** The `cells()` API exposes
+  per-cell SGR — fg/bg, **bold**, *italic*, underline, strikethrough, blink, reverse — and **all
+  four renderers draw them**: the GUI backends (`pygame_ui`, `arcade_ui`, `web_ui`) via the font
+  (bold/italic weight) plus drawn underline/strike rules, a blink phase, and bg fills; and the
+  **curses CUI** via color pairs + `A_BOLD`/`A_ITALIC`/`A_UNDERLINE`/`A_BLINK`/`A_REVERSE` where
+  the terminal supports them (256/truecolor approximates to the nearest ANSI-16; a colorless
+  terminal falls back to its default foreground). Bold also brightens a *named* color (a
+  deliberate extra, on top of the heavier weight). **Not representable:** SGR `faint` (2),
+  `rapid-blink` (6), and `conceal` (8) — pyte doesn't model them; and curses has no
+  strikethrough attribute, so `strike` is dropped in the CUI only. Still text-only: the **bus** —
   `OUT` carries raw bytes, but `FRAME`/`snapshot()` is plain text, so color over the wire would
-  be a protocol change. Bold renders as a brighter color, not a heavier font weight (so glyph
-  widths stay uniform).
+  be a protocol change.
 - **Single-cell Unicode.** Both Terminal models treat each Python code point as one cell, and
   renderers blit one glyph per cell. CJK full-width, emoji, and combining marks can drift or
   overwrite neighbors. Faithful width would need a `wcwidth`-style helper in the model and

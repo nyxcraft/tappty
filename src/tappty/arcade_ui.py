@@ -154,17 +154,26 @@ def _window_class():
                 return keys.ctrl(chr(symbol))
             return None
 
-        def _draw_text(self, text, x, y, color):
+        def _draw_text(self, text, x, y, color, bold=False, italic=False,
+                       underline=False, strike=False):
             if self._text_used < len(self._text_pool):
                 t = self._text_pool[self._text_used]
                 t.text, t.x, t.y, t.color = text, x, y, color
+                t.bold, t.italic = bold, italic
             else:
                 t = arcade.Text(
-                    text, x, y, color, self._font_size, font_name=self._font, anchor_y="top"
+                    text, x, y, color, self._font_size, font_name=self._font,
+                    anchor_y="top", bold=bold, italic=italic,
                 )
                 self._text_pool.append(t)
             self._text_used += 1
             t.draw()
+            # arcade Text has no underline/strikethrough -> draw rules ourselves
+            x1 = x + len(text) * self._cw
+            if underline:
+                arcade.draw_line(x, y - self._chh + 2, x1, y - self._chh + 2, color, 1)
+            if strike:
+                arcade.draw_line(x, y - self._chh / 2, x1, y - self._chh / 2, color, 1)
 
         def on_update(self, dt):
             self._t += dt
@@ -183,15 +192,19 @@ def _window_class():
             self.clear()
             term = self.session.term
             self._text_used = 0  # rewind the Text pool for this frame
+            blink_on = int(self._t * 1.5) % 2 == 0
             for r, row in enumerate(term.cells(self._scroll)):
                 top = self.height - r * self._chh
-                for x, text, fg, bg in style.runs(row, FG, BG):  # "default" -> phosphor
+                for run in style.runs(row, FG, BG):
+                    x, text, fg, bg, bold, italic, underline, strike, blink = run
                     left = x * self._cw
                     if bg != BG:  # fill only non-default backgrounds
                         arcade.draw_lrbt_rectangle_filled(
                             left, left + len(text) * self._cw, top - self._chh, top, bg
                         )
-                    self._draw_text(text, left, top, fg)
+                    if blink and not blink_on:  # blinking run on its hidden phase
+                        continue
+                    self._draw_text(text, left, top, fg, bold, italic, underline, strike)
             if self._scroll == 0:
                 if int(self._t * 2) % 2 == 0:  # blink ~1 Hz (live only)
                     left = term.cx * self._cw
