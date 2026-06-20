@@ -136,10 +136,21 @@ def _window_class():
             # raw-mode key translation (full-TUI input): an arcade keycode -> VT key name
             k = arcade.key
             self._raw_special = {
-                k.UP: "up", k.DOWN: "down", k.LEFT: "left", k.RIGHT: "right",
-                k.HOME: "home", k.END: "end", k.PAGEUP: "pageup", k.PAGEDOWN: "pagedown",
-                k.INSERT: "insert", k.DELETE: "delete", k.RETURN: "enter", k.NUM_ENTER: "enter",
-                k.BACKSPACE: "backspace", k.TAB: "tab", k.ESCAPE: "escape",
+                k.UP: "up",
+                k.DOWN: "down",
+                k.LEFT: "left",
+                k.RIGHT: "right",
+                k.HOME: "home",
+                k.END: "end",
+                k.PAGEUP: "pageup",
+                k.PAGEDOWN: "pagedown",
+                k.INSERT: "insert",
+                k.DELETE: "delete",
+                k.RETURN: "enter",
+                k.NUM_ENTER: "enter",
+                k.BACKSPACE: "backspace",
+                k.TAB: "tab",
+                k.ESCAPE: "escape",
             }
             for _i in range(1, 13):
                 self._raw_special[getattr(k, f"F{_i}")] = f"f{_i}"
@@ -154,16 +165,24 @@ def _window_class():
                 return keys.ctrl(chr(symbol))
             return None
 
-        def _draw_text(self, text, x, y, color, bold=False, italic=False,
-                       underline=False, strike=False):
+        def _draw_text(
+            self, text, x, y, color, bold=False, italic=False, underline=False, strike=False
+        ):
             if self._text_used < len(self._text_pool):
                 t = self._text_pool[self._text_used]
                 t.text, t.x, t.y, t.color = text, x, y, color
                 t.bold, t.italic = bold, italic
             else:
                 t = arcade.Text(
-                    text, x, y, color, self._font_size, font_name=self._font,
-                    anchor_y="top", bold=bold, italic=italic,
+                    text,
+                    x,
+                    y,
+                    color,
+                    self._font_size,
+                    font_name=self._font,
+                    anchor_y="top",
+                    bold=bold,
+                    italic=italic,
                 )
                 self._text_pool.append(t)
             self._text_used += 1

@@ -8,6 +8,7 @@ attribute chart, so you can watch tappty render SGR. No external program needed.
     python demos/color_chart.py                  # open the green-phosphor window
     python demos/color_chart.py --snapshot c.png # render headless, write c.png instead
 """
+
 from __future__ import annotations
 
 import argparse
@@ -67,8 +68,9 @@ def main():
     session = Session(PyteTerminal(64, 22), source=EngineSource(runner))
     if args.snapshot:
         base = args.snapshot[:-4] if args.snapshot.endswith(".png") else args.snapshot
-        pygame_ui.run(session, None, title="tappty color chart",
-                      snapshot_path=base, max_seconds=args.seconds)
+        pygame_ui.run(
+            session, None, title="tappty color chart", snapshot_path=base, max_seconds=args.seconds
+        )
     else:
         pygame_ui.run(session, None, title="tappty color chart")
 

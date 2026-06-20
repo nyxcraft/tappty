@@ -295,16 +295,30 @@ class BusServer:
         # cancelled by stop() -- or one that just timed out -- is reported timeout=True so its
         # partial output isn't mistaken for a finished command. `truncated` flags cap drops.
         done = cap.completed and not cap.cancelled
-        self._send(
-            conn,
-            "RESP",
-            {
-                "text": "".join(cap.buf),
+        # The RESP is itself a protocol frame, so it must fit MAX_FRAME -- a longer line makes the
+        # client bail and drop the connection. A capture can buffer up to MAX_CAPTURE (1 MiB),
+        # which JSON-encodes well past the 256 KiB frame cap, so trim the text to fit and flag it
+        # truncated. Better a truncated result than a dropped connection.
+        text, truncated = "".join(cap.buf), cap.truncated
+        while text:
+            payload = {
+                "text": text,
                 "timeout": not done,
-                "truncated": cap.truncated,
+                "truncated": truncated,
                 "cancelled": cap.cancelled,
-            },
-        )
+            }
+            if len(("RESP " + json.dumps(payload) + "\n").encode()) <= MAX_FRAME:
+                break
+            text = text[: max(0, len(text) - max(1, len(text) // 8))]
+            truncated = True
+        else:
+            payload = {
+                "text": "",
+                "timeout": not done,
+                "truncated": truncated,
+                "cancelled": cap.cancelled,
+            }
+        self._send(conn, "RESP", payload)
 
     def _h_sub(self, conn, st, payload):
         st.sub = True
@@ -335,8 +349,11 @@ class BusServer:
             return
         if not isinstance(keys, str):  # KEY payload must be a JSON string of keystrokes
             return  # (a number/array/object is ignored, not iterated as stray "keys")
-        for c in keys:
-            self.session.feed_key(c, by=st.name, auto_take=False)
+        if self.session.raw_keys:  # full-TUI: forward verbatim, so escape sequences survive
+            self.session.send_key(keys, by=st.name, auto_take=False)
+        else:  # line mode: cooked echo + line assembly, one char at a time
+            for c in keys:
+                self.session.feed_key(c, by=st.name, auto_take=False)
 
     # ---- outbound ----
     def _send(self, conn, verb, payload):

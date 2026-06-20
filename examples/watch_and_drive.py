@@ -16,6 +16,7 @@ could drive an external program. (For a full-screen TUI you'd read the *screen* 
 
 Runnable with the core install:  python examples/watch_and_drive.py
 """
+
 import random
 
 from tappty import Session, Terminal
@@ -48,7 +49,7 @@ class Bot:
         self.guess = (LO + HI) // 2
         self.seen = ""  # accumulates streamed output; we peek at the latest hint
         session.on_stream(self._on_stream)  # tap 1: raw output as the program emits it
-        session.on_event(self._on_event)    # tap 3: events -- "WAIT" = it's blocked for input
+        session.on_event(self._on_event)  # tap 3: events -- "WAIT" = it's blocked for input
 
     def _on_stream(self, chunk):
         self.seen += chunk

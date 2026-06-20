@@ -18,6 +18,7 @@ arbitration in `Session.take`); the autopilot is then locked out until it's free
 
 Needs `vim` (or `vi`) on PATH.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -31,18 +32,18 @@ COLS, ROWS = 80, 24
 # (seconds to pause first, keystrokes to send). \x1b = Esc, \r = Enter. Sent raw to vim over the
 # control tap, exactly as a keyboard would -- vim does its own echo and editing.
 SCRIPT = [
-    (1.4, "i"),                                              # enter insert mode
+    (1.4, "i"),  # enter insert mode
     (0.5, "tappty is driving this vim session.\r"),
     (0.5, "No human is at the keyboard;\r"),
     (0.5, "every keystroke arrives over the control tap.\r"),
-    (0.8, "\x1b"),                                           # back to normal mode
-    (0.8, ":set number\r"),                                  # show line numbers
-    (0.9, "gg"),                                             # jump to the top
-    (0.7, "yyp"),                                            # duplicate the first line
-    (0.9, "G"),                                              # jump to the bottom
-    (0.6, "o"),                                              # open a new line below
-    (0.4, "-- fin.\x1b"),                                    # type, back to normal
-    (1.3, ":q!\r"),                                          # quit, discarding the buffer
+    (0.8, "\x1b"),  # back to normal mode
+    (0.8, ":set number\r"),  # show line numbers
+    (0.9, "gg"),  # jump to the top
+    (0.7, "yyp"),  # duplicate the first line
+    (0.9, "G"),  # jump to the bottom
+    (0.6, "o"),  # open a new line below
+    (0.4, "-- fin.\x1b"),  # type, back to normal
+    (1.3, ":q!\r"),  # quit, discarding the buffer
 ]
 
 
@@ -64,8 +65,8 @@ def build_session(cols=COLS, rows=ROWS):
         raise SystemExit("drive_vim needs vim (or vi) on PATH -- install it and retry")
     env = {**os.environ, "TERM": "xterm-256color"}  # so vim emits ANSI pyte understands
     sess = Session(PyteTerminal(cols, rows), source=PtySource(argv, size=(rows, cols), env=env))
-    sess.raw_keys = True                       # full-TUI: keystrokes go straight to vim
-    sess.claim_control("autopilot", "ai")      # the "other program" takes the talking stick
+    sess.raw_keys = True  # full-TUI: keystrokes go straight to vim
+    sess.claim_control("autopilot", "ai")  # the "other program" takes the talking stick
     return sess
 
 
@@ -94,8 +95,14 @@ def main():
     threading.Thread(target=drive, args=(sess,), daemon=True).start()
     if args.snapshot:
         base = args.snapshot[:-4] if args.snapshot.endswith(".png") else args.snapshot
-        pygame_ui.run(sess, None, title="tappty :: driving vim", snapshot_path=base,
-                      max_seconds=args.seconds, exit_when_done=True)
+        pygame_ui.run(
+            sess,
+            None,
+            title="tappty :: driving vim",
+            snapshot_path=base,
+            max_seconds=args.seconds,
+            exit_when_done=True,
+        )
     else:
         pygame_ui.run(sess, None, title="tappty :: driving vim", exit_when_done=True)
 

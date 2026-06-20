@@ -26,6 +26,9 @@ class _Rec(Source):  # records input that reaches the program
 
 
 def test_frame_json_is_rle_runs_with_hex_colors():
+    import pytest
+
+    pytest.importorskip("pyte")  # the full-ANSI backend; skip cleanly in the core-only profile
     from tappty.pyte_terminal import PyteTerminal
 
     p = PyteTerminal(20, 2)
@@ -136,6 +139,47 @@ def test_web_ui_rejects_cross_origin_websocket():
         ok.close()
     finally:
         th.join(timeout=6)
+
+
+def test_web_ui_token_gates_page_and_is_not_embedded():
+    """With a token, the page is gated (403 without it) and the served HTML never contains the
+    token — the client reads it from its own URL, so a leaked page leaks no secret."""
+    import pytest
+
+    pytest.importorskip("websockets")
+    import threading
+    import time
+    import urllib.error
+    import urllib.request
+
+    from tappty.source import EngineSource
+
+    sess = Session(Terminal(80, 24), source=EngineSource(lambda emit, readline: emit("hi")))
+    port = _free_port()
+    secret = "s3cret-token"
+    th = threading.Thread(
+        target=web_ui.run,
+        kwargs=dict(session=sess, runner=None, port=port, token=secret, max_seconds=2),
+        daemon=True,
+    )
+    th.start()
+    base = f"http://127.0.0.1:{port}/"
+
+    deadline = time.time() + 3
+    got_403 = False
+    while time.time() < deadline:
+        try:
+            urllib.request.urlopen(base, timeout=1).read()  # no token -> should 403
+        except urllib.error.HTTPError as e:
+            got_403 = e.code == 403
+            break
+        except OSError:
+            time.sleep(0.1)
+    assert got_403, "unauthenticated page request was not rejected"
+
+    page = urllib.request.urlopen(base + f"?token={secret}", timeout=2).read().decode()
+    assert "<canvas" in page and secret not in page  # served, but the token isn't in the HTML
+    th.join(timeout=6)
 
 
 def test_web_ui_serves_and_round_trips():

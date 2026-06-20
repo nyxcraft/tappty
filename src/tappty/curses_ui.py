@@ -31,8 +31,14 @@ def viewport(model_w, model_h, screen_w, screen_h, cx, cy, status=1):
 DEFAULT_FG = 2  # curses.COLOR_GREEN -- the phosphor color a "default" foreground resolves to
 
 _IDX = {  # pyte base color name -> curses color index (0-7), matching curses.COLOR_*
-    "black": 0, "red": 1, "green": 2, "brown": 3,
-    "blue": 4, "magenta": 5, "cyan": 6, "white": 7,
+    "black": 0,
+    "red": 1,
+    "green": 2,
+    "brown": 3,
+    "blue": 4,
+    "magenta": 5,
+    "cyan": 6,
+    "white": 7,
 }
 # (rgb, index, bright) for the 16 ANSI colors, to approximate a 256/truecolor hex to nearest.
 _ANSI16 = [(style.rgb(n), i, False) for n, i in _IDX.items()] + [
@@ -107,10 +113,17 @@ def _raw_bytes(curses, ch):
     from tappty import keys
 
     special = {
-        curses.KEY_UP: "up", curses.KEY_DOWN: "down", curses.KEY_LEFT: "left",
-        curses.KEY_RIGHT: "right", curses.KEY_HOME: "home", curses.KEY_END: "end",
-        curses.KEY_NPAGE: "pagedown", curses.KEY_PPAGE: "pageup",
-        curses.KEY_IC: "insert", curses.KEY_DC: "delete", curses.KEY_BTAB: "backtab",
+        curses.KEY_UP: "up",
+        curses.KEY_DOWN: "down",
+        curses.KEY_LEFT: "left",
+        curses.KEY_RIGHT: "right",
+        curses.KEY_HOME: "home",
+        curses.KEY_END: "end",
+        curses.KEY_NPAGE: "pagedown",
+        curses.KEY_PPAGE: "pageup",
+        curses.KEY_IC: "insert",
+        curses.KEY_DC: "delete",
+        curses.KEY_BTAB: "backtab",
     }
     name = special.get(ch)
     if name is not None:
@@ -143,7 +156,7 @@ def _feed(session, ch):
     # arrows / function keys: ignored in line mode (our programs are line-oriented)
 
 
-def run(session, runner, title="tapterm", refresh_ms=50):
+def run(session, runner, title="tapterm", refresh_ms=50, exit_when_done=False):
     import curses
     import locale
 
@@ -240,7 +253,7 @@ def run(session, runner, title="tapterm", refresh_ms=50):
                 tag = (
                     f" {title}  {term.cols}x{term.rows}"
                     + (f" view@{ox},{oy} [partial]" if partial else "")
-                    + (" [done -- press a key]" if session.done else "")
+                    + (" [done -- press a key]" if session.done and not exit_when_done else "")
                     + " "
                 )
                 try:
@@ -256,8 +269,10 @@ def run(session, runner, title="tapterm", refresh_ms=50):
             stdscr.refresh()
 
             ch = stdscr.getch()
-            if session.done and not finishing:  # one last draw, then wait
-                finishing = True
+            if session.done and not finishing:
+                if exit_when_done:  # close on exit, like xterm (a regular-terminal session)
+                    return
+                finishing = True  # otherwise one last draw, then wait for a key
                 stdscr.nodelay(False)
                 continue
             if finishing and ch != -1:

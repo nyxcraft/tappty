@@ -9,14 +9,15 @@ docs/media/<name>.png (which are committed; the Pages build only copies them):
     shots of real programs (nyancat, cbonsai) regenerate from the committed casts, with the
     programs themselves NOT required.
 
-It also renders the gallery's "in motion" clip (docs/media/nyancat.mp4) straight from a cast via
-`tapterm --render` (needs the `video` extra or a system ffmpeg).
+It also renders the gallery's motion clips (the nyancat GIF and the matrix / drive_vim mp4s) from
+casts via `tapterm --render` / render_video (needs the `video` extra or a system ffmpeg).
 
 Each runs in its own subprocess; the byproduct text dump beside the PNG is removed.
 
     pip install 'tappty[sdl,ansi,video]'
     python gh-pages/screenshots.py
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -28,12 +29,17 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 MEDIA = ROOT / "docs" / "media"
-ENV = {**os.environ, "SDL_VIDEODRIVER": "dummy", "SDL_AUDIODRIVER": "dummy",
-       "PYGAME_HIDE_SUPPORT_PROMPT": "1"}
+ENV = {
+    **os.environ,
+    "SDL_VIDEODRIVER": "dummy",
+    "SDL_AUDIODRIVER": "dummy",
+    "PYGAME_HIDE_SUPPORT_PROMPT": "1",
+}
 
 
 def _have(mod):
     return importlib.util.find_spec(mod) is not None
+
 
 # (example file, PNG stem, seconds to render before the snapshot)
 SHOTS = [
@@ -99,36 +105,68 @@ def main() -> int:
     for script, stem, seconds in SHOTS:
         print(f"rendering {script} -> docs/media/{stem}.png")
         subprocess.run(
-            [sys.executable, str(ROOT / "demos" / script),
-             "--snapshot", str(MEDIA / f"{stem}.png"), "--seconds", str(seconds)],
-            check=True, env=ENV,
+            [
+                sys.executable,
+                str(ROOT / "demos" / script),
+                "--snapshot",
+                str(MEDIA / f"{stem}.png"),
+                "--seconds",
+                str(seconds),
+            ],
+            check=True,
+            env=ENV,
         )
         _drop_byproduct(stem)
     for cast, stem in CAST_SHOTS:
         print(f"replaying {cast} -> docs/media/{stem}.png")
         subprocess.run(
-            [sys.executable, "-m", "tappty.cli", "--play",
-             str(ROOT / "demos" / "recordings" / cast),
-             "--gui", "--exit-when-done", "--snapshot", str(MEDIA / stem)],
-            check=True, env=ENV,
+            [
+                sys.executable,
+                "-m",
+                "tappty.cli",
+                "--play",
+                str(ROOT / "demos" / "recordings" / cast),
+                "--gui",
+                "--exit-when-done",
+                "--snapshot",
+                str(MEDIA / stem),
+            ],
+            check=True,
+            env=ENV,
         )
         _drop_byproduct(stem)
     for cast, movie, fps, zoom in MOVIES:
         print(f"rendering {cast} -> docs/media/{movie}")
         subprocess.run(
-            [sys.executable, "-m", "tappty.cli", "--play",
-             str(ROOT / "demos" / "recordings" / cast),
-             "--render", str(MEDIA / movie), "--fps", str(fps), "--zoom", str(zoom)],
-            check=True, env=ENV,
+            [
+                sys.executable,
+                "-m",
+                "tappty.cli",
+                "--play",
+                str(ROOT / "demos" / "recordings" / cast),
+                "--render",
+                str(MEDIA / movie),
+                "--fps",
+                str(fps),
+                "--zoom",
+                str(zoom),
+            ],
+            check=True,
+            env=ENV,
         )
     print("rendering digital-rain demo -> docs/media/matrix.mp4")
     _render_matrix_movie()
     if _have("playwright") and _have("websockets") and _have("pyte"):
         print("screenshotting the web renderer in a browser -> docs/media/web_demo.png")
         subprocess.run(
-            [sys.executable, str(ROOT / "demos" / "web_demo.py"),
-             "--shot", str(MEDIA / "web_demo.png")],
-            check=True, env=ENV,
+            [
+                sys.executable,
+                str(ROOT / "demos" / "web_demo.py"),
+                "--shot",
+                str(MEDIA / "web_demo.png"),
+            ],
+            check=True,
+            env=ENV,
         )
     else:
         print("skipping web_demo.png (needs playwright + the web/ansi extras)")

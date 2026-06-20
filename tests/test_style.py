@@ -44,8 +44,17 @@ def test_char_width_wide_zero_and_normal():
     assert style.char_width("") == 0  # pyte's empty wide-glyph continuation cell
 
 
-def _c(char, fg="default", bg="default", bold=False, italic=False, underline=False,
-       strike=False, blink=False, reverse=False):
+def _c(
+    char,
+    fg="default",
+    bg="default",
+    bold=False,
+    italic=False,
+    underline=False,
+    strike=False,
+    blink=False,
+    reverse=False,
+):
     return style.Cell(char, fg, bg, bold, italic, underline, strike, blink, reverse)
 
 
@@ -58,8 +67,7 @@ def test_runs_group_consecutive_same_style():
 
 
 def test_encode_row_is_rle_with_hex_and_attr_bits():
-    row = [_c("R", "red"), _c("E", "red"), _c(" "),
-           _c("x", "blue", italic=True, underline=True)]
+    row = [_c("R", "red"), _c("E", "red"), _c(" "), _c("x", "blue", italic=True, underline=True)]
     enc = style.encode_row(row)  # runs: [col, text, fg_hex, bg_hex, bold, italic, underline, ...]
     assert len(enc) == 3
     assert enc[0] == [0, "RE", "cd0000", style.hex_rgb(style.BG), 0, 0, 0, 0, 0]
@@ -67,8 +75,13 @@ def test_encode_row_is_rle_with_hex_and_attr_bits():
 
 
 def test_runs_break_on_attributes_and_carry_them():
-    row = [_c("a"), _c("b", italic=True), _c("c", underline=True),
-           _c("d", strike=True), _c("e", blink=True)]
+    row = [
+        _c("a"),
+        _c("b", italic=True),
+        _c("c", underline=True),
+        _c("d", strike=True),
+        _c("e", blink=True),
+    ]
     runs = style.runs(row)
     assert len(runs) == 5  # same color, but each attribute forces a separate run
     assert runs[1] == (1, "b", style.FG, style.BG, False, True, False, False, False)

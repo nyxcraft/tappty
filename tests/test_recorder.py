@@ -73,8 +73,7 @@ def test_ttyrec_source_reads_handcrafted_file(tmp_path):
     # Build a ttyrec by hand: each record is (sec, usec, len) little-endian + payload bytes.
     records = [(0.0, b"abc"), (0.5, b"\r\ndef")]
     blob = b"".join(
-        struct.pack("<III", int(t), int((t - int(t)) * 1_000_000), len(d)) + d
-        for t, d in records
+        struct.pack("<III", int(t), int((t - int(t)) * 1_000_000), len(d)) + d for t, d in records
     )
     path = tmp_path / "hand.ttyrec"
     path.write_bytes(blob)
@@ -95,6 +94,32 @@ def test_replay_source_dispatches_by_extension(tmp_path):
     assert isinstance(replay_source(str(cast)), CastSource)
     assert isinstance(replay_source(str(tty)), TtyrecSource)
     assert isinstance(replay_source(str(ans)), AnsSource)
+
+
+def test_malformed_replay_surfaces_via_run_blocking(tmp_path):
+    # A parse failure in the replay thread must set Source.error so run_blocking re-raises it,
+    # instead of the headless CLI exiting 0 on a broken recording.
+    pytest.importorskip("pyte")
+    from tappty.pyte_terminal import PyteTerminal
+
+    bad = tmp_path / "bad.cast"
+    bad.write_text(
+        '{"version":2,"width":80,"height":24}\n["notanum","o","hi"]\n', encoding="utf-8"
+    )
+    src = replay_source(str(bad))
+    sess = Session(PyteTerminal(src.width, src.height), source=src)
+    with pytest.raises(ValueError):
+        sess.run_blocking()
+
+
+def test_oversized_art_file_is_refused(tmp_path, monkeypatch):
+    import tappty.source as src_mod
+
+    monkeypatch.setattr(src_mod, "MAX_ART_FILE", 64)  # tiny cap for the test
+    big = tmp_path / "big.ans"
+    big.write_bytes(b"x" * 256 + b"\x1a")
+    with pytest.raises(ValueError):
+        AnsSource(str(big))
 
 
 def test_ans_source_strips_sauce_and_decodes_cp437(tmp_path):

@@ -16,12 +16,12 @@ try:
 except ImportError as exc:  # pragma: no cover - human setup path
     raise SystemExit(
         "markdown-it-py is required to build the docs site.\n"
-        "Install it with: python3.12 -m pip install -r tools/requirements-docs.txt"
+        "Install it with: pip install markdown-it-py"
     ) from exc
 
 
 ROOT = Path(__file__).resolve().parent.parent
-SOURCE_DIR = ROOT / "gh-pages"          # build machinery: site.json, templates/, assets/
+SOURCE_DIR = ROOT / "gh-pages"  # build machinery: site.json, templates/, assets/
 OUTPUT_DIR = ROOT / "gh-pages" / "public"  # built site (gitignored; published by Actions)
 HEADER_LOGO = "assets/logo-tappty.svg"
 
@@ -88,7 +88,7 @@ class MarkdownRenderer:
                 toc.append({"level": level, "anchor": anchor, "text": heading_text})
 
         if first_h1_index is not None:
-            del tokens[first_h1_index:first_h1_index + 3]
+            del tokens[first_h1_index : first_h1_index + 3]
 
         html = self.md.renderer.render(tokens, self.md.options, {})
         return {"title": title, "toc": toc, "html": html}
@@ -110,14 +110,16 @@ def write_text(path: Path, content: str) -> None:
     path.write_text(content, encoding="utf-8")
 
 
-def rewrite_md_links(html: str, current_output: Path, output_dir: Path,
-                     basename_to_output: dict[str, str]) -> str:
+def rewrite_md_links(
+    html: str, current_output: Path, output_dir: Path, basename_to_output: dict[str, str]
+) -> str:
     """Rewrite `<a href="...md">` links so cross-document links work in the built site too.
 
     The Markdown sources use ordinary relative `.md` links (e.g. `[DESIGN.md](DESIGN.md)`) so
     they also resolve when browsed on GitHub. Here we map each `.md` target -- by basename --
     to the corresponding page's pretty URL, made relative to the page being written, preserving
     any `#anchor`. Links to `.md` files that aren't site pages are left untouched."""
+
     def replace(match: re.Match[str]) -> str:
         href = match.group(1)
         if "://" in href or href.startswith(("#", "mailto:")):
@@ -133,14 +135,23 @@ def rewrite_md_links(html: str, current_output: Path, output_dir: Path,
     return re.sub(r'href="([^"]+\.md(?:#[^"]*)?)"', replace, html)
 
 
-INCLUDE_LANGS = {".py": "python", ".sh": "bash", ".json": "json", ".toml": "toml",
-                 ".md": "markdown", ".js": "javascript", ".css": "css", ".html": "html"}
+INCLUDE_LANGS = {
+    ".py": "python",
+    ".sh": "bash",
+    ".json": "json",
+    ".toml": "toml",
+    ".md": "markdown",
+    ".js": "javascript",
+    ".css": "css",
+    ".html": "html",
+}
 
 
 def expand_includes(text: str) -> str:
     """Expand `<!--include: path-->` (path relative to the repo root) into a fenced code block
     of that file's current contents -- so demo source lives in one runnable place (demos/)
     and is shown on the page without copy-paste drift. Runs before Markdown rendering."""
+
     def replace(match: re.Match[str]) -> str:
         rel = match.group(1).strip()
         try:
@@ -157,6 +168,7 @@ def rewrite_img_src(html: str, current_output: Path, output_dir: Path) -> str:
     """Rewrite content `<img src="...">` -- authored relative to docs/ (e.g. `media/foo.png`,
     which also resolves on GitHub) -- to a path relative to the page being written. The
     `docs/media/` tree is copied to `<site>/media/` at build time."""
+
     def replace(match: re.Match[str]) -> str:
         src = match.group(1)
         if "://" in src or src.startswith(("/", "data:")):
@@ -225,7 +237,7 @@ def main() -> int:
                 [
                     '<article class="doc-card">',
                     f'  <h3><a href="{escape(page["href"])}">{escape(page["title"])}</a></h3>',
-                    f'  <p>{escape(page["summary"])}</p>',
+                    f"  <p>{escape(page['summary'])}</p>",
                     f'  <a class="doc-card__link" href="{escape(page["href"])}">Open</a>',
                     "</article>",
                 ]
@@ -240,16 +252,14 @@ def main() -> int:
     # The footer's "MIT-licensed" links to the license page, if there is one.
     license_page = next((p for p in docs_pages if p["slug"] == "license"), None)
     content_pages = [p for p in docs_pages if p is not index_page]
-    hero_primary = content_pages[0]["href"] if content_pages else "#"   # "Get started" -> guide
+    hero_primary = content_pages[0]["href"] if content_pages else "#"  # "Get started" -> guide
     hero_secondary = content_pages[1]["href"] if len(content_pages) > 1 else hero_primary
     github_href = config.get("github_href", "#")
     year = str(datetime.date.today().year)
     copyright_holder = config.get("copyright", config["site_name"])
     # An optional status stamp ("beta") shown next to the brand on every page; omit the key to drop
     status = config.get("status")
-    status_badge = (
-        f'<span class="brand__badge">{escape(status)}</span>' if status else ""
-    )
+    status_badge = f'<span class="brand__badge">{escape(status)}</span>' if status else ""
     # Author / coding-attribution lines (site.json "attribution"), shown verbatim in the footer
     # on every page and, on the home page, above the fold in the hero. Each line on its own line.
     attribution_lines = config.get("attribution") or []
@@ -257,13 +267,15 @@ def main() -> int:
         '<p class="site-footer__attr">'
         + "<br>".join(escape(line) for line in attribution_lines)
         + "</p>"
-        if attribution_lines else ""
+        if attribution_lines
+        else ""
     )
     attribution_hero = (
         '<div class="hero__attr">'
         + "".join(f"<p>{escape(line)}</p>" for line in attribution_lines)
         + "</div>"
-        if attribution_lines else ""
+        if attribution_lines
+        else ""
     )
 
     home_html = render_template(
@@ -281,7 +293,8 @@ def main() -> int:
             ),
             "gallery_href": escape(
                 relative_href(output_dir / "index.html", output_dir / gallery_page["output"])
-                if gallery_page else "#"
+                if gallery_page
+                else "#"
             ),
             "primary_href": escape(hero_primary),
             "secondary_href": escape(hero_secondary),
@@ -292,7 +305,8 @@ def main() -> int:
             "attribution_hero": attribution_hero,
             "license_href": escape(
                 relative_href(output_dir / "index.html", output_dir / license_page["output"])
-                if license_page else github_href
+                if license_page
+                else github_href
             ),
         },
     )
@@ -313,11 +327,13 @@ def main() -> int:
         docs_href = relative_href(output_path, output_dir / index_page["output"])
         gallery_href = (
             relative_href(output_path, output_dir / gallery_page["output"])
-            if gallery_page else docs_href
+            if gallery_page
+            else docs_href
         )
         license_href = (
             relative_href(output_path, output_dir / license_page["output"])
-            if license_page else github_href
+            if license_page
+            else github_href
         )
         template = "page.html" if page["template"] == "page" else "doc.html"
 

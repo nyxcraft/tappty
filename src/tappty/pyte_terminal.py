@@ -128,8 +128,17 @@ class PyteTerminal:
         for x in range(self.cols):
             c = line[x]
             out.append(
-                Cell(c.data or " ", c.fg, c.bg, c.bold, c.italics, c.underscore,
-                     c.strikethrough, c.blink, c.reverse)
+                Cell(
+                    c.data or " ",
+                    c.fg,
+                    c.bg,
+                    c.bold,
+                    c.italics,
+                    c.underscore,
+                    c.strikethrough,
+                    c.blink,
+                    c.reverse,
+                )
             )
         return out
 

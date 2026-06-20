@@ -15,6 +15,7 @@ browser tab:
                                              # Playwright + Chromium (pip install playwright &&
                                              # playwright install chromium)
 """
+
 from __future__ import annotations
 
 import argparse
@@ -58,7 +59,7 @@ def shoot(url, out, settle=2.0):
         '<span style="flex:1;background:#fff;border-radius:13px;padding:6px 15px;margin-left:8px;'
         f'color:#5f6368;font-size:13px">{url}</span></div>'
         f'<iframe src="{url}" style="display:block;border:0;width:100%;height:500px"></iframe>'
-        '</body></html>'
+        "</body></html>"
     )
     with sync_playwright() as p:
         browser = p.chromium.launch(args=["--no-sandbox"])  # --no-sandbox: headless in a container
@@ -82,8 +83,10 @@ def main():
     # web_ui.run serves (and starts the session) but blocks; run it in a daemon thread so we can
     # drive a browser against it / sit and serve, and it dies cleanly when this process exits.
     threading.Thread(
-        target=web_ui.run, args=(sess, None),
-        kwargs={"title": "tappty :: web renderer", "port": args.port}, daemon=True,
+        target=web_ui.run,
+        args=(sess, None),
+        kwargs={"title": "tappty :: web renderer", "port": args.port},
+        daemon=True,
     ).start()
     time.sleep(0.8)  # let the http + ws servers bind and the chart paint
 

@@ -3,6 +3,7 @@
 The interactive-default tests stub out `_run_mode` (so no real renderer/window runs) and inspect
 what main() built: whether keystrokes are raw and which terminal backend was chosen.
 """
+
 import os
 
 import pytest

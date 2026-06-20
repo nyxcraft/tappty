@@ -171,24 +171,57 @@ def build_parser():
         const="headless",
         help="run to completion, print the final screen, then exit",
     )
-    ap.add_argument("--title", "-T", "-title", default=None,
-                    help="window / status-line title (xterm: -T / -title)")
-    ap.add_argument("--geometry", "-geometry", "-g", default=None, metavar="COLSxROWS",
-                    help="terminal size, xterm-style (e.g. 100x30; a trailing +X+Y offset is "
-                    "ignored). Overrides --cols / --rows")
-    ap.add_argument("--cwd", "-cd", default=None, metavar="DIR",
-                    help="run the hosted program in this working directory (xterm: -cd)")
-    ap.add_argument("-hold", "--hold", dest="hold", action="store_true",
-                    help="keep the window open after the program exits (xterm: -hold). A "
-                    "regular-terminal session closes on exit unless you pass this; the "
-                    "--cooked instrument mode always holds")
-    ap.add_argument("--cooked", "--line", dest="cooked", action="store_true",
-                    help="line-oriented instrument mode: local echo + line editing on the "
-                    "VT52 grid, instead of the default regular-terminal behavior (full-ANSI "
-                    "+ raw keys). What the observe / bus-capture primitives expect")
-    ap.add_argument("-e", "--exec", dest="exec_cmd", nargs=argparse.REMAINDER, default=None,
-                    metavar="CMD", help="run CMD (with its args) instead of your shell, "
-                    "xterm-style -- everything after -e is the command (same as after --)")
+    ap.add_argument(
+        "--title",
+        "-T",
+        "-title",
+        default=None,
+        help="window / status-line title (xterm: -T / -title)",
+    )
+    ap.add_argument(
+        "--geometry",
+        "-geometry",
+        "-g",
+        default=None,
+        metavar="COLSxROWS",
+        help="terminal size, xterm-style (e.g. 100x30; a trailing +X+Y offset is "
+        "ignored). Overrides --cols / --rows",
+    )
+    ap.add_argument(
+        "--cwd",
+        "-cd",
+        default=None,
+        metavar="DIR",
+        help="run the hosted program in this working directory (xterm: -cd)",
+    )
+    ap.add_argument(
+        "-hold",
+        "--hold",
+        dest="hold",
+        action="store_true",
+        help="keep the window open after the program exits (xterm: -hold). A "
+        "regular-terminal session closes on exit unless you pass this; the "
+        "--cooked instrument mode always holds",
+    )
+    ap.add_argument(
+        "--cooked",
+        "--line",
+        dest="cooked",
+        action="store_true",
+        help="line-oriented instrument mode: local echo + line editing on the "
+        "VT52 grid, instead of the default regular-terminal behavior (full-ANSI "
+        "+ raw keys). What the observe / bus-capture primitives expect",
+    )
+    ap.add_argument(
+        "-e",
+        "--exec",
+        dest="exec_cmd",
+        nargs=argparse.REMAINDER,
+        default=None,
+        metavar="CMD",
+        help="run CMD (with its args) instead of your shell, "
+        "xterm-style -- everything after -e is the command (same as after --)",
+    )
     ap.add_argument(
         "--port",
         type=_positive_int,
@@ -233,19 +266,42 @@ def build_parser():
         "via ffmpeg, instead of displaying it. Needs the 'sdl' + 'ansi' extras and ffmpeg "
         "(or  pip install 'tappty[video]'  for a bundled ffmpeg)",
     )
-    ap.add_argument("--fps", type=_positive_int, default=30,
-                    help="--render: output frame rate (default 30)")
-    ap.add_argument("--font-size", dest="font_size", type=_positive_int, default=18,
-                    help="--render: glyph size in points -- the size/zoom control (default 18)")
-    ap.add_argument("--zoom", type=float, default=1.0,
-                    help="--render: scale the finished frame, e.g. 2 for a crisp 2x video")
-    ap.add_argument("--font", default=None, metavar="TTF",
-                    help="--render: a .ttf font file to render with (default: DejaVu Sans Mono)")
-    ap.add_argument("--crop", default=None, metavar="COL,ROW,COLS,ROWS",
-                    help="--render: render only this grid region (area of interest)")
-    ap.add_argument("--seconds", type=float, default=None, metavar="N",
-                    help="--render of a live command (no --play): stop after N seconds "
-                    "(needed for programs that don't exit on their own, e.g. cmatrix)")
+    ap.add_argument(
+        "--fps", type=_positive_int, default=30, help="--render: output frame rate (default 30)"
+    )
+    ap.add_argument(
+        "--font-size",
+        dest="font_size",
+        type=_positive_int,
+        default=18,
+        help="--render: glyph size in points -- the size/zoom control (default 18)",
+    )
+    ap.add_argument(
+        "--zoom",
+        type=float,
+        default=1.0,
+        help="--render: scale the finished frame, e.g. 2 for a crisp 2x video",
+    )
+    ap.add_argument(
+        "--font",
+        default=None,
+        metavar="TTF",
+        help="--render: a .ttf font file to render with (default: DejaVu Sans Mono)",
+    )
+    ap.add_argument(
+        "--crop",
+        default=None,
+        metavar="COL,ROW,COLS,ROWS",
+        help="--render: render only this grid region (area of interest)",
+    )
+    ap.add_argument(
+        "--seconds",
+        type=float,
+        default=None,
+        metavar="N",
+        help="--render of a live command (no --play): stop after N seconds "
+        "(needed for programs that don't exit on their own, e.g. cmatrix)",
+    )
     ap.add_argument(
         "--speed",
         type=float,
@@ -332,7 +388,7 @@ def _run_mode(ap, a, sess, term, mode, title):
             )
         from tappty import curses_ui
 
-        curses_ui.run(sess, None, title=title)
+        curses_ui.run(sess, None, title=title, exit_when_done=a.exit_when_done)
     elif mode == "arcade":
         if not _have_arcade():
             ap.error(
@@ -416,8 +472,16 @@ def main(argv=None):
         from tappty.video import render_video
 
         try:
-            out = render_video(recording, a.render, fps=a.fps, font_size=a.font_size,
-                               font_path=a.font, zoom=a.zoom, speed=a.speed, crop=crop)
+            out = render_video(
+                recording,
+                a.render,
+                fps=a.fps,
+                font_size=a.font_size,
+                font_path=a.font,
+                zoom=a.zoom,
+                speed=a.speed,
+                crop=crop,
+            )
         except RuntimeError as exc:  # missing ffmpeg / encode failure -> clean message
             ap.error(str(exc))
         finally:

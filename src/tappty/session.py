@@ -151,40 +151,47 @@ class Session:
             self.driver = name
             self._event("DRIVER", who=name)
 
+    # The controller registry and the stick are mutated under the lock so a hand-off is atomic
+    # with feed_key/send_key (which check has_control + touch the line buffer under the same
+    # lock) -- a concurrent takeover can't let the old controller's key land in the new one's line.
     def claim_control(self, name, role="ai"):
         """Register a controller. The first one to claim becomes the driver (the
         launcher's player); later claims don't preempt -- they must take()."""
-        self._controllers[name] = role
-        if self.driver is None:
-            self._set_driver(name)
+        with self._lock:
+            self._controllers[name] = role
+            if self.driver is None:
+                self._set_driver(name)
         return name
 
     def take(self, name):
         """Grab the stick. You-privileged: a human/interactive controller can preempt
         anyone; an AI can take only from a free stick or another non-human."""
-        if name not in self._controllers:
-            return False
-        cur = self.driver
-        if cur is None or cur == name:
-            self._set_driver(name)
-            return True
-        if self._controllers[name] in ("human", "interactive"):
-            self._set_driver(name)
-            return True
-        if self._controllers.get(cur) not in ("human", "interactive"):
-            self._set_driver(name)
-            return True
-        return False  # AI can't preempt a human
+        with self._lock:
+            if name not in self._controllers:
+                return False
+            cur = self.driver
+            if cur is None or cur == name:
+                self._set_driver(name)
+                return True
+            if self._controllers[name] in ("human", "interactive"):
+                self._set_driver(name)
+                return True
+            if self._controllers.get(cur) not in ("human", "interactive"):
+                self._set_driver(name)
+                return True
+            return False  # AI can't preempt a human
 
     def release(self, name):
-        if self.driver == name:
-            self.driver = None
-            self._event("DRIVER", who=None)
+        with self._lock:
+            if self.driver == name:
+                self.driver = None
+                self._event("DRIVER", who=None)
 
     def drop_controller(self, name):
         """A controller disconnected/died -> auto-release the stick if it held it."""
-        self._controllers.pop(name, None)
-        self.release(name)
+        with self._lock:
+            self._controllers.pop(name, None)
+            self.release(name)
 
     def has_control(self, name):
         return self.driver == name

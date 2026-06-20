@@ -35,8 +35,14 @@ def test_render_video_writes_a_file(tmp_path):
 @needs_ffmpeg
 def test_render_video_crop_and_zoom(tmp_path):
     out = tmp_path / "out.gif"
-    render_video(_tiny_cast(tmp_path / "t.cast"), str(out), fps=8, max_seconds=1.0,
-                 crop=(0, 0, 10, 2), zoom=2.0)
+    render_video(
+        _tiny_cast(tmp_path / "t.cast"),
+        str(out),
+        fps=8,
+        max_seconds=1.0,
+        crop=(0, 0, 10, 2),
+        zoom=2.0,
+    )
     assert out.exists() and out.stat().st_size > 0
 
 

@@ -15,6 +15,7 @@ Use it as a context manager around a run, or call `start()` / `close()` yourself
 The format is taken from the path extension (`.ttyrec` -> ttyrec, anything else -> cast)
 unless you pass `fmt="cast"` / `fmt="ttyrec"`. See docs/DESIGN.md.
 """
+
 from __future__ import annotations
 
 import codecs
@@ -46,8 +47,12 @@ class Recorder:
         else:
             self._file = open(self.path, "w", encoding="utf-8")
             self._decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
-            header = {"version": 2, "width": self.session.term.cols,
-                      "height": self.session.term.rows, "timestamp": int(time.time())}
+            header = {
+                "version": 2,
+                "width": self.session.term.cols,
+                "height": self.session.term.rows,
+                "timestamp": int(time.time()),
+            }
             self._file.write(json.dumps(header) + "\n")
         self.session.on_stream(self._on_stream)
         return self
@@ -56,8 +61,11 @@ class Recorder:
         # `raw` is the program's output as the source produced it: a byte-transparent latin-1
         # str for a byte source (so re-encode latin-1 to recover the exact bytes), or real text
         # for a text source (engine/cast) -- encode UTF-8 to get bytes either way.
-        data = raw.encode("latin-1") if getattr(self.session.source, "encoding", None) else \
-            raw.encode("utf-8")
+        data = (
+            raw.encode("latin-1")
+            if getattr(self.session.source, "encoding", None)
+            else raw.encode("utf-8")
+        )
         t = time.monotonic() - self._t0
         with self._lock:
             if self._file is None:
@@ -92,8 +100,16 @@ class Recorder:
         self.close()
 
 
-_ANSI_IDX = {"black": 0, "red": 1, "green": 2, "brown": 3,
-             "blue": 4, "magenta": 5, "cyan": 6, "white": 7}
+_ANSI_IDX = {
+    "black": 0,
+    "red": 1,
+    "green": 2,
+    "brown": 3,
+    "blue": 4,
+    "magenta": 5,
+    "cyan": 6,
+    "white": 7,
+}
 
 
 def _sgr_color(name, base):
@@ -111,8 +127,14 @@ def _sgr_color(name, base):
 
 def _ansi_codes(cell):
     codes = []
-    for flag, code in ((cell.bold, 1), (cell.italic, 3), (cell.underline, 4),
-                       (cell.blink, 5), (cell.reverse, 7), (cell.strike, 9)):
+    for flag, code in (
+        (cell.bold, 1),
+        (cell.italic, 3),
+        (cell.underline, 4),
+        (cell.blink, 5),
+        (cell.reverse, 7),
+        (cell.strike, 9),
+    ):
         if flag:
             codes.append(code)
     for name, base in ((cell.fg, 30), (cell.bg, 40)):
@@ -142,8 +164,16 @@ def export_ansi(session, path):
         f.write(bytes(out))
 
 
-_PYTE_3A = {"black": 0, "red": 1, "green": 2, "brown": 3,
-            "blue": 4, "magenta": 5, "cyan": 6, "white": 7}
+_PYTE_3A = {
+    "black": 0,
+    "red": 1,
+    "green": 2,
+    "brown": 3,
+    "blue": 4,
+    "magenta": 5,
+    "cyan": 6,
+    "white": 7,
+}
 _3A_HEX = "0123456789abcdef"
 
 

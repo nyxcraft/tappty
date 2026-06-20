@@ -16,7 +16,10 @@ EXAMPLES = os.path.join(os.path.dirname(__file__), os.pardir, "examples")
 def _run(name):
     return subprocess.run(
         [sys.executable, os.path.join(EXAMPLES, name)],
-        capture_output=True, text=True, timeout=30, check=True,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=True,
     ).stdout
 
 

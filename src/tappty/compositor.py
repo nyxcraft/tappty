@@ -56,8 +56,16 @@ def _expand(row_runs, cols):
         for i, ch in enumerate(text):
             c = col + i
             if 0 <= c < cols:
-                line[c] = (ch, fg, bg, bool(bold), bool(italic),
-                           bool(underline), bool(strike), bool(blink))
+                line[c] = (
+                    ch,
+                    fg,
+                    bg,
+                    bool(bold),
+                    bool(italic),
+                    bool(underline),
+                    bool(strike),
+                    bool(blink),
+                )
     return line
 
 
@@ -161,8 +169,14 @@ class BusBacking:
         self.client.sub()
         self.client.send("SNAP")
         # placeholder until the first FRAME/SNAP arrives (styled `cells`, like a real frame)
-        self._frame = {"rows": [""] * 24, "cells": [[] for _ in range(24)],
-                       "cx": 0, "cy": 0, "cols": 80, "rows_n": 24}
+        self._frame = {
+            "rows": [""] * 24,
+            "cells": [[] for _ in range(24)],
+            "cx": 0,
+            "cy": 0,
+            "cols": 80,
+            "rows_n": 24,
+        }
         self._pending = deque(maxlen=240)  # frames awaiting paced replay
         self._driver = None  # who holds the remote stick (tracked)
         self._run = True

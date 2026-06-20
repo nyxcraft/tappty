@@ -10,6 +10,7 @@ automated driver -- attaches the same way:
 Here we host a tiny in-process program and print what each tap sees. Runnable with just the
 core install (no extras, no display):  python examples/observe_tap.py
 """
+
 from tappty import Session, Terminal
 from tappty.source import EngineSource
 
@@ -30,8 +31,10 @@ def main():
 
     sess.run_blocking()  # host the program to completion on this thread
 
-    print(f"\n{len(frames)} frame notifications; "
-          f"row 0 of the screen is now {sess.term.rows_text()[0].strip()!r}")
+    print(
+        f"\n{len(frames)} frame notifications; "
+        f"row 0 of the screen is now {sess.term.rows_text()[0].strip()!r}"
+    )
 
 
 if __name__ == "__main__":

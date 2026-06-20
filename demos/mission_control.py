@@ -11,6 +11,7 @@ no external programs.
     python demos/mission_control.py                  # open the window
     python demos/mission_control.py --snapshot m.png # render headless, write m.png
 """
+
 from __future__ import annotations
 
 import argparse
@@ -60,14 +61,26 @@ def build_panels():
     # Each terminal is sized to what its program draws (the color chart is ~64 wide; the rain
     # runner assumes 80x24); the compositor scales each tile to fit.
     specs = [
-        (Session(PyteTerminal(64, 22), source=EngineSource(color_chart.runner)),
-         (10, 10, 625, 345), "color"),
-        (Session(Terminal(80, 24), source=EngineSource(matrix_rain.runner)),
-         (645, 10, 625, 345), "rain"),
-        (Session(PyteTerminal(64, 18), source=EngineSource(log_runner)),
-         (10, 365, 625, 345), "log"),
-        (Session(PyteTerminal(40, 12), source=EngineSource(clock_runner)),
-         (645, 365, 625, 345), "status"),
+        (
+            Session(PyteTerminal(64, 22), source=EngineSource(color_chart.runner)),
+            (10, 10, 625, 345),
+            "color",
+        ),
+        (
+            Session(Terminal(80, 24), source=EngineSource(matrix_rain.runner)),
+            (645, 10, 625, 345),
+            "rain",
+        ),
+        (
+            Session(PyteTerminal(64, 18), source=EngineSource(log_runner)),
+            (10, 365, 625, 345),
+            "log",
+        ),
+        (
+            Session(PyteTerminal(40, 12), source=EngineSource(clock_runner)),
+            (645, 365, 625, 345),
+            "status",
+        ),
     ]
     panels = []
     for session, rect, title in specs:
@@ -94,8 +107,13 @@ def main():
     panels = build_panels()
     if args.snapshot:
         base = args.snapshot[:-4] if args.snapshot.endswith(".png") else args.snapshot
-        compositor.run(panels, title="tappty mission control", size=(1280, 720),
-                       snapshot_path=base, max_seconds=args.seconds)
+        compositor.run(
+            panels,
+            title="tappty mission control",
+            size=(1280, 720),
+            snapshot_path=base,
+            max_seconds=args.seconds,
+        )
     else:
         compositor.run(panels, title="tappty mission control", size=(1280, 720))
 

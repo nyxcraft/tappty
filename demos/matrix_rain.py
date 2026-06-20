@@ -10,6 +10,7 @@ already renders.
     python demos/matrix_rain.py                  # open the window (Ctrl-] to quit)
     python demos/matrix_rain.py --snapshot r.png # render a frame headless, write r.png
 """
+
 from __future__ import annotations
 
 import argparse
@@ -38,9 +39,7 @@ def runner(emit, readline, cols=80, rows=24):
                 drops[x] = random.randint(-rows, 0)
         # VT52 cursor-address each row (ESC Y row col), so the full-width rows don't
         # trip auto-wrap into spurious newlines.
-        frame = "".join(
-            "\x1bY" + chr(32 + y) + chr(32) + "".join(grid[y]) for y in range(rows)
-        )
+        frame = "".join("\x1bY" + chr(32 + y) + chr(32) + "".join(grid[y]) for y in range(rows))
         emit(frame)
         time.sleep(0.07)
 
@@ -64,8 +63,13 @@ def main():
     session = Session(Terminal(80, 24), source=EngineSource(runner))
     if args.snapshot:
         base = args.snapshot[:-4] if args.snapshot.endswith(".png") else args.snapshot
-        pygame_ui.run(session, None, title="tappty digital rain",
-                      snapshot_path=base, max_seconds=args.seconds)
+        pygame_ui.run(
+            session,
+            None,
+            title="tappty digital rain",
+            snapshot_path=base,
+            max_seconds=args.seconds,
+        )
     else:
         pygame_ui.run(session, None, title="tappty digital rain")
 

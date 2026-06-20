@@ -32,6 +32,12 @@ MAX_CAST_LINE = 1 << 20  # max bytes per .cast line read (untrusted-input guard)
 MAX_CAST_FILE = 16 << 20  # max .cast file size for the unstreamable v1 path (json.load all)
 _TTYREC_HEADER = struct.Struct("<III")  # ttyrec record header: sec, usec, length (LE uint32)
 MAX_TTYREC_CHUNK = 1 << 24  # max bytes per ttyrec record (untrusted-input guard)
+MAX_ART_FILE = 16 << 20  # max .ans/.3a file size -- both are read whole (untrusted-input guard)
+
+
+def _check_art_size(path):
+    if os.path.getsize(path) > MAX_ART_FILE:
+        raise ValueError(f"{path!r} exceeds {MAX_ART_FILE} bytes; refusing to load it whole")
 
 
 def _cast_dim(value, default):
@@ -254,6 +260,7 @@ class _ReplaySource(Source):
         self._running = False
         self._wake = threading.Event()  # set by stop() to interrupt an idle sleep
         self.width, self.height = 80, 24
+        self.error = None  # a parse/replay failure, so run_blocking() can re-raise it
 
     def _events(self):
         """Yield (abs_time, data) for each output event; abs_time = seconds from start."""
@@ -277,6 +284,8 @@ class _ReplaySource(Source):
                         on_output(data)
                     if not self.loop:
                         break
+            except BaseException as e:  # a malformed recording must surface, not exit 0
+                self.error = e
             finally:
                 self._running = False
                 on_exit()
@@ -408,14 +417,16 @@ class AnsSource(_ReplaySource):
     for the retro modem-speed effect; by default the whole screen appears at once. SAUCE's
     recorded width/height land on `.width` / `.height` (default 80x24). See docs/DESIGN.md."""
 
-    def __init__(self, path, speed=1.0, idle_time_limit=None, loop=False, baud=None,
-                 charset="cp437"):
+    def __init__(
+        self, path, speed=1.0, idle_time_limit=None, loop=False, baud=None, charset="cp437"
+    ):
         super().__init__(path, speed, idle_time_limit, loop)
         self.baud = baud
         self._charset = charset
         self._content = self._load()
 
     def _load(self):
+        _check_art_size(self.path)
         with open(self.path, "rb") as f:
             data = f.read()
         # SAUCE: a 128-byte record at EOF beginning b"SAUCE00", optionally preceded by a COMNT
@@ -444,8 +455,16 @@ class AnsSource(_ReplaySource):
             yield 0.0, self._content
 
 
-_3A_NAMES = {"black": 0, "red": 1, "green": 2, "yellow": 3,
-             "blue": 4, "magenta": 5, "cyan": 6, "white": 7}
+_3A_NAMES = {
+    "black": 0,
+    "red": 1,
+    "green": 2,
+    "yellow": 3,
+    "blue": 4,
+    "magenta": 5,
+    "cyan": 6,
+    "white": 7,
+}
 
 
 def _3a_spec_sgr(spec, fg):
@@ -461,7 +480,7 @@ def _3a_spec_sgr(spec, fg):
         return f"{38 if fg else 48};5;{int(spec)}"
     if len(spec) == 6:
         try:
-            r, g, b = (int(spec[i:i + 2], 16) for i in (0, 2, 4))
+            r, g, b = (int(spec[i : i + 2], 16) for i in (0, 2, 4))
         except ValueError:
             return None
         return f"{38 if fg else 48};2;{r};{g};{b}"
@@ -499,6 +518,7 @@ class ThreeASource(_ReplaySource):
         self._parse(loop)
 
     def _parse(self, loop_arg):
+        _check_art_size(self.path)
         lines = open(self.path, encoding="utf-8", errors="replace").read().split("\n")
         body_at = next((i for i, ln in enumerate(lines) if ln.strip() == "@body"), len(lines))
         header = lines[1:body_at] if lines and lines[0].strip() == "@3a" else lines[:body_at]
@@ -534,7 +554,7 @@ class ThreeASource(_ReplaySource):
         self.loop = bool(self.loop) or loop_hdr or bool(loop_arg)
 
         frame, w, h = [], 80, 24
-        for ln in lines[body_at + 1:] + [""]:  # trailing "" flushes the last frame
+        for ln in lines[body_at + 1 :] + [""]:  # trailing "" flushes the last frame
             # only a truly empty line separates frames -- a row of spaces is screen content
             if ln.rstrip("\r") == "" or ln.startswith("@"):
                 if frame:

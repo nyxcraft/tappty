@@ -8,6 +8,7 @@ self-contained demo; normally they'd be separate processes (even separate machin
 Runnable with the core install (POSIX -- it uses a Unix-domain socket):
     python examples/bus_capture.py
 """
+
 import os
 import tempfile
 

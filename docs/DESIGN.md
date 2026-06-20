@@ -104,8 +104,12 @@ caller can re-raise it. **Eight implementations ship:**
 - **`TtyrecSource` / `AnsSource` / `ThreeASource` (any OS).** Three more replay/art producers
   sharing a `_ReplaySource` base (the timed play loop): `.ttyrec` (NetHack-format binary records
   — a byte source), `.ans` ANSI/BBS art (CP437 + an optional SAUCE trailer), and `.3a` animated
-  ASCII art. `replay_source(path)` dispatches by extension. Same untrusted-input bounds as
-  `CastSource` (per-record/length caps, clamped dimensions).
+  ASCII art. `replay_source(path)` dispatches by extension. Untrusted-input bounds: `.ttyrec`
+  caps each record at `MAX_TTYREC_CHUNK`; `.ans`/`.3a` are loaded whole, so each is refused above
+  `MAX_ART_FILE` (16 MiB); dimensions are clamped where the format carries them (SAUCE). A parse
+  error in any replay source surfaces via `Source.error` (re-raised by `run_blocking`), not a
+  silent exit. (`render_video` additionally caps the materialized event count and the rendered
+  duration so a hostile recording can't OOM or balloon the frame count.)
 - **`PipeSource` (any OS).** Hosts an external program over plain pipes (`subprocess` with
   `stdin/stdout`, `stderr`→stdout, `bufsize=0`) — no pty. The "non-pty Source" (`--no-pty`),
   byte-transparent like `PtySource`. Caveat: with no tty the child detects it isn't
@@ -267,7 +271,7 @@ client). One server = one session, N clients.
 
 **Wire format.** Newline-delimited text frames: `VERB[ payload]\n`. The payload is JSON for
 most verbs, or rest-of-line literal text for `LINE`/`CMD`. Frames are read with a size cap
-(`MAX_FRAME`, 64 KiB) on **both** ends; an oversized frame drops the connection.
+(`MAX_FRAME`, 256 KiB) on **both** ends; an oversized frame drops the connection.
 
 **Protocol.**
 

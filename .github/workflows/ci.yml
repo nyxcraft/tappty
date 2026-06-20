@@ -33,7 +33,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - run: pip install -e '.[dev,ansi,sdl]'  # sdl extra == pygame-ce (the CI-tested dep)
+      - run: pip install -e '.[dev,ansi,sdl,web]'  # sdl=pygame-ce, web=websockets (CI-tested deps)
       - run: pytest -q
 
   # Build BOTH distributions and run twine check, so packaging breakage is caught on every push

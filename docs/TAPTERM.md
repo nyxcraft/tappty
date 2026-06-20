@@ -276,18 +276,20 @@ would in a real terminal (interactive prompts, line editing, programs that check
 
 ## Driving full-screen TUIs — `--raw`
 
-By default `tapterm` is **line-oriented**: it echoes your keystrokes locally and sends a whole
-line when you press Enter (good for prompts you want to *watch* being typed). Arrow keys,
-function keys, and Ctrl-combos aren't sent to the program.
+An interactive session is **raw by default** (the regular-terminal behavior): every keystroke
+goes straight to the program with no local echo or line editing, and special keys are translated
+to their VT escape sequences — so full-screen programs like **`vim`**, **`htop`**, or **`less`**
+work, the program handling its own echo and redraw exactly as under a real terminal. `--raw`
+forces this mode explicitly.
 
-**`--raw`** switches to character-at-a-time input: every keystroke goes straight to the program
-with no local echo or line editing, and special keys are translated to their VT escape
-sequences — so full-screen programs like **`vim`**, **`htop`**, or **`less`** work. The program
-handles its own echo and redraw, exactly as under a real terminal.
+The opposite is **`--cooked`** (the line-oriented instrument mode): `tapterm` echoes your
+keystrokes locally and sends a whole line on Enter — good for prompts you want to *watch* being
+typed — and arrow/function/Ctrl keys aren't forwarded. That's what the observe taps and the bus
+`CMD` capture expect (they key off line/prompt boundaries).
 
 ```sh
-tapterm --ansi --raw -- vim        # the usual combo: full-ANSI render + raw keys
-tapterm --ansi --raw -- htop
+tapterm -- vim                     # interactive: full-ANSI render + raw keys, by default
+tapterm --cooked -- somelinetool   # line-oriented instrument mode instead
 ```
 
 - Pair it with **`--ansi`** for anything that paints the screen with color and cursor moves —

@@ -551,16 +551,20 @@ The same renderer on the arcade (pyglet/OpenGL) stack — identical signature an
 context (a display), where the pygame path runs purely in software. `arcade` is imported lazily,
 so `import tappty` works without it.
 
-### `web_ui.run(session, runner, title="tapterm", host="127.0.0.1", port=8023, token=None, exit_when_done=False, max_seconds=None, fps=30)`  *(browser)*
+### `web_ui.run(session, runner, title="tapterm", host="127.0.0.1", port=8023, token=None, exit_when_done=False, max_seconds=None, fps=30, allow_remote=False)`  *(browser)*
 
 Serves the session in a **browser tab** (the `web` extra). A stdlib `http.server` serves one
 page on `port`; a `websockets` server carries the live connection on `port + 1`. The browser
 draws the `cells()` grid (phosphor + SGR color) on a canvas and sends keystrokes back, honoring
-`session.raw_keys` for full TUIs. Binds **loopback** by default; pass a non-empty `token` (a
-WebSocket query param, constant-time compared) to gate connections. Several browsers can connect
-at once — the talking stick arbitrates who drives. `run()` blocks until the program ends
-(`exit_when_done`), `max_seconds`, or `KeyboardInterrupt`. No TLS — tunnel it for untrusted
-networks (see DESIGN §8).
+`session.raw_keys` for full TUIs. Several browsers can connect at once — the talking stick
+arbitrates who drives. `run()` blocks until the program ends (`exit_when_done`), `max_seconds`,
+or `KeyboardInterrupt`.
+
+Security: binds **loopback** unless `allow_remote=True`; rejects WebSocket connections whose
+`Origin` isn't the page's own (anti-CSWSH — a site the user merely visits can't drive the
+terminal); and a non-empty `token` gates **both** the page and the socket (constant-time
+compared) and is never embedded in the served HTML. No TLS — tunnel it for untrusted networks
+(see DESIGN §8).
 
 ---
 

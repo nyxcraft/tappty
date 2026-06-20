@@ -125,6 +125,17 @@ def encode_row(row, fg_default=FG, bg_default=BG):
     out = []
     for run in runs(row, fg_default, bg_default):
         x, text, fg, bg, bold, italic, underline, strike, blink = run
-        out.append([x, text, hex_rgb(fg), hex_rgb(bg),
-                    int(bold), int(italic), int(underline), int(strike), int(blink)])
+        out.append(
+            [
+                x,
+                text,
+                hex_rgb(fg),
+                hex_rgb(bg),
+                int(bold),
+                int(italic),
+                int(underline),
+                int(strike),
+                int(blink),
+            ]
+        )
     return out

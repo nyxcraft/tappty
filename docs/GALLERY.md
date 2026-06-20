@@ -41,7 +41,7 @@ bot — and it's an `ai` controller, so a human watching the GUI can press a key
 
 ```sh
 python demos/drive_vim.py                          # watch it drive vim live (needs vim)
-tapterm --play demos/recordings/drive_vim.cast     # replay the recording (zero deps)
+tapterm --play demos/recordings/drive_vim.cast     # replay the recording (no program needed)
 ```
 
 That demo drives a *fixed* script. For a closed loop that **reads the screen/stream and decides
@@ -104,7 +104,7 @@ installed (the movie above is `nyancat`, the same way):
 ![a cbonsai tree hosted in tappty](media/cbonsai.png)
 
 ```sh
-tapterm --play demos/recordings/cbonsai.cast   # replay the bundled recording (zero deps)
+tapterm --play demos/recordings/cbonsai.cast   # replay the bundled recording (no program needed)
 tapterm -- cbonsai -li                         # or host it live (needs cbonsai installed)
 ```
 
@@ -113,6 +113,6 @@ with `--play`, or turn it into a video with `--render`:
 
 ```sh
 tapterm --record cmatrix.cast -- cmatrix       # record a live session
-tapterm --play cmatrix.cast                    # replay it later (zero deps)
+tapterm --play cmatrix.cast                    # replay it later (no program needed)
 tapterm --play cmatrix.cast --render out.mp4   # …or render it to a movie
 ```

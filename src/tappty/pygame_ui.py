@@ -66,11 +66,20 @@ def run(
 
     # raw-mode key translation (full-TUI input): a pygame keycode -> VT bytes
     raw_special = {
-        pygame.K_UP: "up", pygame.K_DOWN: "down", pygame.K_LEFT: "left",
-        pygame.K_RIGHT: "right", pygame.K_HOME: "home", pygame.K_END: "end",
-        pygame.K_PAGEUP: "pageup", pygame.K_PAGEDOWN: "pagedown",
-        pygame.K_INSERT: "insert", pygame.K_DELETE: "delete", pygame.K_RETURN: "enter",
-        pygame.K_KP_ENTER: "enter", pygame.K_BACKSPACE: "backspace", pygame.K_TAB: "tab",
+        pygame.K_UP: "up",
+        pygame.K_DOWN: "down",
+        pygame.K_LEFT: "left",
+        pygame.K_RIGHT: "right",
+        pygame.K_HOME: "home",
+        pygame.K_END: "end",
+        pygame.K_PAGEUP: "pageup",
+        pygame.K_PAGEDOWN: "pagedown",
+        pygame.K_INSERT: "insert",
+        pygame.K_DELETE: "delete",
+        pygame.K_RETURN: "enter",
+        pygame.K_KP_ENTER: "enter",
+        pygame.K_BACKSPACE: "backspace",
+        pygame.K_TAB: "tab",
         pygame.K_ESCAPE: "escape",
     }
     for _i in range(1, 13):

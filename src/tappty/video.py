@@ -10,6 +10,7 @@ ffmpeg is resolved from a system `ffmpeg` on PATH or, failing that, the bundled 
 `imageio-ffmpeg` package (the `video` extra: `pip install 'tappty[video]'`). The container/codec
 follow the output extension. Needs the `sdl` (pygame) and `ansi` (pyte) extras too.
 """
+
 from __future__ import annotations
 
 import codecs
@@ -24,6 +25,9 @@ log = logging.getLogger(__name__)
 # itself streams; only the render path collects events to size the timeline). Generous — real
 # recordings have thousands, not millions.
 MAX_RENDER_EVENTS = 2_000_000
+# Hard ceiling on the rendered duration when the caller gives no --seconds, so an event with a
+# wild timestamp can't blow the frame count up to billions of frames.
+MAX_RENDER_SECONDS = 3600
 
 
 def _ffmpeg_exe():
@@ -49,9 +53,22 @@ class VideoWriter:
                 "brew install ffmpeg) or run  pip install 'tappty[video]'  for a bundled build"
             )
         ext = os.path.splitext(path)[1].lower()
-        args = [exe, "-y", "-loglevel", "error",
-                "-f", "rawvideo", "-pixel_format", "rgb24",
-                "-video_size", f"{width}x{height}", "-framerate", str(fps), "-i", "-"]
+        args = [
+            exe,
+            "-y",
+            "-loglevel",
+            "error",
+            "-f",
+            "rawvideo",
+            "-pixel_format",
+            "rgb24",
+            "-video_size",
+            f"{width}x{height}",
+            "-framerate",
+            str(fps),
+            "-i",
+            "-",
+        ]
         if ext == ".gif":  # build + apply an optimized palette for a clean GIF
             args += ["-vf", "split[a][b];[a]palettegen[p];[b][p]paletteuse"]
         else:
@@ -75,8 +92,19 @@ class VideoWriter:
             raise RuntimeError("ffmpeg failed:\n" + err.decode("utf-8", "replace").strip()[-800:])
 
 
-def render_video(recording, out_path, fps=30, font_size=18, font_path=None, zoom=1.0,
-                 speed=1.0, tail=1.0, max_seconds=None, crop=None, terminal=None):
+def render_video(
+    recording,
+    out_path,
+    fps=30,
+    font_size=18,
+    font_path=None,
+    zoom=1.0,
+    speed=1.0,
+    tail=1.0,
+    max_seconds=None,
+    crop=None,
+    terminal=None,
+):
     """Render `recording` (a .cast/.ttyrec/.ans/.3a path) to `out_path` (a video file).
 
     Options:
@@ -109,6 +137,7 @@ def render_video(recording, out_path, fps=30, font_size=18, font_path=None, zoom
     src = replay_source(recording, speed=1.0, loop=False)  # we do the timing ourselves
     if terminal is None:
         from tappty.pyte_terminal import PyteTerminal
+
         terminal = PyteTerminal
     term = terminal(src.width, src.height)
     sess = Session(term)  # used only for its snapshot() of the grid
@@ -123,8 +152,9 @@ def render_video(recording, out_path, fps=30, font_size=18, font_path=None, zoom
 
     end = events[-1][0] if events else 0.0
     span = end / max(speed, 1e-9) + tail
-    if max_seconds is not None:
-        span = min(span, max_seconds)
+    # Bound the timeline: --seconds if given, else a hard ceiling -- so a recording with an
+    # absurd last timestamp can't drive an unbounded frame count.
+    span = min(span, max_seconds if max_seconds is not None else MAX_RENDER_SECONDS)
     nframes = max(1, int(span * fps) + 1)
 
     pygame.init()
@@ -157,8 +187,15 @@ def render_video(recording, out_path, fps=30, font_size=18, font_path=None, zoom
                     term.write(tail_text)
             surface.fill(compositor.BG)
             blink_on = (i // max(1, fps // 2)) % 2 == 0  # ~1 Hz blink phase
-            compositor.draw_terminal(surface, (0, 0, width, height), sess.snapshot(),
-                                     font, glyphs, pan=pan, blink_on=blink_on)
+            compositor.draw_terminal(
+                surface,
+                (0, 0, width, height),
+                sess.snapshot(),
+                font,
+                glyphs,
+                pan=pan,
+                blink_on=blink_on,
+            )
             frame = pygame.transform.scale(surface, (out_w, out_h)) if zoom != 1.0 else surface
             writer.write(pygame.image.tobytes(frame, "RGB"))
     finally:

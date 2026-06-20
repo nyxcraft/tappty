@@ -18,8 +18,10 @@ Security: it binds loopback by default (a non-loopback `host` needs `allow_remot
 **rejects WebSocket connections whose `Origin` isn't the page's own** -- browsers don't apply the
 same-origin policy to WebSockets, so without this a site the user merely *visits* could connect
 to the loopback port and drive the terminal (CSWSH). An optional `token` (a query param,
-constant-time compared) adds a shared secret on top. It is a terminal control plane, not a public
-service -- no TLS; set a `token` if loopback + same-origin isn't isolation enough.
+constant-time compared) gates **both** the HTML page and the websocket; it is never embedded in
+the served page (the client reads it from its own URL), so a leaked page leaks no secret. It is a
+terminal control plane, not a public service -- no TLS; set a `token` if loopback + same-origin
+isn't isolation enough.
 `websockets` is imported lazily, so `import tappty` / `import tappty.web_ui` work without it.
 """
 
@@ -45,6 +47,7 @@ def _allowed_origins(host, port):
         origins.add(f"https://{hb}:{port}")
     return origins
 
+
 _PAGE = """<!doctype html>
 <html><head><meta charset="utf-8"><title>__TITLE__</title>
 <style>html,body{margin:0;background:#__BG__;height:100%}
@@ -53,7 +56,8 @@ _PAGE = """<!doctype html>
 </head><body>
 <canvas id="c"></canvas><div id="s">connecting…</div>
 <script>
-const COLS=__COLS__, ROWS=__ROWS__, WS_PORT=__WS_PORT__, TOKEN=__TOKEN__;
+const COLS=__COLS__, ROWS=__ROWS__, WS_PORT=__WS_PORT__;
+const TOKEN=new URLSearchParams(location.search).get("token")||"";  // from the URL, never embedded
 const FG="__FG__", BG="__BG__", FONT="16px monospace";
 const cv=document.getElementById("c"), ctx=cv.getContext("2d"), st=document.getElementById("s");
 ctx.font=FONT;
@@ -106,7 +110,10 @@ document.addEventListener("keydown", e=>{
 """
 
 
-def _render_page(title, ws_port, cols, rows, token):
+def _render_page(title, ws_port, cols, rows):
+    # The token is NOT embedded here -- the page is itself gated by the token (do_GET), and the
+    # client reads it from its own URL to forward to the websocket, so the served HTML holds no
+    # secret (a leaked page can't leak a token it never contained).
     from tappty import style
 
     repl = {
@@ -114,7 +121,6 @@ def _render_page(title, ws_port, cols, rows, token):
         "__WS_PORT__": str(ws_port),
         "__COLS__": str(cols),
         "__ROWS__": str(rows),
-        "__TOKEN__": json.dumps(token or ""),  # a JS string literal (safely encoded)
         "__FG__": style.hex_rgb(style.FG),
         "__BG__": style.hex_rgb(style.BG),
     }
@@ -204,10 +210,16 @@ def run(
 
     cols, rows = session.term.cols, session.term.rows
     ws_port = port + 1
-    page = _render_page(title, ws_port, cols, rows, token).encode("utf-8")
+    page = _render_page(title, ws_port, cols, rows).encode("utf-8")
 
     class _Page(http.server.BaseHTTPRequestHandler):
         def do_GET(self):
+            if token is not None:  # gate the page itself, so the token must already be known
+                got = (parse_qs(urlsplit(self.path).query).get("token") or [""])[0]
+                if not hmac.compare_digest(got, token):
+                    self.send_response(403)
+                    self.end_headers()
+                    return
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Content-Length", str(len(page)))
