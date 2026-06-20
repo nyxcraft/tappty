@@ -190,6 +190,23 @@ pre {
   margin-top: 1.4rem;
 }
 
+.hero__attr {
+  margin: 1rem 0 1.3rem;
+}
+
+.hero__attr p {
+  margin: 0;
+  font-size: .85rem;
+  color: var(--ink-soft);
+}
+
+.hero__attr p:first-child {        /* the author line — the promotional one */
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: var(--gold);
+  margin-bottom: .15rem;
+}
+
 .button {
   display: inline-flex;
   align-items: center;
@@ -583,6 +600,13 @@ pre {
 
 .site-footer p {
   margin: 0;
+}
+
+.site-footer__attr {
+  margin-top: .55rem !important;
+  font-size: .76rem;
+  line-height: 1.5;
+  opacity: .8;
 }
 
 .site-footer a {

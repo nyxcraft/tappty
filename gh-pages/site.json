@@ -5,6 +5,11 @@
   "github_href": "https://github.com/nyxbitco/tappty",
   "copyright": "Nicholas J. Kisseberth",
   "status": "beta",
+  "attribution": [
+    "Software Architecture, Design & Engineering by Nicholas J. Kisseberth.",
+    "Code Synthesized via Anthropic Claude Code / Opus 4.8.",
+    "Automated Code Review via OpenAI Codex / ChatGPT 5.5."
+  ],
   "docs": [
     {
       "slug": "guide",
@@ -47,6 +52,14 @@
       "title": "Documentation",
       "source": "docs/README.md",
       "summary": "Index of the tappty documentation.",
+      "template": "page",
+      "featured": false
+    },
+    {
+      "slug": "license",
+      "title": "License",
+      "source": "docs/LICENSE.md",
+      "summary": "tappty is released under the MIT License.",
       "template": "page",
       "featured": false
     }

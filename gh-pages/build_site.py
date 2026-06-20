@@ -237,6 +237,8 @@ def main() -> int:
     index_page = next((p for p in docs_pages if p["slug"] == "docs"), docs_pages[0])
     # The "Gallery" link in every header points at the gallery page, if there is one.
     gallery_page = next((p for p in docs_pages if p["slug"] == "gallery"), None)
+    # The footer's "MIT-licensed" links to the license page, if there is one.
+    license_page = next((p for p in docs_pages if p["slug"] == "license"), None)
     content_pages = [p for p in docs_pages if p is not index_page]
     hero_primary = content_pages[0]["href"] if content_pages else "#"   # "Get started" -> guide
     hero_secondary = content_pages[1]["href"] if len(content_pages) > 1 else hero_primary
@@ -247,6 +249,21 @@ def main() -> int:
     status = config.get("status")
     status_badge = (
         f'<span class="brand__badge">{escape(status)}</span>' if status else ""
+    )
+    # Author / coding-attribution lines (site.json "attribution"), shown verbatim in the footer
+    # on every page and, on the home page, above the fold in the hero. Each line on its own line.
+    attribution_lines = config.get("attribution") or []
+    attribution = (
+        '<p class="site-footer__attr">'
+        + "<br>".join(escape(line) for line in attribution_lines)
+        + "</p>"
+        if attribution_lines else ""
+    )
+    attribution_hero = (
+        '<div class="hero__attr">'
+        + "".join(f"<p>{escape(line)}</p>" for line in attribution_lines)
+        + "</div>"
+        if attribution_lines else ""
     )
 
     home_html = render_template(
@@ -271,6 +288,12 @@ def main() -> int:
             "docs_cards": "\n".join(docs_cards),
             "year": year,
             "copyright": escape(copyright_holder),
+            "attribution": attribution,
+            "attribution_hero": attribution_hero,
+            "license_href": escape(
+                relative_href(output_dir / "index.html", output_dir / license_page["output"])
+                if license_page else github_href
+            ),
         },
     )
     write_text(output_dir / "index.html", home_html)
@@ -291,6 +314,10 @@ def main() -> int:
         gallery_href = (
             relative_href(output_path, output_dir / gallery_page["output"])
             if gallery_page else docs_href
+        )
+        license_href = (
+            relative_href(output_path, output_dir / license_page["output"])
+            if license_page else github_href
         )
         template = "page.html" if page["template"] == "page" else "doc.html"
 
@@ -313,6 +340,8 @@ def main() -> int:
                 "content": content_html,
                 "year": year,
                 "copyright": escape(copyright_holder),
+                "attribution": attribution,
+                "license_href": escape(license_href),
             },
         )
         write_text(output_path, doc_html)

@@ -4,7 +4,7 @@
 plain terminal (curses, CUI) or a green-phosphor window (GUI).
 
 Software Architecture, Design & Engineering by Nicholas J. Kisseberth.  
-Code Synthesized via Anthropic Claude Opus 4.8.  
+Code Synthesized via Anthropic Claude Code / Opus 4.8.  
 Automated Code Review via OpenAI Codex / ChatGPT 5.5.
 
 `tappty` is a small instrumented-terminal toolkit. A program's bytes (a subprocess on a

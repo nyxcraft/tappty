@@ -25,8 +25,8 @@
     <main id="main-content" tabindex="-1">
       <section class="hero">
         <div class="hero__copy">
-          <p class="eyebrow">Your terminal, on tap</p>
           <h1>Instrument any terminal program — observe it, drive it, render it anywhere.</h1>
+          {{ attribution_hero }}
           <p class="hero__lede">{{ site_description }}</p>
           <div class="hero__actions">
             <a class="button button--primary" href="{{ primary_href }}">Get started</a>
@@ -74,7 +74,8 @@
     </main>
 
     <footer class="site-footer">
-      <p>© {{ year }} {{ copyright }} · <a href="{{ home_href }}">{{ site_name }}</a> is MIT-licensed.</p>
+      <p>© {{ year }} {{ copyright }} · <a href="{{ home_href }}">{{ site_name }}</a> is <a href="{{ license_href }}">MIT-licensed</a>.</p>
+      {{ attribution }}
     </footer>
   </div>
 </body>
