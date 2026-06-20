@@ -21,3 +21,10 @@ Each demo also takes `--snapshot PATH`: instead of opening a window it renders
 headless (SDL dummy driver) and writes a PNG. That's exactly how the
 [documentation gallery](../docs/gallery.md) images are produced —
 `gh-pages/screenshots.py` runs these same files with `--snapshot`.
+
+`recordings/` holds short `.cast` sessions of real ANSI programs (`nyancat`, `cbonsai`),
+recorded with `tapterm --record` and replayable with **zero dependencies**:
+
+```sh
+tapterm --play examples/recordings/nyancat.cast
+```

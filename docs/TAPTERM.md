@@ -22,7 +22,7 @@ flag and mode, with practical examples and troubleshooting.
 - [Modes: CUI, GUI, headless](#modes)
 - [The terminal model: size, ANSI, Unicode](#the-terminal-model)
 - [How the command is hosted: pty, pipes, Windows](#how-the-command-is-hosted)
-- [Replaying recordings (`--cast`)](#replaying-recordings)
+- [Recording & replaying sessions (`--record` / `--play`)](#recording-and-replaying-sessions)
 - [Snapshots and automation](#snapshots-and-automation)
 - [Recipes](#recipes)
 - [Flags at a glance](#flags-at-a-glance)
@@ -55,7 +55,8 @@ What each mode needs:
 | `--headless` | no terminal, no display, no extras\* |
 | `--ansi` (full-ANSI render) | the `ansi` extra |
 
-\*POSIX pty hosting, `--no-pty`, and `--cast` need nothing. The exception is *default*
+\*POSIX pty hosting, `--no-pty`, and `--record` need nothing; `--play` needs the `ansi` extra
+(recordings are full-ANSI). The exception is *default*
 **Windows** hosting, which uses ConPTY — that needs `tappty[ansi,win]` and is still
 provisional (see [Platform notes](#platform-notes)); `--no-pty` avoids it.
 
@@ -139,7 +140,8 @@ you prefer the arcade backend or already depend on it; otherwise `--gui` is the 
 
 ### Headless — `--headless` (run, print, exit)
 
-No terminal and no display — and no extras for POSIX pty hosting, `--no-pty`, or `--cast`.
+No terminal and no display — and no extras for POSIX pty hosting, `--no-pty`, or `--record`
+(`--play` needs the `ansi` extra).
 Runs the program to completion, prints the **final screen** to stdout, and exits with the
 **program's own exit code** — the scripting/CI mode.
 
@@ -281,27 +283,74 @@ tapterm --ansi --raw -- htop
 
 ---
 
-## Replaying recordings
+## Recording and replaying sessions
 
-`tapterm` can replay an [asciinema](https://asciinema.org) `.cast` recording through the same
-renderers instead of hosting a live command:
+`tapterm` reads and writes two terminal-session recording formats —
+[asciinema](https://asciinema.org) **`.cast`** (v2 NDJSON, or the older compact v1) and
+**`.ttyrec`** (the ttyrec / termrec / NetHack format) — and plays two text-art formats:
+**`.ans`** ANSI/BBS art (CP437 + ANSI + SAUCE) and **`.3a`** animated ASCII art. The format is
+picked automatically by file extension.
+
+**Replay** a recording (or play art) through the same renderers instead of hosting a live
+command, with `--play`:
 
 ```sh
-tapterm --cast session.cast              # replay at the recorded speed (auto-sizes to the recording)
-tapterm --cast session.cast --speed 4    # 4x faster
-tapterm --cast session.cast --gui --loop # loop it in the window (a screensaver of your session)
-tapterm --ansi --cast session.cast       # use the full-ANSI backend if the recording is colorful
+tapterm --play session.cast               # replay at the recorded speed
+tapterm --play session.ttyrec             # a .ttyrec (ttyrec / NetHack format)
+tapterm --play art.ans --gui              # ANSI / BBS art
+tapterm --play anim.3a --gui --loop       # animated ASCII art (.3a), looping
+tapterm --play session.cast --speed 4     # 4x faster
+tapterm --play session.cast --gui --loop  # loop it in the window (a screensaver of your session)
 ```
 
-- The terminal is **sized to the recording** automatically (`--cols`/`--rows` are ignored).
+- Recordings are VT100+, so `--play` **uses the full-ANSI backend automatically** (it needs the
+  `ansi` extra: `pip install 'tappty[ansi]'`).
+- A `.cast`/`.ans` carries its size, so the terminal is **sized to the recording**
+  (`--cols`/`--rows` ignored); `.ttyrec` carries none, so it uses 80×24 (set `--cols`/`--rows`).
 - `--speed` multiplies playback rate; long idle gaps are still replayed at that rate.
 - `--loop` repeats the recording (GUI/CUI; ignored under `--headless`, which plays once and
   prints the final frame).
-- Both asciicast **v2** and the older compact **v1** formats are read.
+- `--cast` is kept as an alias for `--play`.
 
-To make a recording, use the `asciinema` tool (`asciinema rec session.cast`), then replay it
-with `tapterm`. Replays are deterministic — useful for demos, docs, and visual regression
-(`--headless --snapshot` renders a recording to a known final screen + PNG).
+**Record** the session you're running with `--record FILE` — it captures the program's output
+stream, with timing, as you use it:
+
+```sh
+tapterm --record session.cast -- bash         # record a shell session to asciicast v2
+tapterm --record demo.ttyrec --gui -- vim      # record while you drive it in the window
+tapterm --headless --record out.cast -- make   # record a non-interactive run
+tapterm --play in.ttyrec --record out.cast     # transcode: replay one, record the other
+```
+
+The format follows the extension. Recordings are deterministic to replay — useful for demos,
+docs, and visual regression (`--headless --snapshot` renders a recording to a known final
+screen + PNG). `.cast` files also play in the `asciinema` ecosystem and its GIF/SVG tooling.
+
+**Export a screen as art:** `--headless --snapshot screen.ans` writes the final screen as a `.ans`
+file (CP437 + SGR), and `--snapshot screen.3a` writes it as a single-frame `.3a` — instead of
+plain text. Both read back with `--play`.
+
+### Render a recording to a video
+
+`--play RECORDING --render OUT.mp4` turns a recording into a real video file (`.mp4` / `.webm` /
+`.gif` / …, by extension) via ffmpeg, instead of displaying it:
+
+```sh
+tapterm --play demo.cast --render demo.mp4                 # a recording to MP4
+tapterm --play demo.cast --render demo.gif --zoom 0.5      # half-size GIF
+tapterm --play nyan.cast --render nyan.mp4 --speed 2 --fps 30
+tapterm --play big.ttyrec --render clip.mp4 --crop 10,4,60,20   # just a region
+tapterm --render cmatrix.mp4 --seconds 5 -- cmatrix        # a LIVE program, straight to video
+```
+
+- `--font-size` sets the glyph size (the main size control); `--zoom F` scales the finished
+  frame (crisp, e.g. `2`); `--font TTF` picks a font; `--speed` and `--fps` control pacing.
+- `--crop COL,ROW,COLS,ROWS` renders only that region of the grid (area of interest).
+- Pass a command instead of `--play` to render a **live** program directly — it's hosted,
+  recorded, and rendered in one step. `--seconds N` caps programs that don't exit on their own
+  (cmatrix, htop, a shell); a program that exits (a build, `ls`, cbonsai) needs no cap.
+- The render is deterministic and faster-than-real-time. It needs the `gui` + `ansi` extras and
+  **ffmpeg** — a system binary, or `pip install 'tappty[video]'` for a bundled one.
 
 ---
 
@@ -341,10 +390,16 @@ use the library; see [REFERENCE.md](REFERENCE.md).)
 | Run a command, capture the final screen | `tapterm --headless -- make 2>&1` |
 | Same, save it to a file | `tapterm --headless --snapshot build.txt -- make` |
 | No pty (line-oriented / cross-platform) | `tapterm --no-pty -- python3 -u script.py` |
-| Replay a recording | `tapterm --cast demo.cast --speed 2` |
+| Record a session | `tapterm --record demo.cast -- bash` |
+| Replay a recording | `tapterm --play demo.cast --speed 2` |
+| Replay a .ttyrec | `tapterm --play game.ttyrec` |
+| Play ANSI/BBS art | `tapterm --play art.ans --gui` |
+| Export the screen as ANSI art | `tapterm --headless --snapshot screen.ans -- neofetch` |
+| Render a recording to MP4 | `tapterm --play demo.cast --render demo.mp4` |
+| Render a live program to MP4 | `tapterm --render rain.mp4 --seconds 5 -- cmatrix` |
 | Watch/drive it in a browser | `tapterm --web -- bash` → open `http://127.0.0.1:8023/` |
-| Loop a recording in a window | `tapterm --gui --loop --cast demo.cast` |
-| Headless PNG of a recording | `SDL_VIDEODRIVER=dummy tapterm --gui --exit-when-done --snapshot demo --cast demo.cast` |
+| Loop a recording in a window | `tapterm --gui --loop --play demo.cast` |
+| Headless PNG of a recording | `SDL_VIDEODRIVER=dummy tapterm --gui --exit-when-done --snapshot demo --play demo.cast` |
 
 ---
 
@@ -369,11 +424,21 @@ OPTIONS
   --raw                 forward keystrokes raw (arrows/Fn/Ctrl, no echo) for TUIs; pair with --ansi
   --no-pty              host over plain pipes, no pty (cross-platform; line-oriented programs)
   --snapshot PATH       GUI: mirror the screen to PATH (+PATH.png) each second;
-                        headless: write the final screen to PATH
+                        headless: write the final screen to PATH (.ans/.3a paths export art)
   --exit-when-done      GUI: close the window when the hosted program exits
-  --cast PATH           replay a .cast recording instead of a command (sizes to the recording)
-  --speed F             --cast: playback speed multiplier (default 1.0)
-  --loop                --cast: loop the recording (ignored under --headless)
+  --play FILE           replay a .cast/.ttyrec recording or play .ans/.3a art, instead of a
+                        command (--cast alias; uses the ANSI backend; sizes to a .cast/.ans)
+  --record FILE         record the session's output to a .cast or .ttyrec file as it runs
+  --render FILE         render to a video (.mp4/.webm/.gif/...): a --play recording, or a
+                        live command (it's recorded then rendered, one step)
+  --seconds N           --render of a live command: stop after N seconds (non-exiting programs)
+  --fps N               --render: output frame rate (default 30)
+  --font-size N         --render: glyph size in points (size/zoom control; default 18)
+  --zoom F              --render: scale the finished frame (e.g. 2 for crisp 2x)
+  --font TTF            --render: font file to render with (default DejaVu Sans Mono)
+  --crop C,R,COLS,ROWS  --render: render only this grid region (area of interest)
+  --speed F             --play: playback speed multiplier (default 1.0)
+  --loop                --play: loop the recording (ignored under --headless)
 
 COMMAND                 the program to host, after `--` (default: $SHELL)
 ```

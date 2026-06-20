@@ -48,9 +48,23 @@ The `0.1.0` line — the generic toolkit and the `tapterm` command. Built across
   aren't modelled by pyte (and curses has no strikethrough), and the bus stays text-only.
 - **Sources.** `PtySource` (POSIX pty), `EngineSource` (in-process `runner(emit, readline)`),
   `CastSource` (asciinema `.cast` replay — v1/v2, original timing, `speed`/`loop`),
-  `PipeSource` (plain pipes, any OS), and `ConPtySource` (Windows ConPTY via pywinpty, the
-  `win` extra — provisional, see [docs/DESIGN.md](docs/DESIGN.md) §11). The byte-source reader loop is
-  shared in `Source._pump`.
+  `TtyrecSource` (`.ttyrec` / NetHack-format replay), `AnsSource` (`.ans` ANSI/BBS art — CP437 +
+  SAUCE), `ThreeASource` (`.3a` animated ASCII art — the DomesticMoth/asciimoth format),
+  `PipeSource` (plain pipes, any OS), and `ConPtySource` (Windows ConPTY via pywinpty, the `win`
+  extra — provisional, see [docs/DESIGN.md](docs/DESIGN.md) §11). The byte-source reader loop is
+  shared in `Source._pump`; the replay/art sources share `_ReplaySource`, and
+  `replay_source(path)` picks by extension.
+- **Recording & export.** A `Recorder` observe-tap writes a live session's output stream, with
+  timing, to an asciinema `.cast` (v2) or a `.ttyrec` file — the formats the replay sources read,
+  so record → replay round-trips (and `--play in.ttyrec --record out.cast` transcodes).
+  `export_ansi()` / `export_3a()` write the current screen as an ANSI-art `.ans` (CP437 + SGR) or
+  a single-frame `.3a`.
+- **Render to video.** `render_video()` / `tapterm --play X --render out.mp4` renders any
+  recording (`.cast`/`.ttyrec`/`.ans`/`.3a`) to a real video file (`.mp4`/`.webm`/`.gif`/…) via
+  ffmpeg — deterministic and faster-than-real-time, with controls for size (`--font-size`), zoom,
+  font, speed, and a crop (`--crop`, an area of interest). `--render` also takes a **live
+  command** (`tapterm --render out.mp4 --seconds 5 -- cmatrix`) — hosted, recorded, and rendered
+  in one step. ffmpeg is found on the system or bundled by the `video` extra (imageio-ffmpeg).
 - **Session.** Observe taps (`on_stream`/`on_frame`/`on_event`), control
   (`send_input`/`feed_key`), talking-stick arbitration (one driver at a time), and the
   bytes-on-the-wire / characters-on-the-glass decode.
@@ -79,11 +93,18 @@ The `0.1.0` line — the generic toolkit and the `tapterm` command. Built across
   advance lines up instead of shoving the rest of the row right. Grapheme clusters (ZWJ families,
   flags, skin-tones) stay out of scope — pyte splits/collapses them upstream (DESIGN §9).
 - **`tapterm` CLI.** `--cui` / `--gui` / `--arcade` / `--web` / `--headless`, `--ansi`, `--raw`,
-  `--no-pty`, `--cast` (`--speed` / `--loop`), `--cols` / `--rows`, `--port`, `--snapshot`,
-  `--exit-when-done`. Headless prints the final screen and exits with the child's own status.
-- **Packaging & tooling.** `pyproject.toml` (extras `gui` / `arcade` / `web` / `ansi` / `win` /
-  `dev`; `win` bundles pywinpty *and* windows-curses so `tappty[win]` gives both the ConPTY host
-  and the curses CUI on Windows), MIT license, `src/` layout, a pytest suite (124 tests), ruff
+  `--no-pty`, `--play` (`.cast`/`.ttyrec`/`.ans`/`.3a`, `--cast` alias; `--speed` / `--loop`),
+  `--record FILE`, `--render FILE` (+ `--fps`/`--font-size`/`--zoom`/`--font`/`--crop`/`--seconds`),
+  `--cols` / `--rows`, `--port`, `--snapshot` (a `.ans`/`.3a` path exports art),
+  `--exit-when-done`. `--play` uses the full-ANSI backend automatically (recordings are VT100+).
+  Headless prints the final screen and exits with the child's own status.
+- **Bundled demo recordings.** `examples/recordings/*.cast` — short sessions of real ANSI
+  programs (`nyancat`, `cbonsai`) recorded with `--record`; they replay with zero dependencies
+  (`tapterm --play …`) and are what the docs gallery's "real programs" shots render from.
+- **Packaging & tooling.** `pyproject.toml` (extras `gui` / `arcade` / `web` / `video` / `ansi` /
+  `win` / `dev`; `win` bundles pywinpty *and* windows-curses so `tappty[win]` gives both the
+  ConPTY host and the curses CUI on Windows; `video` bundles ffmpeg for `--render`), MIT license,
+  `src/` layout, a pytest suite (140 tests), ruff
   lint + format (line length 99), and a GitHub Actions CI matrix on Python 3.9–3.13 (pyte +
   pygame-ce so the ANSI and headless-GUI tests run).
 

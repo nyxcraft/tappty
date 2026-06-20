@@ -36,9 +36,22 @@ Public API:
 from tappty import arcade_ui, compositor, curses_ui, pygame_ui, style, web_ui
 from tappty.bus import BusClient, BusServer
 from tappty.pyte_terminal import PyteTerminal
+from tappty.recorder import Recorder, export_3a, export_ansi
 from tappty.session import Session
-from tappty.source import CastSource, ConPtySource, EngineSource, PipeSource, PtySource, Source
+from tappty.source import (
+    AnsSource,
+    CastSource,
+    ConPtySource,
+    EngineSource,
+    PipeSource,
+    PtySource,
+    Source,
+    ThreeASource,
+    TtyrecSource,
+    replay_source,
+)
 from tappty.terminal import Terminal
+from tappty.video import render_video
 
 __version__ = "0.1.0"
 
@@ -50,8 +63,16 @@ __all__ = [
     "PtySource",
     "EngineSource",
     "CastSource",
+    "TtyrecSource",
+    "AnsSource",
+    "ThreeASource",
+    "replay_source",
     "PipeSource",
     "ConPtySource",
+    "Recorder",
+    "export_ansi",
+    "export_3a",
+    "render_video",
     "BusServer",
     "BusClient",
     "curses_ui",

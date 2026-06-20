@@ -60,3 +60,40 @@ python examples/mission_control.py
 [View source on GitHub →](https://github.com/nyxbitco/tappty/blob/main/examples/mission_control.py)
 
 <!--include: examples/mission_control.py-->
+
+## Hosting real terminal programs
+
+tappty hosts any ANSI program faithfully — 256/truecolor SGR, block-glyph art, full-screen
+TUIs. The two below are real programs (`nyancat`, `cbonsai`) **recorded once and replayed here**:
+the screenshots are produced by replaying bundled `.cast` files, so they reproduce with none of
+those programs installed.
+
+### nyancat
+
+![nyancat hosted in tappty](media/nyancat.png)
+
+```sh
+tapterm -- nyancat                                # host it live (needs nyancat installed)
+tapterm --play examples/recordings/nyancat.cast   # replay the bundled recording (zero deps)
+```
+
+### cbonsai
+
+![a cbonsai tree hosted in tappty](media/cbonsai.png)
+
+```sh
+tapterm -- cbonsai -li
+tapterm --play examples/recordings/cbonsai.cast
+```
+
+**Record your own.** `--record` captures the live output stream as it runs; replay it anywhere
+with `--play`, no program required:
+
+```sh
+tapterm --record cmatrix.cast -- cmatrix     # record a live session
+tapterm --play cmatrix.cast                  # replay it later (zero deps)
+```
+
+[`chafa`](https://hpjansson.org/chafa/) turns images (and video frames) into truecolor ANSI you
+can host the same way — `tapterm -- chafa picture.png`. And tappty's own
+[digital rain](#green-phosphor-digital-rain) covers the Matrix effect with no dependencies at all.

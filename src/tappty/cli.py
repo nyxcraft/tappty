@@ -173,21 +173,53 @@ def build_parser():
         help="GUI: close the window when the hosted program exits",
     )
     ap.add_argument(
+        "--play",
         "--cast",
+        dest="play",
         default=None,
-        help="replay an asciinema .cast recording instead of hosting a command "
-        "(sizes the terminal to the recording)",
+        metavar="FILE",
+        help="replay a recording instead of hosting a command: .cast (asciinema), .ttyrec, or "
+        ".ans ANSI art -- auto-detected by extension. The full-ANSI backend is used automatically "
+        "(recordings are VT100+); a .cast/.ans is sized to the recording. Needs the 'ansi' extra",
     )
+    ap.add_argument(
+        "--record",
+        default=None,
+        metavar="FILE",
+        help="record the session's output as it runs, to FILE -- .cast (asciinema v2) or "
+        ".ttyrec by extension; replay it later with --play",
+    )
+    ap.add_argument(
+        "--render",
+        default=None,
+        metavar="FILE",
+        help="with --play: render the recording to a video file (.mp4 / .webm / .gif / ...) "
+        "via ffmpeg, instead of displaying it. Needs the 'gui' + 'ansi' extras and ffmpeg "
+        "(or  pip install 'tappty[video]'  for a bundled ffmpeg)",
+    )
+    ap.add_argument("--fps", type=_positive_int, default=30,
+                    help="--render: output frame rate (default 30)")
+    ap.add_argument("--font-size", dest="font_size", type=_positive_int, default=18,
+                    help="--render: glyph size in points -- the size/zoom control (default 18)")
+    ap.add_argument("--zoom", type=float, default=1.0,
+                    help="--render: scale the finished frame, e.g. 2 for a crisp 2x video")
+    ap.add_argument("--font", default=None, metavar="TTF",
+                    help="--render: a .ttf font file to render with (default: DejaVu Sans Mono)")
+    ap.add_argument("--crop", default=None, metavar="COL,ROW,COLS,ROWS",
+                    help="--render: render only this grid region (area of interest)")
+    ap.add_argument("--seconds", type=float, default=None, metavar="N",
+                    help="--render of a live command (no --play): stop after N seconds "
+                    "(needed for programs that don't exit on their own, e.g. cmatrix)")
     ap.add_argument(
         "--speed",
         type=float,
         default=1.0,
-        help="--cast: replay speed multiplier (default 1.0; e.g. 2 = twice as fast)",
+        help="--play: replay speed multiplier (default 1.0; e.g. 2 = twice as fast)",
     )
     ap.add_argument(
         "--loop",
         action="store_true",
-        help="--cast: loop the recording (GUI/CUI; ignored when --headless)",
+        help="--play: loop the recording (GUI/CUI; ignored when --headless)",
     )
     ap.add_argument(
         "--ansi",
@@ -220,40 +252,24 @@ def build_parser():
     return ap
 
 
-def main(argv=None):
-    ap = build_parser()
-    a = ap.parse_args(argv)
-
-    mode = a.mode or _default_mode()
-
-    # ConPTY (the default Windows pty path) emits VT100+, which the VT52 grid renders as
-    # escape soup -- so force the full-ANSI backend whenever that path is in play.
-    ansi = a.ansi or (os.name == "nt" and not a.no_pty and not a.cast)
-
-    if a.cast:  # replay a recording instead of hosting a command
-        from tappty.source import CastSource
-
-        src = CastSource(a.cast, speed=a.speed, loop=a.loop and mode != "headless")
-        term = _make_terminal(ap, ansi, src.width, src.height)  # size to the recording
-        sess = Session(term, source=src)
-        title = a.title or ("tapterm :: cast:" + os.path.basename(a.cast))
-    else:
-        cmd = a.command
-        if cmd and cmd[0] == "--":  # the conventional argv separator
-            cmd = cmd[1:]
-        if not cmd:  # no command -> behave like a terminal: host a shell
-            cmd = [os.environ.get("SHELL", "/bin/sh")]
-        term = _make_terminal(ap, ansi, a.cols, a.rows)
-        sess = Session(term)
-        sess.source = _make_source(ap, a.no_pty, cmd, a.rows, a.cols)
-        title = a.title or ("tapterm :: " + os.path.basename(cmd[0]))
-
+def _run_mode(ap, a, sess, term, mode, title):
+    """Run the chosen renderer/headless mode for a built session; returns the exit code."""
     if mode == "headless":
         sess.run_blocking()  # runs until the hosted program exits (EOF on pty)
         out = term.snapshot()
         if a.snapshot:
-            with open(a.snapshot, "w") as f:
-                f.write(out)
+            snap = a.snapshot.lower()
+            if snap.endswith(".ans"):  # export the screen as ANSI art
+                from tappty.recorder import export_ansi
+
+                export_ansi(sess, a.snapshot)
+            elif snap.endswith(".3a"):  # export as a single-frame .3a
+                from tappty.recorder import export_3a
+
+                export_3a(sess, a.snapshot)
+            else:
+                with open(a.snapshot, "w") as f:
+                    f.write(out)
         print(out)
         return sess.source.returncode or 0  # propagate the child's exit code (None -> 0)
 
@@ -304,6 +320,95 @@ def main(argv=None):
             sess, None, title=title, snapshot_path=a.snapshot, exit_when_done=a.exit_when_done
         )
     return 0
+
+
+def main(argv=None):
+    ap = build_parser()
+    a = ap.parse_args(argv)
+
+    mode = a.mode or _default_mode()
+
+    if a.render:  # render to a video file, no display
+        crop = None
+        if a.crop:
+            try:
+                crop = tuple(int(x) for x in a.crop.split(","))
+                if len(crop) != 4:
+                    raise ValueError
+            except ValueError:
+                ap.error("--crop wants four integers: COL,ROW,COLS,ROWS")
+        recording, tmp = a.play, None
+        if not recording:  # no --play: host the command live, record it, then render that
+            import tempfile
+            import time
+
+            cmd = a.command[1:] if a.command and a.command[0] == "--" else a.command
+            if not cmd:
+                cmd = [os.environ.get("SHELL", "/bin/sh")]
+            sess = Session(_make_terminal(ap, False, a.cols, a.rows))  # term unused (taps raw)
+            sess.source = _make_source(ap, a.no_pty, cmd, a.rows, a.cols)
+            fd, recording = tempfile.mkstemp(suffix=".cast")
+            os.close(fd)
+            tmp = recording
+            from tappty.recorder import Recorder
+
+            rec = Recorder(sess, recording).start()
+            if a.seconds:  # timed capture, for programs that never exit
+                sess.start()
+                time.sleep(a.seconds)
+                sess.stop()
+            else:  # record until the program exits on its own
+                sess.run_blocking()
+            rec.close()
+        from tappty.video import render_video
+
+        try:
+            out = render_video(recording, a.render, fps=a.fps, font_size=a.font_size,
+                               font_path=a.font, zoom=a.zoom, speed=a.speed, crop=crop)
+        except RuntimeError as exc:  # missing ffmpeg / encode failure -> clean message
+            ap.error(str(exc))
+        finally:
+            if tmp:
+                try:
+                    os.remove(tmp)
+                except OSError:
+                    pass
+        print(f"rendered -> {out}")
+        return 0
+
+    # Replayed recordings (.cast/.ttyrec/.ans) are VT100+, as is the default Windows ConPTY
+    # path -- the VT52 grid would render them as escape soup, so force the full-ANSI backend
+    # whenever a recording is replayed or ConPTY is hosting.
+    ansi = a.ansi or bool(a.play) or (os.name == "nt" and not a.no_pty)
+
+    if a.play:  # replay a recording instead of hosting a command
+        from tappty.source import replay_source
+
+        src = replay_source(a.play, speed=a.speed, loop=a.loop and mode != "headless")
+        term = _make_terminal(ap, ansi, src.width, src.height)  # size to the recording
+        sess = Session(term, source=src)
+        title = a.title or ("tapterm :: play:" + os.path.basename(a.play))
+    else:
+        cmd = a.command
+        if cmd and cmd[0] == "--":  # the conventional argv separator
+            cmd = cmd[1:]
+        if not cmd:  # no command -> behave like a terminal: host a shell
+            cmd = [os.environ.get("SHELL", "/bin/sh")]
+        term = _make_terminal(ap, ansi, a.cols, a.rows)
+        sess = Session(term)
+        sess.source = _make_source(ap, a.no_pty, cmd, a.rows, a.cols)
+        title = a.title or ("tapterm :: " + os.path.basename(cmd[0]))
+
+    recorder = None
+    if a.record:  # tap the output stream before the source starts, so nothing is missed
+        from tappty.recorder import Recorder
+
+        recorder = Recorder(sess, a.record).start()
+    try:
+        return _run_mode(ap, a, sess, term, mode, title)
+    finally:
+        if recorder is not None:
+            recorder.close()
 
 
 if __name__ == "__main__":

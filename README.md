@@ -19,6 +19,7 @@ pip install tappty          # core (CUI works out of the box)
 pip install 'tappty[gui]'   # add the pygame window (pygame-ce)
 pip install 'tappty[arcade]' # add the arcade/OpenGL window (an alternative GUI backend)
 pip install 'tappty[web]'    # add the browser renderer for --web (websockets)
+pip install 'tappty[video]'  # render recordings to mp4/gif via --render (bundles ffmpeg)
 pip install 'tappty[ansi]'  # add the full-ANSI/VT100+ backend (pyte) for --ansi
 pip install 'tappty[win]'   # Windows: add the ConPTY source (pywinpty)
 # from a checkout:
@@ -38,7 +39,10 @@ tapterm --gui -- bash      # force the pygame green-phosphor window
 tapterm --arcade -- bash   # same, on the arcade/OpenGL stack (the 'arcade' extra)
 tapterm --web -- bash      # serve it in a browser (the 'web' extra); open http://127.0.0.1:8023/
 tapterm --headless -- ls   # run to completion, print the final screen (scripting/CI)
-tapterm --cast rec.cast    # replay an asciinema recording (--speed N, --loop)
+tapterm --play rec.cast    # replay a .cast / .ttyrec / .ans / .3a recording (--speed N, --loop)
+tapterm --record out.cast -- bash       # record a session as you use it
+tapterm --play rec.cast --render rec.mp4 # render a recording to a video (mp4/webm/gif)
+tapterm --render rain.mp4 --seconds 5 -- cmatrix  # render a live program straight to video
 tapterm --ansi -- vim      # use the full-ANSI/VT100+ backend (pyte) instead of VT52
 tapterm --no-pty -- ls     # host over plain pipes, no pty (cross-platform, incl. Windows)
 ```
@@ -74,15 +78,19 @@ The pieces:
   scrollback and no deps. `PyteTerminal` is a drop-in full-ANSI/VT100+ backend (wraps `pyte`,
   the `ansi` extra) for programs that speak modern ANSI; same read interface (plus a `cells()`
   view of per-cell SGR color), so the GUI renderers show color while the rest is unchanged.
-- **`Source` / `PtySource` / `EngineSource` / `CastSource` / `PipeSource` / `ConPtySource`**
-  — byte producers. `PtySource` runs an external command on a real pty (POSIX); `EngineSource`
-  wraps any in-process `runner(emit, readline)` callable; `CastSource` replays a recorded
-  asciinema `.cast` session through the same pipeline (original timing, `speed`/`loop`);
-  `PipeSource` hosts a command over plain pipes (no pty, any OS); `ConPtySource` hosts one on
-  a Windows pseudo-console (ConPTY, the `win` extra).
+- **`Source` / `PtySource` / `EngineSource` / `CastSource` / `TtyrecSource` / `PipeSource` /
+  `ConPtySource`** — byte producers. `PtySource` runs an external command on a real pty (POSIX);
+  `EngineSource` wraps any in-process `runner(emit, readline)` callable; `CastSource` /
+  `TtyrecSource` replay a recorded asciinema `.cast` / `.ttyrec` session through the same pipeline
+  (original timing, `speed`/`loop`); `PipeSource` hosts a command over plain pipes (no pty, any
+  OS); `ConPtySource` hosts one on a Windows pseudo-console (ConPTY, the `win` extra).
 - **`Session`** — hosts a Source, drives the Terminal, and exposes **observe taps**
   (`on_stream`, `on_frame`, `on_event`) and **control** (`send_input`, `feed_key`) plus a
   talking-stick arbitration so exactly one controller types at a time.
+- **`Recorder` / `render_video`** — `Recorder` writes the session's output stream to a `.cast`
+  or `.ttyrec` recording as it runs (the inverse of the replay sources; `tapterm --record`);
+  `render_video` encodes a recording to a real video file (mp4/webm/gif) via ffmpeg, with
+  size/zoom/font/speed and an area-of-interest crop (`tapterm --play X --render out.mp4`).
 - **`BusServer` / `BusClient`** — the same observe/control contract over a Unix-domain
   socket *or* TCP (a `(host, port)` tuple — works on Windows too), so an out-of-process
   client (a logger, an automated driver, a remote renderer) can attach to a session. It's a

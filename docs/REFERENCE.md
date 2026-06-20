@@ -11,7 +11,8 @@ from tappty import (
     Terminal, PyteTerminal,                                   # screen models
     Session,                                                  # the hub
     Source, PtySource, EngineSource, CastSource,              # byte/text producers
-    PipeSource, ConPtySource,
+    PipeSource, ConPtySource, TtyrecSource, AnsSource, ThreeASource, replay_source,
+    Recorder, export_ansi, export_3a, render_video,           # record/export/encode
     BusServer, BusClient,                                     # out-of-process observe/control
     curses_ui, pygame_ui, arcade_ui, compositor,              # renderers
 )
@@ -257,6 +258,37 @@ src = CastSource("demo.cast", speed=2.0)
 sess = Session(PyteTerminal(src.width, src.height), source=src)
 ```
 
+### `TtyrecSource(path, speed=1.0, idle_time_limit=None, loop=False, encoding="utf-8")`  *(any OS)*
+
+Replays a `.ttyrec` recording (ttyrec / termrec / NetHack format) — a flat sequence of records,
+each a header of three little-endian uint32 (seconds, microseconds, payload length) then that
+many raw output bytes. A **byte** source; bytes are decoded to the screen by `encoding` (pass
+`"cp437"` for old DOS recordings). `speed`/`idle_time_limit`/`loop` as for `CastSource`. ttyrec
+carries no dimensions, so `.width`/`.height` stay 80×24 — size the Terminal yourself.
+
+### `AnsSource(path, speed=1.0, idle_time_limit=None, loop=False, baud=None, charset="cp437")`  *(any OS)*
+
+Plays an ANSI / BBS art file (`.ans`): CP437 bytes + ANSI escapes, optional SAUCE trailer. A
+**text** source — it strips the SAUCE record / comment block / DOS `0x1A` marker, decodes CP437
+(high-byte glyphs → Unicode box/block characters; escapes pass through), and emits the art (use
+`--ansi` / `PyteTerminal` to render it). `baud` (characters/second) draws it progressively for the
+retro effect; the default shows it at once. SAUCE's width/height land on `.width`/`.height`.
+
+### `ThreeASource(path, speed=1.0, idle_time_limit=None, loop=False)`  *(any OS)*
+
+Plays a `.3a` animated-ASCII-art file (the DomesticMoth/asciimoth format): UTF-8 text with an
+`@3a` header (`delay <ms>`, `loop yes|no`, `colors yes|no`, custom `col <name> fg:.. bg:..`;
+`;;` comments) and an `@body` of frames separated by blank lines. With `colors yes`, each frame
+interleaves text rows with equal-length color-name rows (`0`-`7`/`8`-`f`/`_` = ANSI
+30-37/90-97/default). A **text** source — it renders each frame as positioned SGR output and
+steps at the `delay`; `loop yes` (or `--loop`) repeats. Channel "pinning" isn't supported.
+
+### `replay_source(path, speed=1.0, idle_time_limit=None, loop=False)`
+
+Returns the right replay Source for a recording/art file by extension: `.ttyrec` → `TtyrecSource`,
+`.ans` → `AnsSource`, `.3a` → `ThreeASource`, anything else (`.cast`, …) → `CastSource`. What
+`tapterm --play` uses.
+
 ### `PipeSource(argv, cwd=None, env=None, encoding="utf-8")`  *(any OS)*
 
 Hosts an external program over plain pipes — no pty (`tapterm --no-pty`). A byte source,
@@ -307,6 +339,51 @@ class TelnetSource(Source):
         self._running = False
         self._sock.close()
 ```
+
+---
+
+## Recording
+
+### `Recorder(session, path, fmt=None)`
+
+An observe-tap that writes a session's output stream, with timing, to a recording file as it
+runs — the inverse of a replay source. `fmt` is `"cast"` (asciinema v2) or `"ttyrec"`, defaulting
+from the path extension. `start()` opens the file (writing the asciicast header) and attaches the
+tap; `close()` detaches and closes. Works as a context manager. Records any source — including a
+replay source, so it doubles as a format converter.
+
+```python
+sess = Session(PyteTerminal(80, 24), source=PtySource(["bash"]))
+with Recorder(sess, "session.cast"):
+    curses_ui.run(sess, None)        # everything bash prints is recorded
+# replay it: tapterm --play session.cast   (or CastSource("session.cast"))
+```
+
+### `export_ansi(session, path)`
+
+Writes the session's **current screen** as an ANSI-art `.ans` file — each cell's color/attributes
+as an SGR escape, each glyph encoded back to CP437 (non-CP437 glyphs → `?`), ending with a DOS EOF
+marker. A snapshot, not a recording (no timing); readable by `AnsSource` and ANSI-art tools, and
+what `tapterm --headless --snapshot screen.ans` calls.
+
+### `export_3a(session, path)`
+
+Writes the current screen as a **single-frame** `.3a` file (a text row + an equal-length
+color-name row per screen row, under a minimal `@3a`/`@body` header). Foreground color only;
+readable by `ThreeASource`; what `tapterm --headless --snapshot screen.3a` calls. (Recording a
+multi-frame `.3a` animation is future work.)
+
+### `render_video(recording, out_path, *, fps=30, font_size=18, font_path=None, zoom=1.0, speed=1.0, tail=1.0, max_seconds=None, crop=None)`
+
+Renders a `.cast` / `.ttyrec` / `.ans` / `.3a` recording to a **video file** (`.mp4` / `.webm` /
+`.gif` / …, by extension): it replays the recording into a terminal, rasterizes each moment with
+the compositor's grid renderer, and pipes frames to ffmpeg. Deterministic and
+faster-than-real-time (it feeds events up to each frame's time rather than waiting). `font_size`
+is the main size control; `zoom` scales the finished frame (crisp nearest-neighbor);
+`font_path` picks a `.ttf`; `speed` scales playback; `crop=(col, row, cols, rows)` renders only
+that region (area of interest); `max_seconds` caps a never-ending source. Needs the `gui` +
+`ansi` extras and ffmpeg — a system binary, or the bundled one from the `video` extra
+(`imageio-ffmpeg`). What `tapterm --play X --render out.mp4` calls.
 
 ---
 
@@ -591,8 +668,16 @@ pygame_ui.run(sess, None, snapshot_path="out", exit_when_done=True, max_seconds=
 | `PtySource` | `(argv, cwd=None, env=None, size=(24,80), encoding="utf-8")` | POSIX pty; byte source |
 | `EngineSource` | `(runner)` | in-process `runner(emit, readline)`; text source |
 | `CastSource` | `(path, speed=1.0, idle_time_limit=None, loop=False)` | `.cast` replay; `.width`/`.height` |
+| `TtyrecSource` | `(path, speed=1.0, idle_time_limit=None, loop=False, encoding="utf-8")` | `.ttyrec` replay; byte source |
+| `AnsSource` | `(path, speed=1.0, idle_time_limit=None, loop=False, baud=None, charset="cp437")` | `.ans` ANSI art; CP437 + SAUCE |
+| `ThreeASource` | `(path, speed=1.0, idle_time_limit=None, loop=False)` | `.3a` animated ASCII art |
+| `replay_source` | `(path, speed=1.0, idle_time_limit=None, loop=False)` | picks Cast/Ttyrec/Ans/3a by extension |
 | `PipeSource` | `(argv, cwd=None, env=None, encoding="utf-8")` | plain pipes, any OS; byte source |
 | `ConPtySource` | `(argv, cwd=None, env=None, size=(24,80))` | Windows ConPTY; `win` extra (provisional) |
+| `Recorder` | `(session, path, fmt=None)` | record output → `.cast`/`.ttyrec`; `start()`/`close()` |
+| `export_ansi` | `(session, path)` | write the screen as ANSI-art `.ans` (CP437 + SGR) |
+| `export_3a` | `(session, path)` | write the screen as a single-frame `.3a` |
+| `render_video` | `(recording, out_path, *, fps=30, font_size=18, font_path=None, zoom=1.0, speed=1.0, tail=1.0, max_seconds=None, crop=None)` | recording → `.mp4`/`.webm`/`.gif`/… via ffmpeg |
 | `BusServer` | `(session, path, cmd_timeout=8.0, token=None, allow_remote=False)` | `.start()`/`.stop()`/`.addr` |
 | `BusClient` | `(path, token=None)` | `.connect()`, `snap`, `cmd`, `line`, `key`, `sub`, `inbox` |
 | `curses_ui.run` | `(session, runner, title="tapterm", refresh_ms=50)` | blocks; POSIX |
