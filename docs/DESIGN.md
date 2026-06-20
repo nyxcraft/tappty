@@ -472,6 +472,8 @@ Session to a renderer. The pieces it wires:
 | `style.py` | `Cell` + the ANSI palette / `rgb`/`resolve`/`runs` shared by `cells()` and the GUI renderers | none |
 | `keys.py` | VT/xterm key sequences (`KEYS`, `ctrl`) for raw-mode TUI input, shared by the renderers | none |
 | `source.py` | `Source` base (+ `_pump`) and the 8 sources (pty / engine / cast / ttyrec / ans / 3a / pipe / ConPTY) | stdlib `pty`/`subprocess`/`json`; `pywinpty` (deferred; `win` extra) |
+| `recorder.py` | `Recorder` (record a session to `.cast`/`.ttyrec`) + `export_ansi`/`export_3a` screen exports | none |
+| `video.py` | `render_video` — a recording → `.mp4`/`.webm`/`.gif` | pygame + pyte (deferred); ffmpeg (`video` extra) |
 | `session.py` | Session: observe taps, control, talking stick, the bytes↔chars decode | terminal, source |
 | `bus.py` | `BusServer` / `BusClient` — the contract over a unix socket or TCP | stdlib `socket`/`hmac` |
 | `compositor.py` | multi-panel window + `SessionBacking`/`BusBacking` | pygame (deferred), curses_ui, bus |
@@ -486,9 +488,9 @@ Session to a renderer. The pieces it wires:
 `pywinpty` are imported *inside* the functions/constructors that need them, never at module top.
 So `import tappty` works with none of them installed (verified under a bare interpreter), and
 `tapterm --cui` / `--headless` need no display. The extras: `sdl` = pygame-ce, `gl` = arcade
-(`arcade_ui`), `web` = websockets (`web_ui`), `ansi` = pyte (`PyteTerminal`), `win` = pywinpty +
-windows-curses (`ConPtySource` and the curses CUI on Windows; both Windows-marked), `dev` =
-pytest + ruff.
+(`arcade_ui`), `web` = websockets (`web_ui`), `video` = imageio-ffmpeg (`render_video` without a
+system ffmpeg), `ansi` = pyte (`PyteTerminal`), `win` = pywinpty + windows-curses (`ConPtySource`
+and the curses CUI on Windows; both Windows-marked), `dev` = pytest + ruff.
 
 ---
 

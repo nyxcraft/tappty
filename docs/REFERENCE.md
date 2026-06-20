@@ -373,7 +373,7 @@ color-name row per screen row, under a minimal `@3a`/`@body` header). Foreground
 readable by `ThreeASource`; what `tapterm --headless --snapshot screen.3a` calls. (Recording a
 multi-frame `.3a` animation is future work.)
 
-### `render_video(recording, out_path, *, fps=30, font_size=18, font_path=None, zoom=1.0, speed=1.0, tail=1.0, max_seconds=None, crop=None)`
+### `render_video(recording, out_path, fps=30, font_size=18, font_path=None, zoom=1.0, speed=1.0, tail=1.0, max_seconds=None, crop=None, terminal=None)`
 
 Renders a `.cast` / `.ttyrec` / `.ans` / `.3a` recording to a **video file** (`.mp4` / `.webm` /
 `.gif` / …, by extension): it replays the recording into a terminal, rasterizes each moment with
@@ -425,7 +425,9 @@ feed_text(s, **kw)                               # feed_key for each char of s
 send_key(data, by="local", auto_take=True) -> bool  # raw keystroke bytes, no echo/buffer (raw_keys mode)
 echo(text)                                       # show injected text on screen + to observers
 
-claim_control(name, role="ai")          -> name  # register a controller (first claim drives)
+claim_control(name, role="ai", unique_suffix=None) -> name  # register a controller (first
+                                                 #   claim drives); unique_suffix de-dups a taken
+                                                 #   name (the bus uses it, atomically)
 take(name)                              -> bool  # grab the stick (courtesy-gated by role)
 release(name)                                    # give it up
 drop_controller(name)                            # deregister (auto-releases)
@@ -688,7 +690,7 @@ pygame_ui.run(sess, None, snapshot_path="out", exit_when_done=True, max_seconds=
 | `Recorder` | `(session, path, fmt=None)` | record output → `.cast`/`.ttyrec`; `start()`/`close()` |
 | `export_ansi` | `(session, path)` | write the screen as ANSI-art `.ans` (CP437 + SGR) |
 | `export_3a` | `(session, path)` | write the screen as a single-frame `.3a` |
-| `render_video` | `(recording, out_path, *, fps=30, font_size=18, font_path=None, zoom=1.0, speed=1.0, tail=1.0, max_seconds=None, crop=None, terminal=None)` | recording → `.mp4`/`.webm`/`.gif`/… via ffmpeg |
+| `render_video` | `(recording, out_path, fps=30, font_size=18, font_path=None, zoom=1.0, speed=1.0, tail=1.0, max_seconds=None, crop=None, terminal=None)` | recording → `.mp4`/`.webm`/`.gif`/… via ffmpeg |
 | `BusServer` | `(session, path, cmd_timeout=8.0, token=None, allow_remote=False)` | `.start()`/`.stop()`/`.addr` |
 | `BusClient` | `(path, token=None)` | `.connect()`, `snap`, `cmd`, `line`, `key`, `sub`, `inbox` |
 | `curses_ui.run` | `(session, runner, title="tapterm", refresh_ms=50)` | blocks; POSIX |

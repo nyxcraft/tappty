@@ -84,12 +84,14 @@ The pieces:
   scrollback and no deps. `PyteTerminal` is a drop-in full-ANSI/VT100+ backend (wraps `pyte`,
   the `ansi` extra) for programs that speak modern ANSI; same read interface (plus a `cells()`
   view of per-cell SGR color), so the GUI renderers show color while the rest is unchanged.
-- **`Source` / `PtySource` / `EngineSource` / `CastSource` / `TtyrecSource` / `PipeSource` /
-  `ConPtySource`** — byte producers. `PtySource` runs an external command on a real pty (POSIX);
-  `EngineSource` wraps any in-process `runner(emit, readline)` callable; `CastSource` /
-  `TtyrecSource` replay a recorded asciinema `.cast` / `.ttyrec` session through the same pipeline
-  (original timing, `speed`/`loop`); `PipeSource` hosts a command over plain pipes (no pty, any
-  OS); `ConPtySource` hosts one on a Windows pseudo-console (ConPTY, the `win` extra).
+- **`Source` / `PtySource` / `EngineSource` / `CastSource` / `TtyrecSource` / `AnsSource` /
+  `ThreeASource` / `PipeSource` / `ConPtySource`** — byte producers. `PtySource` runs an external
+  command on a real pty (POSIX); `EngineSource` wraps any in-process `runner(emit, readline)`
+  callable; `CastSource` / `TtyrecSource` replay a recorded `.cast` / `.ttyrec` session, and
+  `AnsSource` / `ThreeASource` play `.ans` / `.3a` art, through the same pipeline (original
+  timing, `speed`/`loop`; `replay_source(path)` picks by extension); `PipeSource` hosts a command
+  over plain pipes (no pty, any OS); `ConPtySource` hosts one on a Windows pseudo-console (ConPTY,
+  the `win` extra).
 - **`Session`** — hosts a Source, drives the Terminal, and exposes **observe taps**
   (`on_stream`, `on_frame`, `on_event`) and **control** (`send_input`, `feed_key`) plus a
   talking-stick arbitration so exactly one controller types at a time.

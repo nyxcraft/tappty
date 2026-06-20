@@ -186,7 +186,9 @@ tapterm --web --port 9000 -- bash  # page on :9000, websocket on :9001
 ```
 
 - The browser draws tappty's grid (green phosphor + the same SGR **color** as the other UIs);
-  keystrokes go back to the program. Add **`--raw`** for full-screen TUIs (`tapterm --web --ansi --raw -- vim`).
+  keystrokes go back to the program. Like the other interactive modes it's **full-ANSI + raw by
+  default** (so full-screen TUIs like `vim` just work) and closes when the program exits; pass
+  `--cooked` for the line-oriented instrument mode instead.
 - **Several browsers can connect at once** — all watch; the talking stick decides who drives
   (typing takes it). This is the "human and a bot share one session" idea, in a browser.
 - It binds **loopback (127.0.0.1) only** and has **no TLS** — it's a local control plane, like
@@ -450,8 +452,8 @@ OPTIONS
   --ansi                full-ANSI/VT100+ backend (needs the 'ansi' extra); for modern programs
   --raw                 forward keystrokes raw (arrows/Fn/Ctrl, no echo) for TUIs; pair with --ansi
   --no-pty              host over plain pipes, no pty (cross-platform; line-oriented programs)
-  --snapshot PATH       GUI: mirror the screen to PATH (+PATH.png) each second;
-                        headless: write the final screen to PATH (.ans/.3a paths export art)
+  --snapshot PATH       GUI/arcade: mirror the screen to PATH (+PATH.png) each second (ignored by
+                        --cui/--web); headless: write the final screen to PATH (.ans/.3a export art)
   --exit-when-done      GUI/CUI/web: close (don't wait for a final keypress) when the program exits
   --play FILE           replay a .cast/.ttyrec recording or play .ans/.3a art, instead of a
                         command (--cast alias; uses the ANSI backend; sizes to a .cast/.ans)

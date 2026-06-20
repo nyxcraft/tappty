@@ -233,8 +233,8 @@ def build_parser():
     ap.add_argument(
         "--snapshot",
         default=None,
-        help="GUI: mirror the screen to this text file each second; "
-        "headless: write the final screen here",
+        help="GUI/arcade: mirror the screen to this text file each second (ignored by "
+        "--cui/--web); headless: write the final screen here",
     )
     ap.add_argument(
         "--exit-when-done",
