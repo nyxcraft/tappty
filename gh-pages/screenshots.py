@@ -4,8 +4,8 @@
 Two kinds of shot, all rendered headless under the SDL dummy driver and written to
 docs/media/<name>.png (which are committed; the Pages build only copies them):
 
-  * the in-process examples (examples/*.py --snapshot), and
-  * the bundled recordings (examples/recordings/*.cast) replayed via `tapterm --play` -- so the
+  * the in-process demos (demos/*.py --snapshot), and
+  * the bundled recordings (demos/recordings/*.cast) replayed via `tapterm --play` -- so the
     shots of real programs (nyancat, cbonsai) regenerate from the committed casts, with the
     programs themselves NOT required.
 
@@ -33,7 +33,7 @@ SHOTS = [
     ("mission_control.py", "mission_control", 2.5),
 ]
 
-# (recording under examples/recordings/, PNG stem) -- replayed to a frame via the CLI
+# (recording under demos/recordings/, PNG stem) -- replayed to a frame via the CLI
 CAST_SHOTS = [
     ("nyancat.cast", "nyancat"),
     ("cbonsai.cast", "cbonsai"),
@@ -51,7 +51,7 @@ def main() -> int:
     for script, stem, seconds in SHOTS:
         print(f"rendering {script} -> docs/media/{stem}.png")
         subprocess.run(
-            [sys.executable, str(ROOT / "examples" / script),
+            [sys.executable, str(ROOT / "demos" / script),
              "--snapshot", str(MEDIA / f"{stem}.png"), "--seconds", str(seconds)],
             check=True, env=ENV,
         )
@@ -60,7 +60,7 @@ def main() -> int:
         print(f"replaying {cast} -> docs/media/{stem}.png")
         subprocess.run(
             [sys.executable, "-m", "tappty.cli", "--play",
-             str(ROOT / "examples" / "recordings" / cast),
+             str(ROOT / "demos" / "recordings" / cast),
              "--gui", "--exit-when-done", "--snapshot", str(MEDIA / stem)],
             check=True, env=ENV,
         )

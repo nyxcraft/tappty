@@ -2,7 +2,7 @@
 
 A few things tappty can do — each backed by a **runnable example** you can read and reproduce,
 not just a screenshot. Every demo here is in-process (no external program needed) and lives in
-[`examples/`](https://github.com/nyxbitco/tappty/tree/main/examples). Install the GUI and ANSI
+[`demos/`](https://github.com/nyxbitco/tappty/tree/main/demos). Install the GUI and ANSI
 extras first:
 
 ```sh
@@ -21,12 +21,12 @@ text stays phosphor green; color appears only where the program asks for it.
 ![tappty rendering an ANSI color and SGR-attribute chart](media/color_chart.png)
 
 ```sh
-python examples/color_chart.py
+python demos/color_chart.py
 ```
 
-[View source on GitHub →](https://github.com/nyxbitco/tappty/blob/main/examples/color_chart.py)
+[View source on GitHub →](https://github.com/nyxbitco/tappty/blob/main/demos/color_chart.py)
 
-<!--include: examples/color_chart.py-->
+<!--include: demos/color_chart.py-->
 
 ## Green-phosphor digital rain
 
@@ -37,12 +37,12 @@ renders. (It needs only `pip install 'tappty[gui]'`.)
 ![tappty drawing a green digital-rain animation](media/matrix_rain.png)
 
 ```sh
-python examples/matrix_rain.py
+python demos/matrix_rain.py
 ```
 
-[View source on GitHub →](https://github.com/nyxbitco/tappty/blob/main/examples/matrix_rain.py)
+[View source on GitHub →](https://github.com/nyxbitco/tappty/blob/main/demos/matrix_rain.py)
 
-<!--include: examples/matrix_rain.py-->
+<!--include: demos/matrix_rain.py-->
 
 ## Mission control — the compositor
 
@@ -54,12 +54,12 @@ human or a driver take over a tile.
 ![tappty compositor tiling four live terminal sessions in one window](media/mission_control.png)
 
 ```sh
-python examples/mission_control.py
+python demos/mission_control.py
 ```
 
-[View source on GitHub →](https://github.com/nyxbitco/tappty/blob/main/examples/mission_control.py)
+[View source on GitHub →](https://github.com/nyxbitco/tappty/blob/main/demos/mission_control.py)
 
-<!--include: examples/mission_control.py-->
+<!--include: demos/mission_control.py-->
 
 ## Hosting real terminal programs
 
@@ -74,7 +74,7 @@ those programs installed.
 
 ```sh
 tapterm -- nyancat                                # host it live (needs nyancat installed)
-tapterm --play examples/recordings/nyancat.cast   # replay the bundled recording (zero deps)
+tapterm --play demos/recordings/nyancat.cast   # replay the bundled recording (zero deps)
 ```
 
 ### cbonsai
@@ -83,7 +83,7 @@ tapterm --play examples/recordings/nyancat.cast   # replay the bundled recording
 
 ```sh
 tapterm -- cbonsai -li
-tapterm --play examples/recordings/cbonsai.cast
+tapterm --play demos/recordings/cbonsai.cast
 ```
 
 **Record your own.** `--record` captures the live output stream as it runs; replay it anywhere

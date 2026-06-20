@@ -8,8 +8,8 @@ digital rain), the other two are a live log tail and a clock — all in-process,
 no external programs.
 
     pip install 'tappty[gui,ansi]'
-    python examples/mission_control.py                  # open the window
-    python examples/mission_control.py --snapshot m.png # render headless, write m.png
+    python demos/mission_control.py                  # open the window
+    python demos/mission_control.py --snapshot m.png # render headless, write m.png
 """
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ import argparse
 import random
 import time
 
-import color_chart  # sibling example (examples/ is on sys.path when run directly)
+import color_chart  # sibling demo (demos/ is on sys.path when run directly)
 import matrix_rain
 
 LOG_LINES = [

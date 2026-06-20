@@ -1,30 +1,23 @@
 # tappty examples
 
-Runnable, self-contained demos — each is a single file you can read top to bottom
-and run after a `pip install`. They're all **in-process** (an `EngineSource`), so
-none of them needs an external program.
+Coding-level examples — short, commented programs that show **how to build on the tappty API**.
+For runnable showpieces you just watch (color, digital rain, the compositor), see
+[`../demos/`](../demos/).
 
-| Demo | What it shows | Run |
-|---|---|---|
-| [color_chart.py](color_chart.py) | SGR color + attributes — bold/italic/underline/strike/blink/reverse and a 256-color strip | `python examples/color_chart.py` |
-| [matrix_rain.py](matrix_rain.py) | green-phosphor "digital rain" on the dependency-free VT52 backend | `python examples/matrix_rain.py` |
-| [mission_control.py](mission_control.py) | the compositor — four live sessions tiled in one window | `python examples/mission_control.py` |
+All of these are in-process and headless — no GUI, no external program — so they run with just
+the core install (`pip install tappty`):
 
-Install the matching extra first:
-
-```sh
-pip install 'tappty[gui,ansi]'   # color_chart / mission_control (pygame + pyte)
-pip install 'tappty[gui]'        # matrix_rain (pygame only; no color backend needed)
-```
-
-Each demo also takes `--snapshot PATH`: instead of opening a window it renders
-headless (SDL dummy driver) and writes a PNG. That's exactly how the
-[documentation gallery](../docs/GALLERY.md) images are produced —
-`gh-pages/screenshots.py` runs these same files with `--snapshot`.
-
-`recordings/` holds short `.cast` sessions of real ANSI programs (`nyancat`, `cbonsai`),
-recorded with `tapterm --record` and replayable with **zero dependencies**:
+| Example | Shows |
+|---|---|
+| [observe_tap.py](observe_tap.py) | the observe contract — `on_stream` / `on_frame` / `on_event` |
+| [custom_source.py](custom_source.py) | writing your own `Source` (the start / send_input / stop contract) |
+| [bus_capture.py](bus_capture.py) | driving a session over the bus — send a command, capture its output |
 
 ```sh
-tapterm --play examples/recordings/nyancat.cast
+python examples/observe_tap.py
+python examples/custom_source.py
+python examples/bus_capture.py
 ```
+
+More worked examples (replay to a PNG, watch headlessly, the full bus round-trip) are in the
+[programming reference](../docs/REFERENCE.md).

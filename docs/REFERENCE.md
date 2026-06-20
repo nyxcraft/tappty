@@ -608,6 +608,10 @@ compositor.run(panels)
 
 ## Worked examples
 
+Runnable versions of these (and more) live in [`examples/`](https://github.com/nyxbitco/tappty/tree/main/examples)
+— `observe_tap.py`, `custom_source.py`, `bus_capture.py`. For visual showpieces, see
+[`demos/`](https://github.com/nyxbitco/tappty/tree/main/demos) and the [gallery](GALLERY.md).
+
 ### Drive an interactive program over the bus
 
 ```python

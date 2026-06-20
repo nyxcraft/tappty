@@ -138,7 +138,7 @@ INCLUDE_LANGS = {".py": "python", ".sh": "bash", ".json": "json", ".toml": "toml
 
 def expand_includes(text: str) -> str:
     """Expand `<!--include: path-->` (path relative to the repo root) into a fenced code block
-    of that file's current contents -- so demo source lives in one runnable place (examples/)
+    of that file's current contents -- so demo source lives in one runnable place (demos/)
     and is shown on the page without copy-paste drift. Runs before Markdown rendering."""
     def replace(match: re.Match[str]) -> str:
         rel = match.group(1).strip()
@@ -181,7 +181,7 @@ def build_toc(entries: list[dict[str, object]]) -> str:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Build the a11y-catscan docs site.")
+    parser = argparse.ArgumentParser(description="Build the tappty docs site.")
     parser.add_argument("--output", default=str(OUTPUT_DIR), help="Build output directory")
     args = parser.parse_args()
 

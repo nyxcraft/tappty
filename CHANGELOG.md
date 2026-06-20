@@ -98,13 +98,16 @@ The `0.1.0` line — the generic toolkit and the `tapterm` command. Built across
   `--cols` / `--rows`, `--port`, `--snapshot` (a `.ans`/`.3a` path exports art),
   `--exit-when-done`. `--play` uses the full-ANSI backend automatically (recordings are VT100+).
   Headless prints the final screen and exits with the child's own status.
-- **Bundled demo recordings.** `examples/recordings/*.cast` — short sessions of real ANSI
-  programs (`nyancat`, `cbonsai`) recorded with `--record`; they replay with zero dependencies
-  (`tapterm --play …`) and are what the docs gallery's "real programs" shots render from.
+- **Demos & examples.** `demos/` holds runnable showpieces — single-file apps you run to *see*
+  a feature (the SGR color chart, the green digital rain, the compositor "mission control"),
+  plus `demos/recordings/*.cast`: short sessions of real ANSI programs (`nyancat`, `cbonsai`)
+  recorded with `--record`, which replay with zero dependencies and feed the gallery's "real
+  programs" shots. `examples/` holds short, commented coding examples of the API — the observe
+  taps, writing a custom `Source`, and driving a session over the bus.
 - **Packaging & tooling.** `pyproject.toml` (extras `gui` / `arcade` / `web` / `video` / `ansi` /
   `win` / `dev`; `win` bundles pywinpty *and* windows-curses so `tappty[win]` gives both the
   ConPTY host and the curses CUI on Windows; `video` bundles ffmpeg for `--render`), MIT license,
-  `src/` layout, a pytest suite (140 tests), ruff
+  `src/` layout, a pytest suite (143 tests), ruff
   lint + format (line length 99), and a GitHub Actions CI matrix on Python 3.9–3.13 (pyte +
   pygame-ce so the ANSI and headless-GUI tests run).
 

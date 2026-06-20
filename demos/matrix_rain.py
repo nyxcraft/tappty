@@ -7,8 +7,8 @@ external program and no color backend — just the phosphor green the terminal
 already renders.
 
     pip install 'tappty[gui]'
-    python examples/matrix_rain.py                  # open the window (Ctrl-] to quit)
-    python examples/matrix_rain.py --snapshot r.png # render a frame headless, write r.png
+    python demos/matrix_rain.py                  # open the window (Ctrl-] to quit)
+    python demos/matrix_rain.py --snapshot r.png # render a frame headless, write r.png
 """
 from __future__ import annotations
 

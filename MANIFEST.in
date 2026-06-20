@@ -3,5 +3,6 @@
 include LICENSE CHANGELOG.md
 recursive-include docs *.md
 recursive-include docs/media *.png
-recursive-include examples *.py *.md *.cast
+recursive-include demos *.py *.md *.cast
+recursive-include examples *.py *.md
 recursive-include tests *.py
