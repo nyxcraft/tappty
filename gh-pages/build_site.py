@@ -132,50 +132,18 @@ def rewrite_md_links(html: str, current_output: Path, output_dir: Path,
     return re.sub(r'href="([^"]+\.md(?:#[^"]*)?)"', replace, html)
 
 
-def build_docs_nav(
-    pages: list[dict[str, str]],
-    current_slug: str,
-    current_output: Path,
-    output_dir: Path,
-) -> str:
-    items = []
-    for page in pages:
-        classes = "docs-nav__item"
-        if page["slug"] == current_slug:
-            classes += " is-active"
-        href = relative_href(current_output, output_dir / page["output"])
-        items.append(
-            "\n".join(
-                [
-                    f'<a class="{classes}" href="{escape(href)}">',
-                    f'  <span class="docs-nav__title">{escape(page["title"])}</span>',
-                    f'  <span class="docs-nav__summary">{escape(page["summary"])}</span>',
-                    "</a>",
-                ]
-            )
-        )
-    return "\n".join(items)
-
-
 def build_toc(entries: list[dict[str, object]]) -> str:
     if not entries:
         return ""
     items = []
     for entry in entries:
         level = int(entry["level"])
-        classes = f"toc__item toc__item--level-{level}"
+        cls = f"section-nav__link section-nav__link--l{level}"
         items.append(
-            f'<li class="{classes}"><a href="#{escape(str(entry["anchor"]))}">'
+            f'<li><a class="{cls}" href="#{escape(str(entry["anchor"]))}">'
             f"{escape(str(entry['text']))}</a></li>"
         )
-    return (
-        '<section class="toc">\n'
-        '  <h2 class="toc__heading">On this page</h2>\n'
-        '  <ul class="toc__list">\n'
-        f"{chr(10).join(items)}\n"
-        "  </ul>\n"
-        "</section>"
-    )
+    return '<ul class="section-nav__list">\n' + "\n".join(items) + "\n</ul>"
 
 
 def main() -> int:
@@ -199,6 +167,7 @@ def main() -> int:
                 "title": entry["title"],
                 "summary": entry["summary"],
                 "source": entry["source"],
+                "template": entry.get("template", "doc"),  # "doc" (section viewer) or "page"
                 "output": str(Path(entry["slug"]) / "index.html"),
                 "featured": bool(entry.get("featured", False)),
             }
@@ -227,8 +196,12 @@ def main() -> int:
             )
         )
 
-    hero_primary = docs_pages[0]["href"] if docs_pages else "#"
-    hero_secondary = docs_pages[1]["href"] if len(docs_pages) > 1 else hero_primary
+    # The "Docs" link in every header points at the index page (rendered from docs/README.md);
+    # fall back to the first page if no explicit index is configured.
+    index_page = next((p for p in docs_pages if p["slug"] == "docs"), docs_pages[0])
+    content_pages = [p for p in docs_pages if p is not index_page]
+    hero_primary = content_pages[0]["href"] if content_pages else "#"   # "Get started" -> guide
+    hero_secondary = content_pages[1]["href"] if len(content_pages) > 1 else hero_primary
     github_href = config.get("github_href", "#")
 
     home_html = render_template(
@@ -239,7 +212,9 @@ def main() -> int:
             "site_description": escape(config["site_description"]),
             "logo_href": escape(HEADER_LOGO),
             "github_href": escape(github_href),
-            "docs_href": escape(hero_primary),
+            "docs_href": escape(
+                relative_href(output_dir / "index.html", output_dir / index_page["output"])
+            ),
             "primary_href": escape(hero_primary),
             "secondary_href": escape(hero_secondary),
             "docs_cards": "\n".join(docs_cards),
@@ -254,15 +229,15 @@ def main() -> int:
         content_html = rewrite_md_links(
             str(rendered["html"]), output_path, output_dir, basename_to_output
         )
-        nav_html = build_docs_nav(docs_pages, page["slug"], output_path, output_dir)
         toc_html = build_toc(rendered["toc"])  # type: ignore[arg-type]
         asset_href = relative_href(output_path, output_dir / "assets" / "site.css")
         logo_href = relative_href(output_path, output_dir / HEADER_LOGO)
         home_href = relative_href(output_path, output_dir / "index.html")
-        docs_href = relative_href(output_path, output_dir / docs_pages[0]["output"])
+        docs_href = relative_href(output_path, output_dir / index_page["output"])
+        template = "page.html" if page["template"] == "page" else "doc.html"
 
         doc_html = render_template(
-            SOURCE_DIR / "templates" / "doc.html",
+            SOURCE_DIR / "templates" / template,
             {
                 "page_title": escape(page["title"]),
                 "site_name": escape(config["site_name"]),
@@ -273,7 +248,6 @@ def main() -> int:
                 "home_href": escape(home_href),
                 "github_href": escape(github_href),
                 "docs_href": escape(docs_href),
-                "docs_nav": nav_html,
                 "toc": toc_html,
                 "source_title": escape(str(rendered["title"] or "")),
                 "content": content_html,

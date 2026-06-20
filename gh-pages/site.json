@@ -31,6 +31,14 @@
       "source": "CHANGELOG.md",
       "summary": "Dated history, newest first: when tappty started, when it first worked, and what has changed since.",
       "featured": true
+    },
+    {
+      "slug": "docs",
+      "title": "Documentation",
+      "source": "docs/README.md",
+      "summary": "Index of the tappty documentation.",
+      "template": "page",
+      "featured": false
     }
   ]
 }
