@@ -31,7 +31,7 @@ uses only the stdlib `curses` — and `ConPtySource` needs the `win` extra
 - [Quick recipes](#quick-recipes)
 - [Shared contracts](#shared-contracts) — the snapshot dict, events, controller roles
 - [Terminal backends](#terminal-backends) — `Terminal`, `PyteTerminal`
-- [Sources](#sources) — `Source` and the five producers; writing your own
+- [Sources](#sources) — `Source` and the built-in producers; writing your own
 - [Session](#session) — taps, control, the talking stick, lifecycle
 - [The bus](#the-bus) — `BusServer`, `BusClient`
 - [Renderers](#renderers) — `curses_ui`, `pygame_ui`, `arcade_ui`, `web_ui`
@@ -381,9 +381,12 @@ the compositor's grid renderer, and pipes frames to ffmpeg. Deterministic and
 faster-than-real-time (it feeds events up to each frame's time rather than waiting). `font_size`
 is the main size control; `zoom` scales the finished frame (crisp nearest-neighbor);
 `font_path` picks a `.ttf`; `speed` scales playback; `crop=(col, row, cols, rows)` renders only
-that region (area of interest); `max_seconds` caps a never-ending source. Needs the `sdl` +
-`ansi` extras and ffmpeg — a system binary, or the bundled one from the `video` extra
-(`imageio-ffmpeg`). What `tapterm --play X --render out.mp4` calls.
+that region (area of interest); `max_seconds` caps a never-ending source; `terminal` is the
+backend factory `(cols, rows) -> backend` and defaults to `PyteTerminal` — pass `Terminal` to
+render a VT52 recording (e.g. one from the dependency-free digital-rain demo). `.gif` output is
+an animated, infinitely-looping GIF. Needs the `sdl` + `ansi` extras and ffmpeg — a system
+binary, or the bundled one from the `video` extra (`imageio-ffmpeg`). What
+`tapterm --play X --render out.mp4` calls.
 
 ---
 
@@ -681,7 +684,7 @@ pygame_ui.run(sess, None, snapshot_path="out", exit_when_done=True, max_seconds=
 | `Recorder` | `(session, path, fmt=None)` | record output → `.cast`/`.ttyrec`; `start()`/`close()` |
 | `export_ansi` | `(session, path)` | write the screen as ANSI-art `.ans` (CP437 + SGR) |
 | `export_3a` | `(session, path)` | write the screen as a single-frame `.3a` |
-| `render_video` | `(recording, out_path, *, fps=30, font_size=18, font_path=None, zoom=1.0, speed=1.0, tail=1.0, max_seconds=None, crop=None)` | recording → `.mp4`/`.webm`/`.gif`/… via ffmpeg |
+| `render_video` | `(recording, out_path, *, fps=30, font_size=18, font_path=None, zoom=1.0, speed=1.0, tail=1.0, max_seconds=None, crop=None, terminal=None)` | recording → `.mp4`/`.webm`/`.gif`/… via ffmpeg |
 | `BusServer` | `(session, path, cmd_timeout=8.0, token=None, allow_remote=False)` | `.start()`/`.stop()`/`.addr` |
 | `BusClient` | `(path, token=None)` | `.connect()`, `snap`, `cmd`, `line`, `key`, `sub`, `inbox` |
 | `curses_ui.run` | `(session, runner, title="tapterm", refresh_ms=50)` | blocks; POSIX |

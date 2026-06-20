@@ -1,4 +1,4 @@
-"""The sbterm terminal core (UI-agnostic): cursor/scroll behaviour and the
+"""The terminal core (UI-agnostic): cursor/scroll behaviour and the
 hardcopy-style scrollback "paper roll". No GUI dependency -- the renderer
 (pygame) is tested by eye; this pins the model a renderer reads.
 """

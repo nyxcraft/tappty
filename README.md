@@ -1,7 +1,7 @@
 # tappty
 
 **Host a program on a pseudo-terminal, then observe, control, and render it** — in a
-plain terminal (curses, CUI) or a green-phosphor window (pygame, GUI).
+plain terminal (curses, CUI) or a green-phosphor window (GUI).
 
 Software Architecture, Design & Engineering by Nicholas J. Kisseberth.  
 Code Synthesized via Anthropic Claude Opus 4.8.  
@@ -13,15 +13,12 @@ fans that output out to any number of observers and routes input back. A rendere
 one more observer/controller — which is what lets a human *and* an automated client watch
 and drive the very same session. Several sessions tile into one window via the compositor.
 
-It was factored out of the *SIXBIT FORTRAN 66* project's `sbterm` (a period VT52 emulator
-hosting 1970s PDP-10 games), generalized to host any command.
-
 ## Install
 
 ```sh
 pip install tappty          # core (CUI works out of the box)
-pip install 'tappty[sdl]'   # add the pygame window (pygame-ce)
-pip install 'tappty[gl]' # add the arcade/OpenGL window (an alternative GUI backend)
+pip install 'tappty[sdl]'   # add the SDL/GUI window (installs pygame-ce)
+pip install 'tappty[gl]' # add the OpenGL window (arcade; an alternative GUI backend)
 pip install 'tappty[web]'    # add the browser renderer for --web (websockets)
 pip install 'tappty[video]'  # render recordings to mp4/gif via --render (bundles ffmpeg)
 pip install 'tappty[ansi]'  # add the full-ANSI/VT100+ backend (pyte) for --ansi
@@ -36,29 +33,34 @@ provides the `tapterm` command). The library, the extras, and the docs all live 
 ## The `tapterm` program
 
 ```sh
-tapterm                    # host your $SHELL (GUI if pygame + a display, else CUI)
-tapterm -- python3 -i      # host a specific command (everything after -- is its argv)
+tapterm                    # a regular terminal: your $SHELL, full-ANSI + raw keys
+tapterm -e vim file        # run a command instead of the shell, xterm-style (or: -- vim file)
+tapterm -geometry 100x30   # xterm-style size; -T/-title sets the title, -cd DIR the working dir
 tapterm --cui -- bash      # force the curses character UI (takes over this terminal)
-tapterm --gui -- bash      # force the pygame green-phosphor window
+tapterm --gui -- bash      # force the SDL green-phosphor window (the 'sdl' extra)
 tapterm --arcade -- bash   # same, on the arcade/OpenGL stack (the 'gl' extra)
 tapterm --web -- bash      # serve it in a browser (the 'web' extra); open http://127.0.0.1:8023/
 tapterm --headless -- ls   # run to completion, print the final screen (scripting/CI)
+tapterm --cooked -- bash   # line-oriented instrument mode (local echo on the VT52 grid)
 tapterm --play rec.cast    # replay a .cast / .ttyrec / .ans / .3a recording (--speed N, --loop)
 tapterm --record out.cast -- bash       # record a session as you use it
 tapterm --play rec.cast --render rec.mp4 # render a recording to a video (mp4/webm/gif)
 tapterm --render rain.mp4 --seconds 5 -- cmatrix  # render a live program straight to video
-tapterm --ansi -- vim      # use the full-ANSI/VT100+ backend (pyte) instead of VT52
 tapterm --no-pty -- ls     # host over plain pipes, no pty (cross-platform, incl. Windows)
 ```
 
-`--cui` works anywhere; `--gui` needs the `sdl` extra. With no mode flag, `tapterm` picks
-GUI when pygame is installed *and a display is available* (else CUI) — so it won't try to
-open a window over SSH/cron. `--ansi` swaps the built-in VT52 grid for the
-`pyte` full-ANSI model (needs the `ansi` extra) — use it for programs that emit modern ANSI
-(colors, cursor addressing). On Windows the pty path uses ConPTY (the `win` extra); pair it
-with `--ansi`, since ConPTY emits VT100+.
+An interactive session behaves like a **real terminal** — full-ANSI rendering (the `ansi` extra,
+pyte) plus raw keys, so colors, line-editing, arrows, and full-screen apps work, and the window
+closes when the program exits, like xterm. Pass `--cooked` for the line-oriented instrument
+default instead (local echo on the dependency-free VT52 grid) — what the observe taps and the bus
+`CMD` capture expect. xterm-style flags are accepted where they fit: `-e`, `-T`/`-title`,
+`-geometry`, `-cd`, `-hold`.
 
-Every flag, the three modes, recordings, snapshots, recipes, and troubleshooting are in the
+`--cui` works anywhere; `--gui` needs the `sdl` extra. With no mode flag, `tapterm` picks GUI when
+the `sdl` extra is installed *and a display is available* (else CUI) — so it won't try to open a
+window over SSH/cron. On Windows the pty path uses ConPTY (the `win` extra), which emits VT100+.
+
+Every flag, the modes, recordings, snapshots, recipes, and troubleshooting are in the
 [tapterm user's guide](docs/TAPTERM.md).
 
 ## Library
@@ -103,10 +105,19 @@ The pieces:
   gate. Not a substitute for a tunnel on an untrusted network (no TLS).
 - **`curses_ui` / `pygame_ui` / `arcade_ui` / `web_ui`** — renderers; each exposes
   `run(session, runner, title=…)`. `pygame_ui` and `arcade_ui` are two backends for the same
-  green-phosphor window (pygame, or arcade/OpenGL); `web_ui` serves it in a browser over a
+  green-phosphor window (SDL, or arcade/OpenGL); `web_ui` serves it in a browser over a
   WebSocket (the `web` extra).
 - **`compositor`** — tile several panels (`SessionBacking` for in-process, `BusBacking`
-  for remote) in one pygame window, with per-tile pan/zoom and focus.
+  for remote) in one GUI window, with per-tile pan/zoom and focus.
+
+## Demos & examples
+
+`demos/` holds runnable showpieces — the SGR color chart, the green digital rain, the compositor
+"mission control", `drive_vim` (a program driving a live `vim` over the control tap), and
+`web_demo` (the browser renderer). `examples/` holds short, commented API examples — the observe
+taps, writing a custom `Source`, driving a session over the bus, and `watch_and_drive` (a bot that
+reads the output stream and types its decisions back). The [gallery](docs/GALLERY.md) has
+screenshots and a clip of each.
 
 ## Platform
 
@@ -152,7 +163,7 @@ ruff format src tests              # format (line-length 99, black-style)
 PYTHONPATH=src python3 -m tappty.cli --headless -- echo hello
 ```
 
-Without the `ansi`/`sdl` extras, `pytest` skips the pyte and pygame tests (so it reports
+Without the `ansi`/`sdl` extras, `pytest` skips the pyte and GUI tests (so it reports
 fewer passes plus a couple of skips); install `.[dev,ansi,sdl]` to run the whole suite. CI
 runs ruff + the full matrix on Python 3.9–3.13.
 

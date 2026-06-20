@@ -22,8 +22,8 @@ class Terminal:
         self.dirty = True
         self._esc = ""  # pending escape sequence ("" = not in one)
         # lines that have scrolled off the top -- the hardcopy "paper roll" a
-        # period TTY (ASR-33 / DECwriter) left in your lap. Glass terminals of the
-        # DECWAR era had none; this is purely a viewing aid for re-reading what
+        # period TTY (ASR-33 / DECwriter) left in your lap. Glass terminals of that
+        # era had none; this is purely a viewing aid for re-reading what
         # already crossed the screen, so it stays inside the display-only rule.
         self.scrollback = []
         self.max_scrollback = scrollback

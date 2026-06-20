@@ -1,4 +1,4 @@
-"""The sbterm instrumentation bus on Session: the three observe taps (raw stream /
+"""The instrumentation bus on Session: the three observe taps (raw stream /
 grid frame / events) and the control path, over the Source seam. A tiny fake
 runner stands in for the engine; threading.Events keep it deterministic.
 See docs/DESIGN.md."""

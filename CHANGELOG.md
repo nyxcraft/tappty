@@ -9,21 +9,15 @@ toward `0.1.0`.
 
 ## Milestones
 
-- **Started — 2026-06-17 13:10.** First code of the terminal layer, written as `sbterm`
-  inside the *SIXBIT FORTRAN 66* project (a Python interpreter hosting Walter Bright's 1978
-  *Empire* and 1979 *DECWAR* unmodified). The working environment was set up at 13:02:53 and
-  the package stub (`__init__.py`) written at 13:10:30; the fixed-size VT52 `Terminal` grid
-  and the first pygame renderer followed at 14:29 (times from the original source-file mtimes
-  in `~/pdp10-empire/sixbit/term`).
+- **Started — 2026-06-17 13:10.** First code of the terminal layer — the fixed-size VT52
+  `Terminal` grid, with the first pygame renderer following at 14:29.
 - **First useful result — 2026-06-17 22:51:34.** The instrumented terminal ran end to end: a
   live program hosted on a pseudo-terminal, observed and driven through the `Session` taps and
-  the talking-stick arbitration, over the instrumentation bus (`sixbit/term` commit
-  `a146711`). This observe/control core is what tappty *is* — it was discovered by building a
-  real thing, not designed in the abstract.
-- **Extracted to a standalone package — 2026-06-18.** The generic core was lifted out of the
-  game project into `~/tappty` (the same playbook used to extract its FORTRAN interpreter into
-  `pyf66`). `tapterm --headless -- echo …` round-tripped a real subprocess through the pty
-  into the grid — the same bar, now standalone. First repo commit 23:35.
+  the talking-stick arbitration, over the instrumentation bus. This observe/control core is what
+  tappty *is* — it was discovered by building a real thing, not designed in the abstract.
+- **Extracted to a standalone package — 2026-06-18.** The generic core was lifted into `~/tappty`;
+  `tapterm --headless -- echo …` round-tripped a real subprocess through the pty into the grid —
+  the same bar, now standalone. First repo commit 23:35.
 
 ## [Unreleased]
 

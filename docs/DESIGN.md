@@ -160,8 +160,8 @@ annotation-free.
   screen), `ESC K` (erase to end of line), `ESC Y row col` (direct cursor address, bytes
   offset by 32), and `ESC A/B/C/D` (cursor up/down/right/left, bounds-clamped). It keeps
   **scrollback** — lines that scrolled off the top, the hardcopy "paper roll" — purely as a
-  viewing aid (`max_scroll`/`view_rows`); the program never sees it. Right for the 1970s
-  PDP-10 programs tappty was born hosting; wrong for anything that speaks modern ANSI.
+  viewing aid (`max_scroll`/`view_rows`); the program never sees it. Right for period programs
+  that speak VT52; wrong for anything that speaks modern ANSI.
 - **`PyteTerminal` (full ANSI/VT100+, the `ansi` extra).** Wraps the `pyte` library behind the
   *same* read interface, so it drops in wherever a `Terminal` goes (`Session(PyteTerminal())`,
   `tapterm --ansi`) with no change to Session or renderers. It uses `pyte.HistoryScreen` +
@@ -475,20 +475,19 @@ pytest + ruff.
 
 ---
 
-## 6. What is *not* here (extraction boundary)
+## 6. What is *not* here (the boundary)
 
-tappty was carved out of the *SIXBIT FORTRAN 66* project's `sbterm`. Two things were
-deliberately left behind because they are game-specific, not terminal-generic:
+tappty is the generic instrument; application-specific behavior lives *on top* of its seams, not
+in the core:
 
-- **The DECWAR galaxy view** (`draw_galaxy` / `GalaxyPanel` in the original compositor) — a
-  star-map renderer tied to the game's universe snapshot and symbol table.
-- **The DECWAR runners** (`decwar_runner` / `bot_runner` / `decwar_script_runner` in the
-  original session) — factories that build an `EngineSource` around the game engine/bot.
+- **A custom panel** — e.g. an app-specific dashboard view — is just another compositor panel
+  `kind`. `run()` dispatches panels by their `.kind`, so the compositor stays fully generic.
+- **An application or bot driver** is just an `EngineSource` (or a bus client) wrapping that
+  program's logic.
 
-Both are now consumers that *use* tappty's seams (a `GalaxyPanel` is just another panel `kind`;
-a game runner is just an `EngineSource`), so the parent project can layer them back on top
-without tappty depending on the game. The compositor's `run()` dispatches panels by their
-`.kind`, so dropping `GalaxyPanel` left it fully generic.
+So a consumer can layer either on top without the core depending on it. The library ships the
+generic seams — Source, Terminal, Session, the bus, the renderers, the compositor — and the
+specific things plug into them.
 
 ---
 
@@ -637,21 +636,18 @@ Conscious scope choices, recorded so they aren't mistaken for defects:
 ## 10. Provenance — how this design was found
 
 tappty was **not designed in the abstract; it was discovered** by building a real
-instrumented terminal against a hard target — hosting and driving 1970s PDP-10 games on a
-Fortran-66 interpreter, and in particular *multiplayer DECWAR*, where bots and human
-spectators all needed to watch and take turns driving the same sessions. The author had been
-hand-driving those bots and spectators ad hoc in Python; the idea was to **externalize that
-once** so every consumer — the screen, an AI, a logger, a dashboard — attaches the same way.
-The shorthand that framed it: *"expect + tmux + asciinema, for AIs"* — a programmable,
-observable, shareable terminal. §1's "every consumer is equal" is the distilled result; this
-section records the reasoning that produced it, for anyone changing the contracts.
+instrumented terminal against a hard target: many consumers — a human at the screen, an AI, a
+logger, a dashboard — all needing to watch and take turns driving the *same* live sessions.
+Driving those consumers ad hoc, by hand, was the problem; the idea was to **externalize that
+once** so every consumer attaches the same way. The shorthand that framed it:
+*"expect + tmux + asciinema, for AIs"* — a programmable, observable, shareable terminal. §1's
+"every consumer is equal" is the distilled result; this section records the reasoning that
+produced it, for anyone changing the contracts.
 
-**Build in-project first, extract later.** The design was dogfooded inside the game project
-against the real DECWAR/SIMH need *before* being lifted out — deliberately, to avoid
-pre-generalizing a tool nobody had used yet. The rule was to keep the seams clean so the
-extraction would be a *lift, not a rewrite*: only the in-process `EngineSource` was
-project-coupled; the bus, the Terminal/grid, the pty source, and the talking stick were
-generic from the start. (What stayed behind is §6.)
+**Build it against a real need first, generalize later** — deliberately, to avoid
+pre-generalizing a tool nobody had used yet. The rule was to keep the seams clean so only the
+in-process `EngineSource` was ever application-coupled; the bus, the Terminal/grid, the pty
+source, and the talking stick were generic from the start. (What stays generic is §6.)
 
 **The three load-bearing decisions** (each chosen for a reason, not for symmetry):
 
@@ -703,7 +699,3 @@ shape.
 *emulate-to-display* (render for a human). Keeping them separate, plus sealing the program in
 a fixed 80×24 model with a render-side viewport (§1), is what lets a renderer resize freely
 without the hosted program ever seeing it.
-
-> The fuller working notes — the increment-by-increment build log and the original
-> discussion — live in the parent SIXBIT FORTRAN 66 project's Claude memory
-> (`sbterm-instrumentation`, at `~/pdp10-empire`).
