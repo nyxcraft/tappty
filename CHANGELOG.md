@@ -73,12 +73,17 @@ The `0.1.0` line — the generic toolkit and the `tapterm` command. Built across
   pan/zoom, **in full color** — `Session.snapshot()`/the bus `FRAME` carry styled `cells`
   (`style.encode_row`, the same encoding the web renderer uses), so a remote panel isn't
   monochrome (`MAX_FRAME` raised to 256 KiB to fit a styled frame).
+- **Wide glyphs.** CJK and single-code-point emoji (👍 🔥 ✅) render at their true two columns:
+  the renderers honor pyte's wide-glyph continuation cell, and the curses CUI drops it
+  (`style.char_width` + `_continuations`, locale set for ncursesw) so ncurses' own two-column
+  advance lines up instead of shoving the rest of the row right. Grapheme clusters (ZWJ families,
+  flags, skin-tones) stay out of scope — pyte splits/collapses them upstream (DESIGN §9).
 - **`tapterm` CLI.** `--cui` / `--gui` / `--arcade` / `--web` / `--headless`, `--ansi`, `--raw`,
   `--no-pty`, `--cast` (`--speed` / `--loop`), `--cols` / `--rows`, `--port`, `--snapshot`,
   `--exit-when-done`. Headless prints the final screen and exits with the child's own status.
 - **Packaging & tooling.** `pyproject.toml` (extras `gui` / `arcade` / `web` / `ansi` / `win` /
   `dev`; `win` bundles pywinpty *and* windows-curses so `tappty[win]` gives both the ConPTY host
-  and the curses CUI on Windows), MIT license, `src/` layout, a pytest suite (118 tests), ruff
+  and the curses CUI on Windows), MIT license, `src/` layout, a pytest suite (124 tests), ruff
   lint + format (line length 99), and a GitHub Actions CI matrix on Python 3.9–3.13 (pyte +
   pygame-ce so the ANSI and headless-GUI tests run).
 

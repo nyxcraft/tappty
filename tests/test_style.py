@@ -33,6 +33,17 @@ def test_resolve_default_to_phosphor_then_reverse_swaps():
     assert style.resolve(plain, (1, 2, 3), (4, 5, 6)) == ((1, 2, 3), (4, 5, 6))  # custom defaults
 
 
+def test_char_width_wide_zero_and_normal():
+    assert style.char_width("A") == 1
+    assert style.char_width("é") == 1  # precomposed Latin -> one column
+    assert style.char_width("日") == 2  # CJK ideograph (East-Asian Wide)
+    assert style.char_width("Ａ") == 2  # fullwidth Latin
+    assert style.char_width("👍") == 2  # single-code-point emoji (pyte reports it W)
+    assert style.char_width("́") == 0  # combining acute accent hangs off the prev cell
+    assert style.char_width("‍") == 0  # ZWJ (a format char) takes no column
+    assert style.char_width("") == 0  # pyte's empty wide-glyph continuation cell
+
+
 def _c(char, fg="default", bg="default", bold=False, italic=False, underline=False,
        strike=False, blink=False, reverse=False):
     return style.Cell(char, fg, bg, bold, italic, underline, strike, blink, reverse)

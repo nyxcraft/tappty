@@ -5,7 +5,7 @@ color mapping (pyte color -> curses color index / attributes). See docs/DESIGN.m
 import pytest
 
 from tappty import style
-from tappty.curses_ui import _cell_style, _curses_color, _raw_bytes, viewport
+from tappty.curses_ui import _cell_style, _continuations, _curses_color, _raw_bytes, viewport
 
 
 def test_raw_bytes_translates_special_keys_to_vt_sequences():
@@ -44,6 +44,19 @@ def test_cell_style_bright_uses_high_index_on_16_color_else_bold():
 def test_cell_style_background_and_reverse():
     c = style.default_cell("x")._replace(bg="blue", reverse=True)  # reverse on blue bg
     assert _cell_style(c, colors=256) == (2, 4, False, True)  # green on blue, reverse flagged
+
+
+def test_continuations_flag_the_cell_after_a_wide_glyph():
+    # pyte lays a wide glyph as the char plus an empty continuation cell: "日" -> 日, ''
+    row = [style.default_cell(c) for c in ("A", "日", "", "B", "👍", "", "C")]
+    assert _continuations(row) == [False, False, True, False, False, True, False]
+    # the cells flagged True are exactly the ones the CUI must not redraw
+    assert all(row[i].char in ("", " ") for i, flag in enumerate(_continuations(row)) if flag)
+
+
+def test_continuations_all_false_for_plain_ascii():
+    row = [style.default_cell(c) for c in "hello"]
+    assert _continuations(row) == [False] * 5
 
 
 def test_full_fit_shows_whole_model():

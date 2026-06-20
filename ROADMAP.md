@@ -6,7 +6,7 @@ completed work is in [CHANGELOG.md](CHANGELOG.md); the architecture is in
 
 ## Status
 
-The generic toolkit and the `tapterm` command exist and are green: **118 tests**, a full-ANSI
+The generic toolkit and the `tapterm` command exist and are green: **124 tests**, a full-ANSI
 backend (with scrollback, SGR color, and raw-key input for full TUIs), `.cast` replay, non-pty
 and Windows sources, a Unix + TCP bus, and four renderers — the curses CUI, two GUI backends
 (pygame and arcade/OpenGL), and a browser renderer over a WebSocket — plus ruff lint/format.
@@ -39,10 +39,13 @@ but unverified on real Windows.
      `curses` there), and `curses_ui` is already portable — but, like `ConPtySource`, it's
      unverified on real Windows; confirm `tapterm --cui` renders there.
 3. **Possible features:** the remaining deliberate gaps in [docs/DESIGN.md](docs/DESIGN.md) §9
-   if they ever bite — `wcwidth`-style cell widths for CJK/emoji (wide glyphs still take one
-   cell). *Out of reach:* SGR faint/rapid-blink/conceal — pyte doesn't model them.
-   *Done:* SGR color **and** the bold/italic/underline/strikethrough/blink/reverse attributes
-   across all four renderers (`cells()` + the `style` palette); raw-mode TUI input (`--raw` /
-   `send_key` + the `keys` table) so vim/htop work; the **web renderer** (`web_ui`, `--web`, the
-   `web` extra — a browser over a WebSocket, built on `websockets`); and **color over the bus**
-   (styled `cells` in `snapshot()`/`FRAME`) so remote `BusBacking` panels render in full color.
+   if they ever bite. *Out of reach:* SGR faint/rapid-blink/conceal — pyte doesn't model them;
+   and **grapheme clusters** (ZWJ emoji families, flags, skin-tone modifiers) — pyte splits or
+   collapses them upstream, so faithful rendering would need a grapheme-segmenting text path that
+   overrides pyte. *Done:* SGR color **and** the bold/italic/underline/strikethrough/blink/reverse
+   attributes across all four renderers (`cells()` + the `style` palette); raw-mode TUI input
+   (`--raw` / `send_key` + the `keys` table) so vim/htop work; the **web renderer** (`web_ui`,
+   `--web`, the `web` extra — a browser over a WebSocket, built on `websockets`); **color over the
+   bus** (styled `cells` in `snapshot()`/`FRAME`) so remote `BusBacking` panels render in full
+   color; and **wide-glyph width** for CJK and single-code-point emoji (`style.char_width` —
+   pyte's continuation cell, the CUI dropping it so ncurses' two-column advance lines up).

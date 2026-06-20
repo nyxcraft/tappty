@@ -11,6 +11,7 @@ No dependencies -- safe to import anywhere (used by terminal.py, pyte_terminal.p
 pygame/arcade renderers).
 """
 
+import unicodedata
 from collections import namedtuple
 
 # Phosphor defaults -- the look both GUI renderers share; a "default" color resolves to these.
@@ -46,6 +47,21 @@ _BRIGHT = {
 def default_cell(char):
     """A Cell with no color or attributes -- what the VT52 `Terminal` reports for every cell."""
     return Cell(char, "default", "default", False, False, False, False, False, False)
+
+
+def char_width(char):
+    """Display columns a single character occupies: 2 for East-Asian wide/fullwidth glyphs
+    (CJK, and most single-code-point emoji, which pyte reports as W), 0 for a combining or
+    format mark (it hangs off the previous cell), else 1. Used to skip the empty *continuation*
+    cell pyte leaves to the right of a wide glyph, so a renderer that places text by column (the
+    curses CUI) doesn't double-count it. Grapheme clusters -- ZWJ emoji families, flags,
+    skin-tone modifiers -- are out of scope: pyte splits or collapses them upstream, so there is
+    nothing for us to widen here. (See docs/DESIGN.md §9.)"""
+    if not char:
+        return 0
+    if unicodedata.category(char) in ("Mn", "Me", "Cf"):  # combining / enclosing / format (ZWJ)
+        return 0
+    return 2 if unicodedata.east_asian_width(char) in ("W", "F") else 1
 
 
 def rgb(color, bold=False):

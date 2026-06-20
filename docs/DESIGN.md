@@ -586,10 +586,18 @@ Conscious scope choices, recorded so they aren't mistaken for defects:
   strikethrough attribute, so `strike` is dropped in the CUI only. The **bus** carries color too:
   `snapshot()`/`FRAME` includes styled `cells`, so a remote `BusBacking` panel renders in full
   color, not just text (`MAX_FRAME` was raised to 256 KiB to fit a styled frame).
-- **Single-cell Unicode.** Both Terminal models treat each Python code point as one cell, and
-  renderers blit one glyph per cell. CJK full-width, emoji, and combining marks can drift or
-  overwrite neighbors. Faithful width would need a `wcwidth`-style helper in the model and
-  renderers.
+- **Wide glyphs yes, grapheme clusters no.** Wide characters — CJK and single-code-point emoji
+  (👍 🔥 ✅) — render at their true **two columns**: the full-ANSI `PyteTerminal` lays each one
+  out as the glyph plus an empty *continuation* cell, so the grid stays rectangular and the GUI
+  renderers (which place text by column) land neighbors correctly. The curses CUI drops that
+  continuation cell (`style.char_width` + `_continuations`) so ncurses' own two-column advance
+  for the wide glyph lines up instead of doubling it; it sets the locale so ncursesw is in
+  multibyte mode (a non-UTF-8 locale degrades to single-width, never corruption). **Out of reach:
+  grapheme clusters** — ZWJ emoji families (👨‍👩‍👧), flags (🇺🇸), and skin-tone modifiers (👋🏽)
+  are *multiple* code points meant to fuse into one glyph; pyte splits or collapses them upstream
+  (the family becomes just 👨, the flag two letter-boxes), before tappty ever sees a cell, so
+  there is nothing here to widen. Supporting them would mean a grapheme-segmenting text path that
+  overrides pyte's per-cell processing — deliberately not done.
 - **Two input modes.** The default is **line-oriented** (the toolkit's heritage): renderers
   forward Enter/Backspace/printable text with local echo + a line buffer, sending on Enter, and
   arrows/function keys are ignored — right for in-process line-readers (`EngineSource`).

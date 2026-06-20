@@ -87,6 +87,18 @@ def _cell_style(cell, colors=16):
     return fi, bi, want_bold, cell.reverse
 
 
+def _continuations(row):
+    """Bool per cell: True where the cell is the empty *continuation* to the right of a wide
+    glyph (CJK / single-code-point emoji). pyte leaves that cell so the grid stays rectangular,
+    but ncurses advances its own cursor two columns for the wide glyph -- so the CUI must drop
+    the continuation rather than redraw it, else each wide glyph shoves the row right."""
+    cont = [False] * len(row)
+    for i in range(1, len(row)):
+        if style.char_width(row[i - 1].char) == 2:
+            cont[i] = True
+    return cont
+
+
 def _raw_bytes(curses, ch):
     """Translate a curses getch() code to the bytes to send the program in raw mode
     (arrows/function keys -> VT sequences; control bytes pass through), or None to drop it."""
@@ -131,6 +143,12 @@ def _feed(session, ch):
 
 def run(session, runner, title="tapterm", refresh_ms=50):
     import curses
+    import locale
+
+    # Wide-char output (CJK/emoji) needs ncurses to know the encoding; without this it advances
+    # the cursor by one column per code point and wide glyphs drift. Honors $LC_*/$LANG -- a
+    # non-UTF-8 locale just falls back to single-width, never corruption.
+    locale.setlocale(locale.LC_ALL, "")
 
     def _main(stdscr):
         curses.curs_set(1)
@@ -200,11 +218,15 @@ def run(session, runner, title="tapterm", refresh_ms=50):
             for y in range(vh):
                 row = grid[oy + y][ox : ox + vw]
                 attrs = [cell_attr(c) for c in row]
+                cont = _continuations(row)  # drop wide-glyph continuation cells (see §9)
                 x = 0
                 while x < len(row):  # draw maximal same-attribute runs in one addstr
+                    if cont[x]:
+                        x += 1
+                        continue
                     a = attrs[x]
                     x2 = x + 1
-                    while x2 < len(row) and attrs[x2] == a:
+                    while x2 < len(row) and not cont[x2] and attrs[x2] == a:
                         x2 += 1
                     try:
                         stdscr.addstr(y, x, "".join(c.char for c in row[x:x2]), a)
