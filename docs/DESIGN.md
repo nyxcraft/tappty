@@ -108,8 +108,9 @@ caller can re-raise it. **Eight implementations ship:**
   caps each record at `MAX_TTYREC_CHUNK`; `.ans`/`.3a` are loaded whole, so each is refused above
   `MAX_ART_FILE` (16 MiB); dimensions are clamped where the format carries them (SAUCE). A parse
   error in any replay source surfaces via `Source.error` (re-raised by `run_blocking`), not a
-  silent exit. (`render_video` additionally caps the materialized event count and the rendered
-  duration so a hostile recording can't OOM or balloon the frame count.)
+  silent exit. (`render_video` additionally caps the materialized events by both count **and**
+  cumulative bytes, plus the rendered duration, so a hostile recording can't OOM or balloon the
+  frame count.)
 - **`PipeSource` (any OS).** Hosts an external program over plain pipes (`subprocess` with
   `stdin/stdout`, `stderr`→stdout, `bufsize=0`) — no pty. The "non-pty Source" (`--no-pty`),
   byte-transparent like `PtySource`. Caveat: with no tty the child detects it isn't
@@ -424,10 +425,13 @@ tappty is multithreaded but the rules are small and deliberate:
 - **The bus has its own lock.** `BusServer._lock` guards `_conns` and `_captures`; each
   connection has a per-send lock. Serve threads call session methods (`snapshot`, `send_input`,
   `take`/`release`, `feed_key`, `echo`).
-- **The talking-stick state is not separately locked.** `_controllers`/`driver` mutations
-  (`claim`/`take`/`release`) are plain dict/attribute writes. This is acceptable under the
-  trusted-local, low-contention assumption (one driver at a time, few controllers); it is a
-  conscious simplicity choice, not a hardened concurrent structure.
+- **The talking-stick state is locked.** `_controllers`/`driver` mutations
+  (`claim_control`/`take`/`release`/`drop_controller`) and the input gate
+  (`send_input`/`feed_key`/`send_key` check who holds the stick **and** write under the same
+  `Session._lock`) are serialized, so a hand-off is atomic: a key is never delivered with a
+  different controller recorded as driver, and the bus's check-and-claim of a controller name is
+  one locked step. Still a low-contention path (one driver at a time, few controllers), not a
+  high-throughput concurrent structure.
 - **All worker threads are daemons.** A renderer/`run_blocking` joins with a short timeout, but
   a stuck source thread never blocks process exit.
 
@@ -609,9 +613,11 @@ Conscious scope choices, recorded so they aren't mistaken for defects:
   (the family becomes just 👨, the flag two letter-boxes), before tappty ever sees a cell, so
   there is nothing here to widen. Supporting them would mean a grapheme-segmenting text path that
   overrides pyte's per-cell processing — deliberately not done.
-- **Two input modes.** The default is **line-oriented** (the toolkit's heritage): renderers
-  forward Enter/Backspace/printable text with local echo + a line buffer, sending on Enter, and
-  arrows/function keys are ignored — right for in-process line-readers (`EngineSource`).
+- **Two input modes.** The `Session` itself defaults to **line-oriented** (`raw_keys=False`, the
+  toolkit's heritage): renderers forward Enter/Backspace/printable text with local echo + a line
+  buffer, sending on Enter, and arrows/function keys are ignored — right for in-process
+  line-readers (`EngineSource`). (`tapterm`, though, flips an *interactive* session to raw by
+  default — the regular-terminal behavior — and exposes the line mode as `--cooked`.)
   **Raw mode** (`Session.raw_keys`, `tapterm --raw`) instead forwards every keystroke straight
   to the program with no echo or buffering, translating special keys to VT sequences
   (`tappty.keys`) — so a full-screen TUI (vim, htop) on a pty works, the program handling its

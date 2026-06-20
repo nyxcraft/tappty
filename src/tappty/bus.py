@@ -254,9 +254,9 @@ class BusServer:
         role = info.get("role", "observer")
         st.role = role if isinstance(role, str) else "observer"
         if st.role != "observer":  # a controller registers for the stick
-            if self.session.has_controller(st_name):  # keep stick identities unique per conn
-                st_name = f"{st_name}#{st.name}"  # (st.name is this conn's c-id)
-            self.session.claim_control(st_name, st.role)
+            # Atomic check-and-claim: if the requested name is taken, claim_control appends this
+            # connection's unique c-id, all under the session lock -- no check-then-claim race.
+            st_name = self.session.claim_control(st_name, st.role, unique_suffix=f"#{st.name}")
             st.claimed = True  # only THEN may disconnect drop it
         st.name = st_name
         self._send(conn, "OK", {"name": st.name, "driver": self.session.driver})

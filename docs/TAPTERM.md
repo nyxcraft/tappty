@@ -452,7 +452,7 @@ OPTIONS
   --no-pty              host over plain pipes, no pty (cross-platform; line-oriented programs)
   --snapshot PATH       GUI: mirror the screen to PATH (+PATH.png) each second;
                         headless: write the final screen to PATH (.ans/.3a paths export art)
-  --exit-when-done      GUI: close the window when the hosted program exits
+  --exit-when-done      GUI/CUI/web: close (don't wait for a final keypress) when the program exits
   --play FILE           replay a .cast/.ttyrec recording or play .ans/.3a art, instead of a
                         command (--cast alias; uses the ANSI backend; sizes to a .cast/.ans)
   --record FILE         record the session's output to a .cast or .ttyrec file as it runs

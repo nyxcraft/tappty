@@ -239,7 +239,7 @@ def build_parser():
     ap.add_argument(
         "--exit-when-done",
         action="store_true",
-        help="GUI: close the window when the hosted program exits",
+        help="GUI/CUI/web: close (don't wait for a final keypress) when the hosted program exits",
     )
     ap.add_argument(
         "--play",
@@ -247,9 +247,10 @@ def build_parser():
         dest="play",
         default=None,
         metavar="FILE",
-        help="replay a recording instead of hosting a command: .cast (asciinema), .ttyrec, or "
-        ".ans ANSI art -- auto-detected by extension. The full-ANSI backend is used automatically "
-        "(recordings are VT100+); a .cast/.ans is sized to the recording. Needs the 'ansi' extra",
+        help="replay a recording instead of hosting a command: .cast (asciinema), .ttyrec, "
+        ".ans ANSI art, or .3a animated ASCII art -- auto-detected by extension. The full-ANSI "
+        "backend is used automatically (recordings are VT100+); a .cast/.ans is sized to the "
+        "recording. Needs the 'ansi' extra",
     )
     ap.add_argument(
         "--record",
@@ -311,7 +312,7 @@ def build_parser():
     ap.add_argument(
         "--loop",
         action="store_true",
-        help="--play: loop the recording (GUI/CUI; ignored when --headless)",
+        help="--play: loop the recording (ignored under --headless)",
     )
     ap.add_argument(
         "--ansi",
@@ -334,7 +335,8 @@ def build_parser():
         action="store_true",
         help="forward keystrokes raw -- arrows/function keys/Ctrl-combos go straight to "
         "the program, no local echo or line-editing -- so full-screen TUIs (vim, htop) "
-        "work. Pair with --ansi. Without it, input is line-buffered with local echo",
+        "work. An interactive session is already raw by default; --cooked switches to "
+        "line-buffered input with local echo",
     )
     ap.add_argument(
         "command",

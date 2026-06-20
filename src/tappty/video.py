@@ -21,13 +21,35 @@ import subprocess
 
 log = logging.getLogger(__name__)
 
-# Cap how many events we materialize, so rendering an untrusted recording can't OOM (replay
-# itself streams; only the render path collects events to size the timeline). Generous — real
-# recordings have thousands, not millions.
+# Bound what we materialize, so rendering an untrusted recording can't OOM (replay itself
+# streams; only the render path collects events to size the timeline). Two ceilings, since a
+# single .cast event can be ~1 MiB: an event *count* and a cumulative *byte* budget.
 MAX_RENDER_EVENTS = 2_000_000
+MAX_RENDER_BYTES = 128 << 20  # 128 MiB of event payload
 # Hard ceiling on the rendered duration when the caller gives no --seconds, so an event with a
 # wild timestamp can't blow the frame count up to billions of frames.
 MAX_RENDER_SECONDS = 3600
+
+
+def _collect_events(events_iter, byte_source):
+    """Materialize replay events for the render timeline, bounded by count **and** cumulative
+    bytes (a single .cast event can be ~1 MiB) so an untrusted recording can't OOM. The size is
+    counted in real bytes (UTF-8 for a text source; latin-1 byte-transparent str == 1 byte/char
+    for a byte source, not code points) and checked *before* appending, so neither ceiling is
+    overrun by a final event."""
+    events, total = [], 0
+    for ev in events_iter:
+        size = len(ev[1]) if byte_source else len(ev[1].encode("utf-8", "replace"))
+        if len(events) >= MAX_RENDER_EVENTS or total + size > MAX_RENDER_BYTES:
+            log.warning(
+                "render: recording too large (%d events / %d bytes); truncating",
+                len(events),
+                total,
+            )
+            break
+        events.append(ev)
+        total += size
+    return events
 
 
 def _ffmpeg_exe():
@@ -141,14 +163,9 @@ def render_video(
         terminal = PyteTerminal
     term = terminal(src.width, src.height)
     sess = Session(term)  # used only for its snapshot() of the grid
-    events = []  # [(abs_seconds, data), ...] -- bounded so an untrusted recording can't OOM
-    for ev in src._events():
-        events.append(ev)
-        if len(events) >= MAX_RENDER_EVENTS:
-            log.warning("render: recording exceeds %d events; truncating", MAX_RENDER_EVENTS)
-            break
     wire = getattr(src, "encoding", None)  # byte sources (ttyrec) decode; text sources don't
     decoder = codecs.getincrementaldecoder(wire)("replace") if wire else None
+    events = _collect_events(src._events(), wire is not None)  # [(abs_seconds, data), ...]
 
     end = events[-1][0] if events else 0.0
     span = end / max(speed, 1e-9) + tail

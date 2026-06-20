@@ -154,10 +154,20 @@ class Session:
     # The controller registry and the stick are mutated under the lock so a hand-off is atomic
     # with feed_key/send_key (which check has_control + touch the line buffer under the same
     # lock) -- a concurrent takeover can't let the old controller's key land in the new one's line.
-    def claim_control(self, name, role="ai"):
+    def claim_control(self, name, role="ai", unique_suffix=None):
         """Register a controller. The first one to claim becomes the driver (the
-        launcher's player); later claims don't preempt -- they must take()."""
+        launcher's player); later claims don't preempt -- they must take(). If `unique_suffix`
+        is given and `name` is already taken, append it (so the bus keeps each connection's
+        stick identity distinct) -- the check and the claim are one locked step, no race.
+        Returns the registered name."""
         with self._lock:
+            if unique_suffix is not None and name in self._controllers:
+                base = f"{name}{unique_suffix}"  # prefer the caller's suffix...
+                candidate, n = base, 1
+                while candidate in self._controllers:  # ...then -2, -3 if even that collides
+                    n += 1
+                    candidate = f"{base}-{n}"
+                name = candidate
             self._controllers[name] = role
             if self.driver is None:
                 self._set_driver(name)
@@ -204,12 +214,15 @@ class Session:
     # ---- control -----------------------------------------------------------
     def send_input(self, text, by=None):
         """Inject input. `by=None` is trusted/internal; a named controller's input is
-        applied only while it holds the stick. Returns whether it was applied."""
-        applied = by is None or self.driver == by
-        if applied and self.source is not None:
-            self.waiting = False  # the program will resume on this input
-            self.source.send_input(text)
-        return applied
+        applied only while it holds the stick. The driver check and the actual write happen
+        under the lock so a concurrent take()/release() can't slip between them (a key is never
+        delivered with a different controller recorded as driver). Returns whether it applied."""
+        with self._lock:
+            applied = by is None or self.driver == by
+            if applied and self.source is not None:
+                self.waiting = False  # the program will resume on this input
+                self.source.send_input(text)
+            return applied
 
     def echo(self, text):
         """Show an injected command on the terminal (and to all observers), so a watcher

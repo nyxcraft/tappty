@@ -58,3 +58,18 @@ toward `0.1.0`.
 - **15:42** — Named the GUI extras by graphics layer — `sdl` (pygame-ce) and `gl` (arcade).
 - **16:40** — Docs-site polish: Gallery nav link, breadcrumbs, copyright + in-site license
   footer, a "beta" stamp, and author/AI-orchestration attribution.
+- **17:28** — Security-review hardening of the web renderer: reject cross-origin WebSockets
+  (CSWSH), guard the non-loopback bind, and stop embedding the token in the served page (the
+  page is token-gated; the client reads it from its own URL).
+- **17:33** — Fixed output-hot-path data races: copy-on-write observer lists and an atomic
+  frame snapshot (cursor consistent with the grid); plus reader-thread/resource robustness.
+- **17:40** — Packaging: version single-sourced from `tappty.__version__`, and a `twine check`
+  build job added to CI.
+- **18:11** — Bus/control hardening: raw KEY routing in raw mode, a frame-bounded CMD reply, and
+  a fully atomic talking-stick hand-off (including the bus's controller-name claim).
+- **18:16** — Replay/render robustness: replay parse errors surface (no silent exit-0), `.ans`/
+  `.3a` size caps, and `render_video` bounds events by count + bytes and caps the duration.
+- **18:19** — The CUI honors `--exit-when-done` / `-hold` (a regular-terminal session closes on
+  exit, like xterm).
+- **18:28** — Applied `ruff format` across the tree; CI installs the `web` extra so the
+  WebSocket/CSWSH tests run.

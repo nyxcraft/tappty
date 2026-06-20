@@ -50,6 +50,16 @@ def test_input_gating():
     assert s.send_input("z\n") and rec.got == ["x\n", "z\n"]  # by=None trusted/internal
 
 
+def test_claim_control_unique_suffix_is_atomic_dedup():
+    # The bus needs a per-connection-unique stick name without a check-then-claim race: a
+    # unique_suffix is appended (under one lock) only when the name is already taken.
+    s = Session()
+    a = s.claim_control("bot", "ai", unique_suffix="#c1")
+    b = s.claim_control("bot", "ai", unique_suffix="#c2")
+    assert a == "bot" and b == "bot#c2" and a != b  # distinct identities
+    assert s.driver == a  # the first claimant stays the driver
+
+
 def test_send_key_is_raw_stick_gated_and_unechoed():
     from tappty.terminal import Terminal
 
