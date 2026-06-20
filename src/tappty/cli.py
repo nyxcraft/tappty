@@ -10,7 +10,7 @@
 
 tapterm is a thin front-end over tappty: it wraps the command in a PtySource, hosts it in a
 Session (the observe/control core), and hands the Session to a renderer. The CUI (curses) works
-anywhere; the GUI (pygame, the 'gui' extra) also needs a display, so the default mode is GUI only
+anywhere; the GUI (pygame, the 'sdl' extra) also needs a display, so the default mode is GUI only
 when both are present, else CUI.
 
 An interactive session behaves like a real terminal: the full-ANSI backend (pyte, the 'ansi'
@@ -148,14 +148,14 @@ def build_parser():
         dest="mode",
         action="store_const",
         const="gui",
-        help="pygame green-phosphor window (needs the 'gui' extra)",
+        help="pygame green-phosphor window (needs the 'sdl' extra)",
     )
     mode.add_argument(
         "--arcade",
         dest="mode",
         action="store_const",
         const="arcade",
-        help="arcade green-phosphor window (needs the 'arcade' extra; a GL display)",
+        help="arcade green-phosphor window (needs the 'gl' extra; a GL display)",
     )
     mode.add_argument(
         "--web",
@@ -230,7 +230,7 @@ def build_parser():
         default=None,
         metavar="FILE",
         help="with --play: render the recording to a video file (.mp4 / .webm / .gif / ...) "
-        "via ffmpeg, instead of displaying it. Needs the 'gui' + 'ansi' extras and ffmpeg "
+        "via ffmpeg, instead of displaying it. Needs the 'sdl' + 'ansi' extras and ffmpeg "
         "(or  pip install 'tappty[video]'  for a bundled ffmpeg)",
     )
     ap.add_argument("--fps", type=_positive_int, default=30,
@@ -337,7 +337,7 @@ def _run_mode(ap, a, sess, term, mode, title):
         if not _have_arcade():
             ap.error(
                 "--arcade needs the arcade library: install it with  pip install "
-                "'tappty[arcade]'  (or use --gui for the pygame window, --cui, or --headless)"
+                "'tappty[gl]'  (or use --gui for the pygame window, --cui, or --headless)"
             )
         from tappty import arcade_ui
 
@@ -347,7 +347,7 @@ def _run_mode(ap, a, sess, term, mode, title):
     else:  # gui
         if not _have_pygame():
             ap.error(
-                "--gui needs pygame: install it with  pip install 'tappty[gui]'  "
+                "--gui needs pygame: install it with  pip install 'tappty[sdl]'  "
                 "(or run with --cui)"
             )
         from tappty import pygame_ui

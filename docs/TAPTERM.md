@@ -35,22 +35,22 @@ flag and mode, with practical examples and troubleshooting.
 
 ```sh
 pip install tappty            # the core + tapterm; the CUI works out of the box
-pip install 'tappty[gui]'     # add the green-phosphor window (pygame-ce)
-pip install 'tappty[arcade]'  # add the arcade/OpenGL window (alternative GUI backend)
+pip install 'tappty[sdl]'     # add the green-phosphor window (pygame-ce)
+pip install 'tappty[gl]'  # add the arcade/OpenGL window (alternative GUI backend)
 pip install 'tappty[web]'     # add the browser renderer for --web (websockets)
 pip install 'tappty[ansi]'    # add the full-ANSI backend (pyte) for --ansi
 pip install 'tappty[win]'     # Windows-native: ConPTY host + curses CUI (pywinpty, windows-curses)
 ```
 
-After install, `tapterm` is on your `PATH`. You can combine extras: `pip install 'tappty[gui,ansi]'`.
+After install, `tapterm` is on your `PATH`. You can combine extras: `pip install 'tappty[sdl,ansi]'`.
 
 What each mode needs:
 
 | You want… | Needs |
 |-----------|-------|
 | `--cui` (curses) | a terminal — no extras on POSIX; on Windows, the `win` extra (`windows-curses`) |
-| `--gui` (pygame window) | the `gui` extra **and** a display |
-| `--arcade` (arcade window) | the `arcade` extra **and** a display (a GL context) |
+| `--gui` (pygame window) | the `sdl` extra **and** a display |
+| `--arcade` (arcade window) | the `gl` extra **and** a display (a GL context) |
 | `--web` (browser tab) | the `web` extra (no display needed — it's a server) |
 | `--headless` | no terminal, no display, no extras\* |
 | `--ansi` (full-ANSI render) | the `ansi` extra |
@@ -130,7 +130,7 @@ tapterm --cui -- bash
 ### GUI — `--gui` (pygame green-phosphor window)
 
 Opens a green-on-black monospace window with a blinking block cursor — the showcase. Needs the
-`gui` extra and a display.
+`sdl` extra and a display.
 
 ```sh
 tapterm --gui -- bash
@@ -151,7 +151,7 @@ tapterm --gui -- bash
 
 **`--arcade`** opens the *same* green-phosphor window on the arcade (pyglet/OpenGL) stack
 instead of pygame — same keys, scrollback, `F12`, `--snapshot`, and `--exit-when-done`. It
-needs the `arcade` extra and a real GL display (where `--gui` also runs in software). Use it if
+needs the `gl` extra and a real GL display (where `--gui` also runs in software). Use it if
 you prefer the arcade backend or already depend on it; otherwise `--gui` is the default window.
 
 ### Headless — `--headless` (run, print, exit)
@@ -365,7 +365,7 @@ tapterm --render cmatrix.mp4 --seconds 5 -- cmatrix        # a LIVE program, str
 - Pass a command instead of `--play` to render a **live** program directly — it's hosted,
   recorded, and rendered in one step. `--seconds N` caps programs that don't exit on their own
   (cmatrix, htop, a shell); a program that exits (a build, `ls`, cbonsai) needs no cap.
-- The render is deterministic and faster-than-real-time. It needs the `gui` + `ansi` extras and
+- The render is deterministic and faster-than-real-time. It needs the `sdl` + `ansi` extras and
   **ffmpeg** — a system binary, or `pip install 'tappty[video]'` for a bundled one.
 - **No display required.** Although it uses pygame, it rasterizes *off-screen* (SDL's `dummy`
   driver) — there's no window — so `--render` runs over plain SSH, in a curses console, in cron,
@@ -429,8 +429,8 @@ tapterm [MODE] [OPTIONS] -- COMMAND [ARGS...]
 
 MODE (mutually exclusive; default = GUI if pygame+display, else CUI)
   --cui                 curses character UI, in the current terminal
-  --gui                 pygame green-phosphor window (needs the 'gui' extra + a display)
-  --arcade              arcade/OpenGL green-phosphor window (needs the 'arcade' extra + a display)
+  --gui                 pygame green-phosphor window (needs the 'sdl' extra + a display)
+  --arcade              arcade/OpenGL green-phosphor window (needs the 'gl' extra + a display)
   --web                 serve in a browser over a websocket (needs the 'web' extra)
   --headless            run to completion, print the final screen, exit with the child's code
 
@@ -475,9 +475,9 @@ display / positive-integer notes that the bare `--help` leaves out.)
 
 ## Platform notes
 
-- **Linux / BSD:** the CUI works in any terminal; the GUI needs `gui` + an X11/Wayland display.
+- **Linux / BSD:** the CUI works in any terminal; the GUI needs `sdl` + an X11/Wayland display.
   Over SSH or cron (no display), plain `tapterm` falls back to CUI automatically. An explicit
-  `--gui` *without the `gui` extra* fails with a clear install hint; `--gui` *with no display*
+  `--gui` *without the `sdl` extra* fails with a clear install hint; `--gui` *with no display*
   surfaces pygame/SDL's own video-initialization error instead.
 - **macOS:** the GUI works (native, no `DISPLAY` needed); CUI works in Terminal/iTerm.
 - **Windows:** the GUI (pygame) and `--headless` work; the CUI needs `windows-curses`, which
@@ -493,7 +493,7 @@ display / positive-integer notes that the bare `--help` leaves out.)
 
 - **Escape-sequence soup / garbled colors** (you see things like `^[[0;32m`): the program emits
   modern ANSI but you're on the VT52 model. Add **`--ansi`** (and `pip install 'tappty[ansi]'`).
-- **`--gui` fails / "needs pygame"**: install the GUI extra — `pip install 'tappty[gui]'` — and
+- **`--gui` fails / "needs pygame"**: install the GUI extra — `pip install 'tappty[sdl]'` — and
   make sure a display is available. Over SSH, use `--cui` or `--headless`, or forward X /
   set `SDL_VIDEODRIVER=dummy` for a windowless render.
 - **`--no-pty` shows nothing until the program exits**: that's output buffering — without a tty

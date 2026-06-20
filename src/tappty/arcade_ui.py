@@ -5,7 +5,7 @@ shape, the same green-on-near-black character grid, scrollback, snapshots, and o
 teardown. Having two graphical renderers that share nothing but the Session contract is
 the point -- a renderer is just an adapter over the UI-agnostic core.
 
-`arcade` is the `arcade` extra and is imported lazily (the window class is built on first
+`arcade` is the `gl` extra and is imported lazily (the window class is built on first
 `run()`), so `import tappty` and `import tappty.arcade_ui` work with arcade absent. Each
 row is drawn as a single pooled `arcade.Text` (cheap, and a monospace font keeps the
 columns aligned), with the cursor and scrollback bar drawn as primitives.

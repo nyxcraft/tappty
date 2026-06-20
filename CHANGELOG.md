@@ -82,7 +82,7 @@ The `0.1.0` line — the generic toolkit and the `tapterm` command. Built across
 - **Renderers.** `curses_ui` (the CUI plus the pure, unit-tested `viewport()` math); two
   interchangeable GUI backends with the same `run(...)` signature, both drawing SGR color —
   `pygame_ui` (pygame; lazy glyph cache, scrollback, optional text+PNG snapshots) and
-  `arcade_ui` (the arcade/OpenGL twin, the `arcade` extra); and `web_ui` — a **browser**
+  `arcade_ui` (the arcade/OpenGL twin, the `gl` extra); and `web_ui` — a **browser**
   renderer over HTTP + a WebSocket (the `web` extra, `websockets`): a stdlib `http.server`
   serves one canvas page, the browser paints the `cells()` grid (color) and sends keystrokes
   back, several clients can connect, loopback-bound + optional `token`. The `compositor` tiles
@@ -117,7 +117,7 @@ The `0.1.0` line — the generic toolkit and the `tapterm` command. Built across
   `examples/` holds short, commented coding examples of the API — the observe taps, writing a
   custom `Source`, driving a session over the bus, and a closed observe→decide→control loop
   (`watch_and_drive` — a bot that reads the output stream and binary-searches a guessing game).
-- **Packaging & tooling.** `pyproject.toml` (extras `gui` / `arcade` / `web` / `video` / `ansi` /
+- **Packaging & tooling.** `pyproject.toml` (extras `sdl` / `gl` / `web` / `video` / `ansi` /
   `win` / `dev`; `win` bundles pywinpty *and* windows-curses so `tappty[win]` gives both the
   ConPTY host and the curses CUI on Windows; `video` bundles ffmpeg for `--render`), MIT license,
   `src/` layout, a pytest suite (143 tests), ruff

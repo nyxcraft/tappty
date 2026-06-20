@@ -93,7 +93,7 @@ def test_gui_without_pygame_errors_cleanly(monkeypatch, capsys):
     with pytest.raises(SystemExit) as e:
         cli.main(["--gui", "--", "true"])
     assert e.value.code == 2
-    assert "tappty[gui]" in capsys.readouterr().err
+    assert "tappty[sdl]" in capsys.readouterr().err
 
 
 def test_arcade_without_arcade_errors_cleanly(monkeypatch, capsys):
@@ -103,7 +103,7 @@ def test_arcade_without_arcade_errors_cleanly(monkeypatch, capsys):
     with pytest.raises(SystemExit) as e:
         cli.main(["--arcade", "--", "true"])
     assert e.value.code == 2
-    assert "tappty[arcade]" in capsys.readouterr().err
+    assert "tappty[gl]" in capsys.readouterr().err
 
 
 def test_web_without_websockets_errors_cleanly(monkeypatch, capsys):

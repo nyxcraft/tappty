@@ -33,7 +33,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - run: pip install -e '.[dev,ansi,gui]'  # gui extra == pygame-ce (the CI-tested dep)
+      - run: pip install -e '.[dev,ansi,sdl]'  # pygame extra == pygame-ce (the CI-tested dep)
       - run: pytest -q
 
 # NOTE: no Windows job yet. The pty-based tests (test_pty_source, the PtySource half of

@@ -12,7 +12,7 @@ program driving the terminal." Because the autopilot registered as an `ai` contr
 watching in the GUI can just press a key to **take the stick** and drive vim themselves (the
 arbitration in `Session.take`); the autopilot is then locked out until it's free again.
 
-    pip install 'tappty[gui,ansi]'
+    pip install 'tappty[sdl,ansi]'
     python demos/drive_vim.py                  # watch the autopilot drive vim in a window
     python demos/drive_vim.py --snapshot r.png # render a frame headless, write r.png
 

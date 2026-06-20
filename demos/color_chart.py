@@ -4,7 +4,7 @@
 Hosts a tiny in-process program (an EngineSource) that prints a color and
 attribute chart, so you can watch tappty render SGR. No external program needed.
 
-    pip install 'tappty[gui,ansi]'
+    pip install 'tappty[sdl,ansi]'
     python demos/color_chart.py                  # open the green-phosphor window
     python demos/color_chart.py --snapshot c.png # render headless, write c.png instead
 """

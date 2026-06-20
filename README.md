@@ -20,14 +20,14 @@ hosting 1970s PDP-10 games), generalized to host any command.
 
 ```sh
 pip install tappty          # core (CUI works out of the box)
-pip install 'tappty[gui]'   # add the pygame window (pygame-ce)
-pip install 'tappty[arcade]' # add the arcade/OpenGL window (an alternative GUI backend)
+pip install 'tappty[sdl]'   # add the pygame window (pygame-ce)
+pip install 'tappty[gl]' # add the arcade/OpenGL window (an alternative GUI backend)
 pip install 'tappty[web]'    # add the browser renderer for --web (websockets)
 pip install 'tappty[video]'  # render recordings to mp4/gif via --render (bundles ffmpeg)
 pip install 'tappty[ansi]'  # add the full-ANSI/VT100+ backend (pyte) for --ansi
 pip install 'tappty[win]'   # Windows: add the ConPTY source (pywinpty)
 # from a checkout:
-pip install -e '.[gui,ansi,dev]'
+pip install -e '.[sdl,ansi,dev]'
 ```
 
 `pip install tapterm` works too — it's a convenience alias that just pulls in `tappty` (which
@@ -40,7 +40,7 @@ tapterm                    # host your $SHELL (GUI if pygame + a display, else C
 tapterm -- python3 -i      # host a specific command (everything after -- is its argv)
 tapterm --cui -- bash      # force the curses character UI (takes over this terminal)
 tapterm --gui -- bash      # force the pygame green-phosphor window
-tapterm --arcade -- bash   # same, on the arcade/OpenGL stack (the 'arcade' extra)
+tapterm --arcade -- bash   # same, on the arcade/OpenGL stack (the 'gl' extra)
 tapterm --web -- bash      # serve it in a browser (the 'web' extra); open http://127.0.0.1:8023/
 tapterm --headless -- ls   # run to completion, print the final screen (scripting/CI)
 tapterm --play rec.cast    # replay a .cast / .ttyrec / .ans / .3a recording (--speed N, --loop)
@@ -51,7 +51,7 @@ tapterm --ansi -- vim      # use the full-ANSI/VT100+ backend (pyte) instead of 
 tapterm --no-pty -- ls     # host over plain pipes, no pty (cross-platform, incl. Windows)
 ```
 
-`--cui` works anywhere; `--gui` needs the `gui` extra. With no mode flag, `tapterm` picks
+`--cui` works anywhere; `--gui` needs the `sdl` extra. With no mode flag, `tapterm` picks
 GUI when pygame is installed *and a display is available* (else CUI) — so it won't try to
 open a window over SSH/cron. `--ansi` swaps the built-in VT52 grid for the
 `pyte` full-ANSI model (needs the `ansi` extra) — use it for programs that emit modern ANSI
@@ -142,7 +142,7 @@ The rendered docs site is at **[nyxbitco.github.io/tappty](https://nyxbitco.gith
 pip install -e '.[dev]'            # quick: core suite (pyte + GUI tests skip)
 pytest
 
-pip install -e '.[dev,ansi,gui]'   # full: also the ANSI backend + headless GUI smoke
+pip install -e '.[dev,ansi,sdl]'   # full: also the ANSI backend + headless GUI smoke
 pytest
 
 ruff check src tests               # lint (E,F,W,I,B,UP); must be clean
@@ -152,8 +152,8 @@ ruff format src tests              # format (line-length 99, black-style)
 PYTHONPATH=src python3 -m tappty.cli --headless -- echo hello
 ```
 
-Without the `ansi`/`gui` extras, `pytest` skips the pyte and pygame tests (so it reports
-fewer passes plus a couple of skips); install `.[dev,ansi,gui]` to run the whole suite. CI
+Without the `ansi`/`sdl` extras, `pytest` skips the pyte and pygame tests (so it reports
+fewer passes plus a couple of skips); install `.[dev,ansi,sdl]` to run the whole suite. CI
 runs ruff + the full matrix on Python 3.9–3.13.
 
 ## License

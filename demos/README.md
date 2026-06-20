@@ -16,8 +16,8 @@ see [`../examples/`](../examples/).)
 Install the matching extra first:
 
 ```sh
-pip install 'tappty[gui,ansi]'   # color_chart / mission_control / drive_vim (pygame + pyte)
-pip install 'tappty[gui]'        # matrix_rain (pygame only; no color backend needed)
+pip install 'tappty[sdl,ansi]'   # color_chart / mission_control / drive_vim (pygame + pyte)
+pip install 'tappty[sdl]'        # matrix_rain (pygame only; no color backend needed)
 pip install 'tappty[web,ansi]'   # web_demo (websockets + pyte); --shot also needs playwright
 ```
 

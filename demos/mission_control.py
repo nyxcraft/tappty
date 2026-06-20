@@ -7,7 +7,7 @@ Two tiles are reused straight from the other examples (the color chart and the
 digital rain), the other two are a live log tail and a clock — all in-process,
 no external programs.
 
-    pip install 'tappty[gui,ansi]'
+    pip install 'tappty[sdl,ansi]'
     python demos/mission_control.py                  # open the window
     python demos/mission_control.py --snapshot m.png # render headless, write m.png
 """

@@ -460,7 +460,7 @@ Session to a renderer. The pieces it wires:
 | `compositor.py` | multi-panel window + `SessionBacking`/`BusBacking` | pygame (deferred), curses_ui, bus |
 | `curses_ui.py` | CUI renderer + the pure `viewport()` | stdlib `curses` (deferred) |
 | `pygame_ui.py` | GUI renderer | pygame (deferred) |
-| `arcade_ui.py` | GUI renderer (arcade/pyglet/OpenGL twin of `pygame_ui`) | arcade (deferred; `arcade` extra) |
+| `arcade_ui.py` | GUI renderer (arcade/pyglet/OpenGL twin of `pygame_ui`) | arcade (deferred; `gl` extra) |
 | `web_ui.py` | browser renderer over HTTP + a WebSocket | stdlib `http.server`; `websockets` (deferred; `web` extra) |
 | `cli.py` | the `tapterm` program | session, terminal, source |
 | `__init__.py` | public API | — |
@@ -468,7 +468,7 @@ Session to a renderer. The pieces it wires:
 **Optional deps are deferred** — `pygame`, `arcade`, `websockets`, `curses`, `pyte`, and
 `pywinpty` are imported *inside* the functions/constructors that need them, never at module top.
 So `import tappty` works with none of them installed (verified under a bare interpreter), and
-`tapterm --cui` / `--headless` need no display. The extras: `gui` = pygame-ce, `arcade` = arcade
+`tapterm --cui` / `--headless` need no display. The extras: `sdl` = pygame-ce, `gl` = arcade
 (`arcade_ui`), `web` = websockets (`web_ui`), `ansi` = pyte (`PyteTerminal`), `win` = pywinpty +
 windows-curses (`ConPtySource` and the curses CUI on Windows; both Windows-marked), `dev` =
 pytest + ruff.

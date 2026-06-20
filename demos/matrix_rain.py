@@ -6,7 +6,7 @@ A tiny in-process animation (an EngineSource) drawn on the dependency-free VT52
 external program and no color backend — just the phosphor green the terminal
 already renders.
 
-    pip install 'tappty[gui]'
+    pip install 'tappty[sdl]'
     python demos/matrix_rain.py                  # open the window (Ctrl-] to quit)
     python demos/matrix_rain.py --snapshot r.png # render a frame headless, write r.png
 """

@@ -19,8 +19,8 @@ from tappty import (
 ```
 
 `import tappty` works with no optional dependencies installed; `PyteTerminal` needs the
-`ansi` extra (pyte), `pygame_ui` and the `compositor` need the `gui` extra (pygame-ce),
-`arcade_ui` needs the `arcade` extra, `web_ui` needs the `web` extra (websockets) — `curses_ui`
+`ansi` extra (pyte), `pygame_ui` and the `compositor` need the `sdl` extra (pygame-ce),
+`arcade_ui` needs the `gl` extra, `web_ui` needs the `web` extra (websockets) — `curses_ui`
 uses only the stdlib `curses` — and `ConPtySource` needs the `win` extra
 (pywinpty). Those are imported lazily, so you only pay for what you call.
 
@@ -381,7 +381,7 @@ the compositor's grid renderer, and pipes frames to ffmpeg. Deterministic and
 faster-than-real-time (it feeds events up to each frame's time rather than waiting). `font_size`
 is the main size control; `zoom` scales the finished frame (crisp nearest-neighbor);
 `font_path` picks a `.ttf`; `speed` scales playback; `crop=(col, row, cols, rows)` renders only
-that region (area of interest); `max_seconds` caps a never-ending source. Needs the `gui` +
+that region (area of interest); `max_seconds` caps a never-ending source. Needs the `sdl` +
 `ansi` extras and ffmpeg — a system binary, or the bundled one from the `video` extra
 (`imageio-ffmpeg`). What `tapterm --play X --render out.mp4` calls.
 
@@ -535,7 +535,7 @@ renderer.
 
 ### `pygame_ui.run(session, runner, title="tapterm", snapshot_path=None, font_size=18, exit_when_done=False, fps=30, max_seconds=None)`  *(GUI)*
 
-A green-phosphor window (the `gui` extra; needs a display). `snapshot_path` mirrors the screen
+A green-phosphor window (the `sdl` extra; needs a display). `snapshot_path` mirrors the screen
 to a text file + PNG each second (and `F12` on demand) so an automated observer can watch;
 `exit_when_done` closes when the program ends; `max_seconds` is a hard loop cap (scripting/
 tests). Scrollback is mouse-wheel / PageUp-PageDown. `fps` must be `>= 1` (else `ValueError`).
@@ -544,7 +544,7 @@ tests). Scrollback is mouse-wheel / PageUp-PageDown. `fps` must be `>= 1` (else 
 
 The same renderer on the arcade (pyglet/OpenGL) stack — identical signature and behavior to
 `pygame_ui.run` (green phosphor, scrollback, `snapshot_path` text+PNG, `F12`, `exit_when_done`,
-`max_seconds`, `fps >= 1`), so the two are interchangeable. The `arcade` extra; needs a real GL
+`max_seconds`, `fps >= 1`), so the two are interchangeable. The `gl` extra; needs a real GL
 context (a display), where the pygame path runs purely in software. `arcade` is imported lazily,
 so `import tappty` works without it.
 
@@ -563,7 +563,7 @@ networks (see DESIGN §8).
 
 ## Compositor
 
-Tiles several panels in one pygame window (the `gui` extra).
+Tiles several panels in one pygame window (the `sdl` extra).
 
 ### `compositor.run(panels, title="tappty dashboard", size=(1280, 720), fps=10, snapshot_path=None, max_seconds=None)`
 
@@ -686,8 +686,8 @@ pygame_ui.run(sess, None, snapshot_path="out", exit_when_done=True, max_seconds=
 | `BusClient` | `(path, token=None)` | `.connect()`, `snap`, `cmd`, `line`, `key`, `sub`, `inbox` |
 | `curses_ui.run` | `(session, runner, title="tapterm", refresh_ms=50)` | blocks; POSIX |
 | `curses_ui.viewport` | `(model_w, model_h, screen_w, screen_h, cx, cy, status=1)` | pure → `(ox, oy, vw, vh)` |
-| `pygame_ui.run` | `(session, runner, title="tapterm", snapshot_path=None, font_size=18, exit_when_done=False, fps=30, max_seconds=None)` | blocks; `gui` extra |
-| `compositor.run` | `(panels, title="tappty dashboard", size=(1280,720), fps=10, snapshot_path=None, max_seconds=None)` | blocks; `gui` extra |
+| `pygame_ui.run` | `(session, runner, title="tapterm", snapshot_path=None, font_size=18, exit_when_done=False, fps=30, max_seconds=None)` | blocks; `sdl` extra |
+| `compositor.run` | `(panels, title="tappty dashboard", size=(1280,720), fps=10, snapshot_path=None, max_seconds=None)` | blocks; `sdl` extra |
 | `compositor.TerminalPanel` | `(backing, rect, title="")` | `rect=(x,y,w,h)` |
 | `compositor.SessionBacking` | `(session, op="local")` | in-process, non-owning |
 | `compositor.BusBacking` | `(socket_path, name="panel", role="human", token=None)` | remote over the bus |

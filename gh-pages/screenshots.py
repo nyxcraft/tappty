@@ -14,7 +14,7 @@ It also renders the gallery's "in motion" clip (docs/media/nyancat.mp4) straight
 
 Each runs in its own subprocess; the byproduct text dump beside the PNG is removed.
 
-    pip install 'tappty[gui,ansi,video]'
+    pip install 'tappty[sdl,ansi,video]'
     python gh-pages/screenshots.py
 """
 from __future__ import annotations

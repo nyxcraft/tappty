@@ -33,8 +33,8 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-gui = ["pygame-ce"]            # the maintained community fork (drop-in `import pygame`); CI-tested
-arcade = ["arcade"]            # the arcade_ui renderer (pyglet/OpenGL); needs a GL context
+sdl = ["pygame-ce"]            # the maintained community fork (drop-in `import pygame`); CI-tested
+gl = ["arcade"]            # the arcade_ui renderer (pyglet/OpenGL); needs a GL context
 web = ["websockets"]           # the web_ui renderer (browser over a websocket)
 video = ["imageio-ffmpeg"]     # render_video without a system ffmpeg (bundles an ffmpeg binary)
 ansi = ["pyte"]                # full-ANSI/VT100+ Terminal backend (PyteTerminal); LGPLv3

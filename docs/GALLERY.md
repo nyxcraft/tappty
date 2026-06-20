@@ -5,7 +5,7 @@ What tappty looks like. Each demo below is a runnable single-file app in
 run one, and watch:
 
 ```sh
-pip install 'tappty[gui,ansi]'
+pip install 'tappty[sdl,ansi]'
 python demos/color_chart.py        # or any demo below
 ```
 
