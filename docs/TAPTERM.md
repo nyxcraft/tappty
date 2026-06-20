@@ -351,6 +351,9 @@ tapterm --render cmatrix.mp4 --seconds 5 -- cmatrix        # a LIVE program, str
   (cmatrix, htop, a shell); a program that exits (a build, `ls`, cbonsai) needs no cap.
 - The render is deterministic and faster-than-real-time. It needs the `gui` + `ansi` extras and
   **ffmpeg** — a system binary, or `pip install 'tappty[video]'` for a bundled one.
+- **No display required.** Although it uses pygame, it rasterizes *off-screen* (SDL's `dummy`
+  driver) — there's no window — so `--render` runs over plain SSH, in a curses console, in cron,
+  or in CI with no X11/Wayland. (Only the interactive `--gui` / `--arcade` windows need a display.)
 
 ---
 

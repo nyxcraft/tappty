@@ -6,7 +6,7 @@ browser tab. Pick the document you need:
 
 | If you want to… | Read |
 |---|---|
-| **see it in action** — screenshots + runnable demos | **[Gallery](gallery.md)** |
+| **see it in action** — screenshots + runnable demos | **[Gallery](GALLERY.md)** |
 | run the **`tapterm`** command — the CUI / GUI / web / headless modes, the terminal model, recordings, snapshots, recipes | **[Command guide](TAPTERM.md)** |
 | **build on the library** — `Session`, the five `Source`s, both `Terminal` backends, the bus, the renderers and compositor | **[Programming reference](REFERENCE.md)** |
 | understand **how it works inside, and why** — the Source → Terminal → Session → renderer/bus pipeline, concurrency, the trust model | **[Architecture & design](DESIGN.md)** |

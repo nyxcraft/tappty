@@ -28,7 +28,7 @@
     {
       "slug": "gallery",
       "title": "Gallery",
-      "source": "docs/gallery.md",
+      "source": "docs/GALLERY.md",
       "summary": "See it in action — screenshots of color, the digital-rain animation, and the compositor, each with runnable source.",
       "template": "page",
       "featured": true
