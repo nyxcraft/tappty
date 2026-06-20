@@ -1,5 +1,9 @@
 # tappty documentation
 
+Software Architecture, Design & Engineering by Nicholas J. Kisseberth.  
+Code Synthesized via Anthropic Claude Opus 4.8.  
+Automated Code Review via OpenAI Codex / ChatGPT 5.5.
+
 `tappty` is an instrumented-terminal toolkit — host a program on a pseudo-terminal, then
 observe, control, and render it in a terminal (CUI), a green-phosphor window (GUI), or a
 browser tab. Pick the document you need:

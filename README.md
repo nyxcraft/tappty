@@ -3,6 +3,10 @@
 **Host a program on a pseudo-terminal, then observe, control, and render it** — in a
 plain terminal (curses, CUI) or a green-phosphor window (pygame, GUI).
 
+Software Architecture, Design & Engineering by Nicholas J. Kisseberth.  
+Code Synthesized via Anthropic Claude Opus 4.8.  
+Automated Code Review via OpenAI Codex / ChatGPT 5.5.
+
 `tappty` is a small instrumented-terminal toolkit. A program's bytes (a subprocess on a
 PTY, or any in-process runner) flow into a fixed-size character `Terminal`; a `Session`
 fans that output out to any number of observers and routes input back. A renderer is just
