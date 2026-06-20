@@ -172,11 +172,24 @@ Importing `pyte` is deferred to the constructor, so this raises `ModuleNotFoundE
 
 `style.Cell(char, fg, bg, bold, italic, underline, strike, blink, reverse)` is what `cells()` returns; `fg`/`bg` are pyte color
 strings (`"default"`, `"red"`, `"brightred"`, `"brown"` = yellow, or a 6-hex string from
-256-color/truecolor). Helpers (no dependencies): **`rgb(color, bold=False)`** → an `(r,g,b)` or
-`None` for `"default"`; **`resolve(cell, fg_default, bg_default)`** → a cell's concrete
-`(fg, bg)` with `"default"` filled in and `reverse` applied; **`runs(row, …)`** → maximal
-same-style runs `(x, text, fg, bg, bold, italic, underline, strike, blink)` for a renderer that draws a run at
-once. `style.FG` / `style.BG` are the phosphor defaults. Use these to write your own renderer.
+256-color/truecolor). Helpers (no dependencies):
+
+- **`rgb(color, bold=False)`** → an `(r, g, b)`, or `None` for `"default"` (the renderer
+  substitutes its own phosphor color). `bold` brightens a *named* color.
+- **`resolve(cell, fg_default=FG, bg_default=BG)`** → a cell's concrete `(fg, bg)` with
+  `"default"` filled in and `reverse` (inverse video) applied.
+- **`runs(row, …)`** → maximal same-style runs `(x, text, fg, bg, bold, italic, underline,
+  strike, blink)`, for a renderer that draws a whole run at once.
+- **`encode_row(row, …)`** → the same runs as JSON-able lists
+  `[col, text, fg_hex, bg_hex, bold, italic, underline, strike, blink]` — the single wire
+  encoding shared by `snapshot()`, the web renderer, and the bus `FRAME`.
+- **`hex_rgb(rgb)`** → an `(r, g, b)` as a 6-digit hex string (no `#`).
+- **`char_width(char)`** → display columns a character occupies: **2** for East-Asian
+  wide/fullwidth (CJK and single-code-point emoji), **0** for a combining/format mark, else
+  **1**. Used to skip the empty continuation cell `pyte` leaves to the right of a wide glyph
+  (see [DESIGN.md](DESIGN.md) §9). Grapheme clusters are out of scope — `pyte` splits them upstream.
+
+`style.FG` / `style.BG` are the phosphor defaults. Use these to write your own renderer.
 
 ---
 

@@ -27,7 +27,6 @@ importable package is **`tappty`**.
 | understand how it works inside, and why | **[DESIGN](DESIGN.md)** |
 | set up to develop and run the tests | the top-level [README](../README.md) |
 | see when it started and what's changed | the [CHANGELOG](../CHANGELOG.md) |
-| see what's planned next | the [ROADMAP](../ROADMAP.md) |
 
 ## The documents
 
@@ -45,9 +44,9 @@ importable package is **`tappty`**.
   talking-stick arbitration, the bytes-vs-characters decode, the bus protocol, the concurrency
   and threading model, the security/trust model, the extraction boundary, the known
   limitations, and how the design was found (the provenance). *For modifying tappty.*
-These four are the curated docs. Two more project files live at the repo root: the
-[CHANGELOG](../CHANGELOG.md) — dated history, including when tappty started and first worked —
-and the [ROADMAP](../ROADMAP.md) — the open work that's still ahead.
+These four are the curated docs. One more project file lives at the repo root: the
+[CHANGELOG](../CHANGELOG.md) — dated history, including when tappty started and first worked;
+its footer and [DESIGN](DESIGN.md) §11 note the open work that's still ahead.
 
 Quickstart and install live in the top-level [README](../README.md); the license is
 [LICENSE](../LICENSE) (MIT © Nicholas J. Kisseberth).

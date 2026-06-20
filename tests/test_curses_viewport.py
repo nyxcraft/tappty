@@ -59,6 +59,14 @@ def test_continuations_all_false_for_plain_ascii():
     assert _continuations(row) == [False] * 5
 
 
+def test_continuations_dont_drop_a_real_char_after_a_wide_glyph():
+    # The VT52 Terminal does NOT reserve a continuation cell, so a wide glyph can be followed
+    # by a real character ("日本", "日X"). That character is content, not a continuation, and
+    # must be drawn -- only a *blank* cell after a wide glyph is the continuation to skip.
+    assert _continuations([style.default_cell(c) for c in ("日", "本")]) == [False, False]
+    assert _continuations([style.default_cell(c) for c in ("日", "X")]) == [False, False]
+
+
 def test_full_fit_shows_whole_model():
     # terminal comfortably >= 80x24 (status row reserved) -> show all from 0,0
     assert viewport(80, 24, 100, 30, 5, 5) == (0, 0, 80, 24)

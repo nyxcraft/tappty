@@ -1,5 +1,5 @@
 # Files to include in the source distribution (sdist) beyond the defaults
 # (pyproject.toml, README.md, and the LICENSE are included automatically).
-include LICENSE CHANGELOG.md ROADMAP.md
+include LICENSE CHANGELOG.md
 recursive-include docs *.md
 recursive-include tests *.py

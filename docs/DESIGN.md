@@ -3,8 +3,8 @@
 How `tappty` is structured and why. This is the architecture companion to the
 [README](../README.md) (the usage guide); it is for someone modifying the toolkit and
 wanting the full picture — contracts, data shapes, the threading model, and the reasoning
-behind each part. The dated history is in [CHANGELOG.md](../CHANGELOG.md); the open-work
-roadmap is in [ROADMAP.md](../ROADMAP.md).
+behind each part. The dated history is in [CHANGELOG.md](../CHANGELOG.md); the remaining open
+work (publish to PyPI; verify Windows) is noted in §11.
 
 ---
 
@@ -110,8 +110,7 @@ caller can re-raise it. **Five implementations ship:**
   `pywinpty` (the `win` extra). The Windows counterpart to `PtySource`. ConPTY emits ANSI/
   VT100+ and `pywinpty` returns already-decoded `str`, so it is a *text source* and pairs with
   `PyteTerminal` (not the VT52 model). **Written against the documented `PtyProcess` API but
-  not yet exercised on real Windows — provisional** (finishing it is open work — see
-  [ROADMAP.md](../ROADMAP.md)).
+  not yet exercised on real Windows — provisional** (finishing it is open work — see §11).
 
 **Shared reader loop.** The three subprocess/pty sources (`PtySource`, `PipeSource`,
 `ConPtySource`) all run the same daemon-thread loop, so it lives once in `Source._pump`:
@@ -527,7 +526,7 @@ by-eye pass: under WSLg (`DISPLAY`/`WAYLAND_DISPLAY` set, SDL auto-picks x11) bo
 draw correctly, `tapterm --cast rec.cast --gui` is the easiest reproducible visual check, and
 `--snapshot` writes a reviewable PNG (harmless EGL/MESA warnings on stderr are failed
 hardware-GL probing — SDL falls back to software). The Windows `ConPtySource` path is unverified
-(no Windows runner; finishing it is open work — see [ROADMAP.md](../ROADMAP.md)).
+(no Windows runner; finishing it is open work — see §11).
 
 ---
 
@@ -624,9 +623,14 @@ Conscious scope choices, recorded so they aren't mistaken for defects:
   pywinpty, the `win` extra) exists and `cli.py` selects it — but it has **never run on real
   Windows**, so it's provisional until exercised. (The stdlib also lacks `curses` on Windows,
   so the CUI needs `windows-curses` — now bundled in the `win` extra; `curses_ui` itself is
-  already portable, since all color setup is guarded with a fallback.) Finishing Windows —
-  validate `ConPtySource`, add a
-  Windows CI lane, broaden the `pyproject` classifiers — is open work (see [ROADMAP.md](../ROADMAP.md)).
+  already portable, since all color setup is guarded with a fallback.) Finishing Windows is the
+  remaining open work: exercise it on a real box (`pip install -e '.[ansi,win]'`, then
+  `tapterm --ansi -- cmd` / `powershell` and `--cui`), confirming the pywinpty details coded
+  from docs — does `.read()` raise `EOFError` at child exit, is `dimensions` row-major
+  `(rows, cols)`, does `.write()` want `str`, what does `.wait()` return for the exit status —
+  then add a `windows-latest` CI lane (the pty tests already `skipif(os.name=="nt")`; a few
+  POSIX-shell tests would need guarding), broaden the POSIX-only `Operating System` classifiers,
+  and flip this and the README's Windows wording from *provisional* to *verified*.
 
 ---
 

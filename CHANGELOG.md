@@ -49,7 +49,7 @@ The `0.1.0` line — the generic toolkit and the `tapterm` command. Built across
 - **Sources.** `PtySource` (POSIX pty), `EngineSource` (in-process `runner(emit, readline)`),
   `CastSource` (asciinema `.cast` replay — v1/v2, original timing, `speed`/`loop`),
   `PipeSource` (plain pipes, any OS), and `ConPtySource` (Windows ConPTY via pywinpty, the
-  `win` extra — provisional, see [ROADMAP.md](ROADMAP.md)). The byte-source reader loop is
+  `win` extra — provisional, see [docs/DESIGN.md](docs/DESIGN.md) §11). The byte-source reader loop is
   shared in `Source._pump`.
 - **Session.** Observe taps (`on_stream`/`on_frame`/`on_event`), control
   (`send_input`/`feed_key`), talking-stick arbitration (one driver at a time), and the
@@ -117,5 +117,7 @@ The `0.1.0` line — the generic toolkit and the `tapterm` command. Built across
 
 ---
 
-See [ROADMAP.md](ROADMAP.md) for what's next, and [docs/](docs/) for the design, the API
-reference, and the `tapterm` guide.
+The feature surface is complete; packaging is validated (a clean `python -m build` sdist + wheel,
+`twine check` passes, a bare-venv install works). The remaining work is the PyPI upload itself
+and verifying Windows on a real box ([docs/DESIGN.md](docs/DESIGN.md) §11). See [docs/](docs/) for
+the design, the API reference, and the `tapterm` guide.

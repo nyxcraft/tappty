@@ -100,7 +100,7 @@ the renderers, and the TCP bus are cross-platform. `PtySource` uses `pty`/`termi
 (POSIX-only); on Windows, host via `ConPtySource` (the `win` extra, ConPTY — paired with
 `--ansi`) or `PipeSource` (`--no-pty`), and use the TCP bus rather than a Unix socket. The
 Windows ConPTY path is implemented but not yet exercised on real Windows — finishing it is
-open work (see [ROADMAP.md](ROADMAP.md)). The GUI needs a display; the CUI needs a
+open work (see [docs/DESIGN.md](docs/DESIGN.md) §11). The GUI needs a display; the CUI needs a
 terminal (and, on Windows, the `win` extra's `windows-curses`); `--headless` needs neither.
 
 ## Documentation
@@ -115,9 +115,8 @@ terminal (and, on Windows, the `win` extra's `windows-curses`); `--headless` nee
   renderer/bus pipeline, the concurrency and security/trust models, and the design rationale.
   For *modifying* tappty.
 - **[CHANGELOG.md](CHANGELOG.md)** — dated history, newest first: when tappty started, when
-  it first worked, and what's changed since.
-- **[ROADMAP.md](ROADMAP.md)** — what's next: CI, the `sixbit/term` rewire, PyPI, and
-  finishing the Windows ConPTY path.
+  it first worked, and what's changed since. The remaining open work (publish to PyPI; verify
+  Windows) is noted in its footer and in [docs/DESIGN.md](docs/DESIGN.md) §11.
 
 ## Tests & tooling
 

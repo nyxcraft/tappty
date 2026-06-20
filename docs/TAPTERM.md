@@ -20,7 +20,7 @@ flag and mode, with practical examples and troubleshooting.
 - [Install](#install)
 - [The basics](#the-basics)
 - [Modes: CUI, GUI, headless](#modes)
-- [The terminal model: size and ANSI](#the-terminal-model)
+- [The terminal model: size, ANSI, Unicode](#the-terminal-model)
 - [How the command is hosted: pty, pipes, Windows](#how-the-command-is-hosted)
 - [Replaying recordings (`--cast`)](#replaying-recordings)
 - [Snapshots and automation](#snapshots-and-automation)
@@ -215,8 +215,22 @@ tapterm --ansi -- bash      # colored prompts/output render cleanly
 > them — covering foreground/background, bold (as a brighter shade), and inverse, while
 > uncolored text stays phosphor green. Only `--headless`/`--snapshot` output is plain text.
 
-**Unicode** works in both backends by default: a program printing `café` or `→ ✓` shows those
-characters (UTF-8 is decoded for the screen; pass-through is correct end to end).
+### Unicode and wide characters
+
+Unicode works in both backends: a program printing `café` or `→ ✓` shows those characters
+(UTF-8 is decoded for the screen; pass-through is correct end to end).
+
+**Wide glyphs** — CJK (`日本語`, `中文`) and single-code-point emoji (`👍 🔥 ✅`) — occupy their
+true **two columns**, so neighboring text lines up instead of crowding. This is most reliable
+with `--ansi` (the `pyte` backend tracks the width). In the CUI it relies on your terminal being
+in a UTF-8 locale (`$LANG`/`$LC_ALL`); a non-UTF-8 locale falls back to single-width but never
+garbles the rest of the line. The GUI and web renderers draw the glyph in the font you have, so
+how a given emoji *looks* depends on that font's coverage — but its width is always correct.
+
+**What doesn't work: grapheme clusters.** Emoji built from several code points — ZWJ families
+(`👨‍👩‍👧`), flags (`🇺🇸`), and skin-tone modifiers (`👋🏽`) — are split or collapsed by `pyte`
+before tapterm sees them (the family shows as just `👨`, the flag as two letter-boxes). This is
+a deliberate limit, not a bug; see [DESIGN.md](DESIGN.md) §9.
 
 ---
 

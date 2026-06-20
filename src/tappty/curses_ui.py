@@ -89,12 +89,14 @@ def _cell_style(cell, colors=16):
 
 def _continuations(row):
     """Bool per cell: True where the cell is the empty *continuation* to the right of a wide
-    glyph (CJK / single-code-point emoji). pyte leaves that cell so the grid stays rectangular,
-    but ncurses advances its own cursor two columns for the wide glyph -- so the CUI must drop
-    the continuation rather than redraw it, else each wide glyph shoves the row right."""
+    glyph (CJK / single-code-point emoji). pyte leaves a blank cell there so the grid stays
+    rectangular, but ncurses advances its own cursor two columns for the wide glyph -- so the
+    CUI must drop the continuation rather than redraw it, else each wide glyph shoves the row
+    right. The blank-cell guard matters for the VT52 `Terminal`, which (unlike pyte) does *not*
+    reserve a continuation: there the next cell is a real character and must not be dropped."""
     cont = [False] * len(row)
     for i in range(1, len(row)):
-        if style.char_width(row[i - 1].char) == 2:
+        if style.char_width(row[i - 1].char) == 2 and row[i].char in (" ", ""):
             cont[i] = True
     return cont
 
