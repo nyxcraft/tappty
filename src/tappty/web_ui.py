@@ -14,8 +14,12 @@ and the source thread merely flips a flag. Keystrokes arrive as *logical* keys (
 name like "up"/"enter"/"f1"/"ctrl-c"); the server translates them via `tappty.keys` and routes
 to `send_key` (raw mode) or `feed_key` (line mode), keeping byte-mapping in one place.
 
-Security mirrors the bus: it binds loopback by default and takes an optional `token` (a query
-param, constant-time compared). It is a terminal control plane, not a public service -- no TLS.
+Security: it binds loopback by default (a non-loopback `host` needs `allow_remote=True`), and it
+**rejects WebSocket connections whose `Origin` isn't the page's own** -- browsers don't apply the
+same-origin policy to WebSockets, so without this a site the user merely *visits* could connect
+to the loopback port and drive the terminal (CSWSH). An optional `token` (a query param,
+constant-time compared) adds a shared secret on top. It is a terminal control plane, not a public
+service -- no TLS; set a `token` if loopback + same-origin isn't isolation enough.
 `websockets` is imported lazily, so `import tappty` / `import tappty.web_ui` work without it.
 """
 
@@ -25,6 +29,21 @@ import logging
 import sys
 
 log = logging.getLogger(__name__)
+
+
+def _is_loopback(host):
+    return host in ("127.0.0.1", "::1", "localhost") or host.startswith("127.")
+
+
+def _allowed_origins(host, port):
+    """The origins a browser may legitimately connect from: the page's own host (and the loopback
+    aliases it might be typed as), on the page port, over http or https."""
+    origins = set()
+    for h in {host, "localhost", "127.0.0.1", "::1"}:
+        hb = f"[{h}]" if ":" in h else h  # bracket bare IPv6 in a URL authority
+        origins.add(f"http://{hb}:{port}")
+        origins.add(f"https://{hb}:{port}")
+    return origins
 
 _PAGE = """<!doctype html>
 <html><head><meta charset="utf-8"><title>__TITLE__</title>
@@ -110,8 +129,10 @@ def _frame_json(session):
     encoding (`style.encode_row`), plus the cursor."""
     from tappty import style
 
-    rows = [style.encode_row(r) for r in session.term.cells()]
-    return json.dumps({"t": "frame", "rows": rows, "cx": session.term.cx, "cy": session.term.cy})
+    with session.term.lock:  # grid + cursor read atomically (the source thread may be writing)
+        rows = [style.encode_row(r) for r in session.term.cells()]
+        cx, cy = session.term.cx, session.term.cy
+    return json.dumps({"t": "frame", "rows": rows, "cx": cx, "cy": cy})
 
 
 def _handle_key(session, by, msg):
@@ -156,11 +177,22 @@ def run(
     exit_when_done=False,
     max_seconds=None,
     fps=30,
+    allow_remote=False,
 ):
     if fps < 1:
         raise ValueError("fps must be >= 1")
     if token is not None and not (isinstance(token, str) and token):
         raise ValueError("token must be a non-empty string or None")
+    if not allow_remote and not _is_loopback(host):
+        raise ValueError(
+            f"refusing to serve the web UI on non-loopback host {host!r}: it is a terminal "
+            "control plane, not a public service; pass allow_remote=True (and ideally token=)"
+        )
+    if token is None:
+        sys.stderr.write(
+            "tapterm web UI: no token set -- access is gated only by the loopback bind and a "
+            "same-origin check; anyone who can reach this port may drive the terminal\n"
+        )
     import hmac
     import http.server
     import threading
@@ -186,10 +218,19 @@ def run(
             pass
 
     httpd = http.server.ThreadingHTTPServer((host, port), _Page)
+    allowed_origins = _allowed_origins(host, port)
     counter = {"n": 0}
     clock = threading.Lock()
 
     def ws_handler(conn):
+        # Same-origin gate (anti-CSWSH): a browser always sends Origin, so reject any cross-origin
+        # browser connection. A missing Origin is a non-browser local client (not a drive-by) and
+        # is allowed -- consistent with the trusted-local model. Checked before claim_control, so a
+        # rejected connection never touches the session.
+        origin = conn.request.headers.get("Origin")
+        if origin is not None and origin not in allowed_origins:
+            conn.close()
+            return
         if token is not None:  # optional shared-secret gate (query param)
             got = (parse_qs(urlsplit(conn.request.path).query).get("token") or [""])[0]
             if not hmac.compare_digest(got, token):
@@ -237,12 +278,10 @@ def run(
     except KeyboardInterrupt:
         pass
     finally:
-        try:
-            wsd.shutdown()
-        except Exception as e:
-            log.debug("ws shutdown: %s", e)
-        try:
-            httpd.shutdown()
-        except Exception as e:
-            log.debug("http shutdown: %s", e)
+        for srv, what in ((wsd, "ws"), (httpd, "http")):
+            try:
+                srv.shutdown()
+                srv.server_close()  # release the listening socket, don't leak the fd
+            except Exception as e:
+                log.debug("%s shutdown: %s", what, e)
         session.stop()  # owning renderer

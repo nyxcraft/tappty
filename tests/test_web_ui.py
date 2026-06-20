@@ -86,6 +86,58 @@ def _free_port():
     return p
 
 
+def test_web_ui_refuses_non_loopback_without_allow_remote():
+    import pytest
+
+    s = Session(Terminal(80, 24))
+    with pytest.raises(ValueError):
+        web_ui.run(s, None, host="0.0.0.0")  # would expose an unauthenticated terminal
+
+
+def test_web_ui_rejects_cross_origin_websocket():
+    """A site the user merely visits must not be able to drive the terminal (CSWSH): a forged
+    cross-origin WS is closed before it touches the session; the page's own origin is accepted."""
+    import pytest
+
+    pytest.importorskip("websockets")
+    import threading
+    import time
+    import urllib.request
+
+    from websockets.exceptions import ConnectionClosed
+    from websockets.sync.client import connect
+
+    from tappty.source import EngineSource
+
+    sess = Session(Terminal(80, 24), source=EngineSource(lambda emit, readline: emit("hi")))
+    port = _free_port()
+    th = threading.Thread(
+        target=web_ui.run,
+        kwargs=dict(session=sess, runner=None, port=port, max_seconds=2),
+        daemon=True,
+    )
+    th.start()
+    deadline = time.time() + 3
+    while time.time() < deadline:
+        try:
+            urllib.request.urlopen(f"http://127.0.0.1:{port}/", timeout=1).read()
+            break
+        except OSError:
+            time.sleep(0.1)
+
+    try:
+        evil = connect(f"ws://127.0.0.1:{port + 1}/", origin="http://evil.example")
+        with pytest.raises(ConnectionClosed):
+            evil.recv(timeout=2)  # rejected -> closed, no frame
+        evil.close()
+
+        ok = connect(f"ws://127.0.0.1:{port + 1}/", origin=f"http://127.0.0.1:{port}")
+        assert json.loads(ok.recv(timeout=2))["t"] == "frame"  # same origin -> served
+        ok.close()
+    finally:
+        th.join(timeout=6)
+
+
 def test_web_ui_serves_and_round_trips():
     import pytest
 

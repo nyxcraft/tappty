@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tappty"
-version = "0.1.0"
+dynamic = ["version"]  # single source of truth: tappty.__version__ (see [tool.setuptools.dynamic])
 description = "Host a program on a pseudo-terminal, then observe/control/render it (CUI or GUI)"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -52,6 +52,9 @@ Homepage = "https://github.com/nyxbitco/tappty"
 Documentation = "https://nyxbitco.github.io/tappty/"
 Source = "https://github.com/nyxbitco/tappty"
 Changelog = "https://github.com/nyxbitco/tappty/blob/main/CHANGELOG.md"
+
+[tool.setuptools.dynamic]
+version = { attr = "tappty.__version__" }
 
 [tool.setuptools.packages.find]
 where = ["src"]

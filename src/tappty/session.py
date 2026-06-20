@@ -46,43 +46,52 @@ class Session:
         self._decoder = None  # incremental decoder: raw bytes -> screen text
 
     # ---- observe taps ------------------------------------------------------
+    # The observer lists are mutated copy-on-write under the lock (register/unregister happen
+    # from other threads than the source's reader), so the source thread iterates a stable
+    # snapshot in `_fanout` without locking the hot output path.
     def on_stream(self, cb):
-        self._stream_obs.append(cb)
+        with self._lock:
+            self._stream_obs = self._stream_obs + [cb]
         return cb
 
     def on_frame(self, cb):
-        self._frame_obs.append(cb)
+        with self._lock:
+            self._frame_obs = self._frame_obs + [cb]
         return cb
 
     def on_event(self, cb):
-        self._event_obs.append(cb)
+        with self._lock:
+            self._event_obs = self._event_obs + [cb]
         return cb
 
     def off_stream(self, cb):
-        if cb in self._stream_obs:
-            self._stream_obs.remove(cb)
+        with self._lock:
+            self._stream_obs = [c for c in self._stream_obs if c != cb]
 
     def off_frame(self, cb):
-        if cb in self._frame_obs:
-            self._frame_obs.remove(cb)
+        with self._lock:
+            self._frame_obs = [c for c in self._frame_obs if c != cb]
 
     def off_event(self, cb):
-        if cb in self._event_obs:
-            self._event_obs.remove(cb)
+        with self._lock:
+            self._event_obs = [c for c in self._event_obs if c != cb]
 
     def snapshot(self):
         """The current grid + cursor (tap 2 payload). `rows` is plain text (for text consumers);
-        `cells` is the styled run-length form (color + attributes) that the renderers draw."""
+        `cells` is the styled run-length form (color + attributes) that the renderers draw.
+        Taken under the terminal lock so the grid, cursor, and dimensions are mutually consistent
+        (the source thread can't scroll between reading `cells` and `cx`/`cy`)."""
         from tappty import style
 
-        return {
-            "rows": self.term.rows_text(),
-            "cells": [style.encode_row(r) for r in self.term.cells()],
-            "cx": self.term.cx,
-            "cy": self.term.cy,
-            "cols": self.term.cols,
-            "rows_n": self.term.rows,
-        }
+        with self.term.lock:
+            return {
+                "rows": self.term.rows_text(),
+                "cells": [style.encode_row(r) for r in self.term.cells()],
+                "cx": self.term.cx,
+                "cy": self.term.cy,
+                "cols": self.term.cols,
+                "rows_n": self.term.rows,
+            }
 
     # ---- Source callbacks (bytes in from the program) ----------------------
     def _output(self, raw):
@@ -222,26 +231,28 @@ class Session:
         `by` attributes it to a controller (default the local human at this session's
         own window); auto_take=True means typing implicitly grabs the stick (the local
         human preempts). A remote controller passes by=<name>, auto_take=False (it
-        already TOOK the stick). Only the stick-holder's keys register -- the shared
-        line buffer is safe since exactly one driver types at a time."""
+        already TOOK the stick). Only the stick-holder's keys register, and the shared line
+        buffer is mutated under the lock, so two controllers (a local renderer + a bus client
+        on its own thread) can't corrupt it during a hand-off."""
         if auto_take:  # solo terminal: typing grabs the stick
             if by == "local" and "local" not in self._controllers:
                 self.claim_control("local", "human")
             if self.driver != by:
                 self.take(by)
-        if not self.has_control(by):  # otherwise only the stick-holder types
-            return
-        if ch in ("\r", "\n"):
-            self._echo_local("\r\n")
-            self.send_input("".join(self._line) + "\n", by=by)
-            self._line = []
-        elif ch in ("\b", "\x7f"):
-            if self._line:
-                self._line.pop()
-                self._echo_local("\b \b")
-        elif ch.isprintable():
-            self._line.append(ch)
-            self._echo_local(ch)  # local echo (fans out a frame)
+        with self._lock:
+            if not self.has_control(by):  # otherwise only the stick-holder types
+                return
+            if ch in ("\r", "\n"):
+                self._echo_local("\r\n")
+                self.send_input("".join(self._line) + "\n", by=by)
+                self._line = []
+            elif ch in ("\b", "\x7f"):
+                if self._line:
+                    self._line.pop()
+                    self._echo_local("\b \b")
+            elif ch.isprintable():
+                self._line.append(ch)
+                self._echo_local(ch)  # local echo (fans out a frame)
 
     def feed_text(self, s, **kw):
         for ch in s:

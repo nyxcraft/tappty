@@ -8,14 +8,22 @@ becomes 10 s of video without waiting 10 s -- and the timing matches the origina
 
 ffmpeg is resolved from a system `ffmpeg` on PATH or, failing that, the bundled binary from the
 `imageio-ffmpeg` package (the `video` extra: `pip install 'tappty[video]'`). The container/codec
-follow the output extension. Needs the `gui` (pygame) and `ansi` (pyte) extras too.
+follow the output extension. Needs the `sdl` (pygame) and `ansi` (pyte) extras too.
 """
 from __future__ import annotations
 
 import codecs
+import logging
 import os
 import shutil
 import subprocess
+
+log = logging.getLogger(__name__)
+
+# Cap how many events we materialize, so rendering an untrusted recording can't OOM (replay
+# itself streams; only the render path collects events to size the timeline). Generous — real
+# recordings have thousands, not millions.
+MAX_RENDER_EVENTS = 2_000_000
 
 
 def _ffmpeg_exe():
@@ -104,7 +112,12 @@ def render_video(recording, out_path, fps=30, font_size=18, font_path=None, zoom
         terminal = PyteTerminal
     term = terminal(src.width, src.height)
     sess = Session(term)  # used only for its snapshot() of the grid
-    events = list(src._events())  # [(abs_seconds, data), ...]
+    events = []  # [(abs_seconds, data), ...] -- bounded so an untrusted recording can't OOM
+    for ev in src._events():
+        events.append(ev)
+        if len(events) >= MAX_RENDER_EVENTS:
+            log.warning("render: recording exceeds %d events; truncating", MAX_RENDER_EVENTS)
+            break
     wire = getattr(src, "encoding", None)  # byte sources (ttyrec) decode; text sources don't
     decoder = codecs.getincrementaldecoder(wire)("replace") if wire else None
 
@@ -130,12 +143,18 @@ def render_video(recording, out_path, fps=30, font_size=18, font_path=None, zoom
     writer = VideoWriter(out_path, out_w, out_h, fps)
     try:
         ei = 0
+        flushed = False
         for i in range(nframes):
             rec_t = (i / fps) * speed
             while ei < len(events) and events[ei][0] <= rec_t:
                 data = events[ei][1]
                 term.write(decoder.decode(data.encode("latin-1")) if decoder else data)
                 ei += 1
+            if decoder is not None and ei == len(events) and not flushed:
+                flushed = True  # emit any trailing partial multibyte once the stream ends
+                tail_text = decoder.decode(b"", final=True)
+                if tail_text:
+                    term.write(tail_text)
             surface.fill(compositor.BG)
             blink_on = (i // max(1, fps // 2)) % 2 == 0  # ~1 Hz blink phase
             compositor.draw_terminal(surface, (0, 0, width, height), sess.snapshot(),

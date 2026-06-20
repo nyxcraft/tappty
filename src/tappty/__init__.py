@@ -25,9 +25,12 @@ Public API:
     PyteTerminal                    -- full-ANSI/VT100+ backend (the `ansi` extra; pyte)
     Session                         -- hosts a Source; exposes observe taps + control
     Source, PtySource, EngineSource -- byte producers (pty subprocess / in-process runner)
-    CastSource                      -- replay a recorded asciinema .cast session
+    CastSource, TtyrecSource, AnsSource, ThreeASource, replay_source
+                                    -- replay recordings / art (.cast / .ttyrec / .ans / .3a)
     PipeSource, ConPtySource        -- non-pty pipes (any OS) / Windows ConPTY (pywinpty)
-    BusServer, BusClient            -- out-of-process observe/control over a unix socket
+    Recorder, render_video, export_ansi, export_3a
+                                    -- record a session, render it to video, export the screen
+    BusServer, BusClient            -- out-of-process observe/control over a unix socket or TCP
     curses_ui, pygame_ui, arcade_ui, web_ui -- renderers; each: run(session, runner, title=...)
     compositor                      -- multi-panel single-window dashboard
     style                           -- Cell + color helpers behind the backends' cells() / the GUIs

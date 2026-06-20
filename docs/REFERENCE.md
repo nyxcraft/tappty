@@ -196,7 +196,7 @@ strings (`"default"`, `"red"`, `"brightred"`, `"brown"` = yellow, or a 6-hex str
 
 ## Sources
 
-A `Source` produces terminal output and consumes input. Five ship; you can write your own.
+A `Source` produces terminal output and consumes input. Eight ship; you can write your own.
 
 ### The `Source` contract
 

@@ -13,7 +13,7 @@ pip install tappty      # the actual toolkit (library + the tapterm command)
 ```
 
 Either way you get the `tapterm` command and `import tappty`. The library, the optional
-extras (`gui` / `arcade` / `web` / `ansi` / `win`), the documentation, and the source all
+extras (`sdl` / `gl` / `web` / `video` / `ansi` / `win`), the documentation, and the source all
 live under **tappty**:
 
 - Docs: <https://nyxbitco.github.io/tappty/>

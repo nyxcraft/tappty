@@ -201,7 +201,18 @@ class PtySource(Source):
                 return ""  # master closed
             return data.decode("latin-1")  # raw bytes, lossless (Session decodes)
 
-        self._pump(read_one, on_output, on_exit, reap=lambda: self.proc.wait(timeout=2))
+        self._pump(read_one, on_output, on_exit, reap=self._reap)
+
+    def _reap(self):
+        # Reap the child; escalate to SIGKILL if it ignores the SIGTERM from stop(), so a shell
+        # that traps TERM (or sits in raw mode) can't be left running with returncode stuck None.
+        try:
+            return self.proc.wait(timeout=2)
+        except Exception:
+            with contextlib.suppress(Exception):
+                self.proc.kill()
+                return self.proc.wait(timeout=2)
+            return None
 
     def send_input(self, text):
         if self.master is not None:

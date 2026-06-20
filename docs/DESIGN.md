@@ -70,7 +70,7 @@ class Source:
 The three class attributes are the contract the Session reads: `encoding` tells it whether
 to decode (a *byte source* sets it, e.g. `"utf-8"`; a *text source* leaves it `None`),
 `returncode` carries the child's exit status, and `error` carries an exception so a blocking
-caller can re-raise it. **Five implementations ship:**
+caller can re-raise it. **Eight implementations ship:**
 
 - **`PtySource` (POSIX).** Hosts an external program on a real pseudo-terminal: `pty.openpty()`
   + `subprocess.Popen(..., start_new_session=True, close_fds=True)`, with the child's
@@ -101,6 +101,11 @@ caller can re-raise it. **Five implementations ship:**
   (`{"version":1,"width","height","stdout":[[delay,data],...]}`). Untrusted-input bounds:
   dimensions clamped to `MAX_CAST_DIM` (1000), v2 line reads capped at `MAX_CAST_LINE` (1 MiB),
   and the unstreamable v1 whole-file `json.load` refused above `MAX_CAST_FILE` (16 MiB).
+- **`TtyrecSource` / `AnsSource` / `ThreeASource` (any OS).** Three more replay/art producers
+  sharing a `_ReplaySource` base (the timed play loop): `.ttyrec` (NetHack-format binary records
+  — a byte source), `.ans` ANSI/BBS art (CP437 + an optional SAUCE trailer), and `.3a` animated
+  ASCII art. `replay_source(path)` dispatches by extension. Same untrusted-input bounds as
+  `CastSource` (per-record/length caps, clamped dimensions).
 - **`PipeSource` (any OS).** Hosts an external program over plain pipes (`subprocess` with
   `stdin/stdout`, `stderr`→stdout, `bufsize=0`) — no pty. The "non-pty Source" (`--no-pty`),
   byte-transparent like `PtySource`. Caveat: with no tty the child detects it isn't
@@ -429,18 +434,22 @@ tappty is multithreaded but the rules are small and deliberate:
 A thin front-end: build a Source, host it in a `Session` with a Terminal backend, hand the
 Session to a renderer. The pieces it wires:
 
-- **Mode** (mutually exclusive): `--cui` (curses, anywhere), `--gui` (pygame, needs a display),
-  `--headless` (run to completion, print the final screen — for scripting/CI). With no flag it
-  picks GUI only when pygame is importable **and a display is available** (`_display_available`:
-  native on Windows/macOS; `DISPLAY`/`WAYLAND_DISPLAY`/`SDL_VIDEODRIVER` on other POSIX), else
-  CUI — so plain `tapterm` over SSH/cron falls back to CUI instead of failing in pygame.
+- **Mode** (mutually exclusive): `--cui` (curses), `--gui` (pygame), `--arcade` (arcade/OpenGL),
+  `--web` (browser over a websocket), `--headless` (run to completion, print the final screen —
+  for scripting/CI). With no flag it picks GUI only when pygame is importable **and a display is
+  available** (`_display_available`: native on Windows/macOS; `DISPLAY`/`WAYLAND_DISPLAY`/
+  `SDL_VIDEODRIVER` on other POSIX), else CUI — so plain `tapterm` over SSH/cron falls back to
+  CUI instead of failing in pygame.
 - **Terminal backend** (`_make_terminal`): the VT52 `Terminal`, or `PyteTerminal` for `--ansi`
-  (errors clearly if `pyte` is missing). ANSI is auto-enabled on the Windows ConPTY path, since
-  ConPTY emits VT100+ the VT52 grid would mangle.
+  (errors clearly if `pyte` is missing). ANSI is auto-enabled on the Windows ConPTY path and for
+  an interactive session (the regular-terminal default), since both want VT100+.
 - **Source** (`_make_source`): `PipeSource` for `--no-pty`, `ConPtySource` on `os.name == "nt"`,
-  else `PtySource`; or `CastSource` for `--cast` (with `--speed`/`--loop`).
-- **Other flags:** `--cols`/`--rows` (validated positive), `--snapshot`, `--exit-when-done`,
-  `--title`. With no command it hosts `$SHELL`.
+  else `PtySource`; or, for `--play`, one of the replay sources via `replay_source(path)`
+  (`.cast`/`.ttyrec`/`.ans`/`.3a`, with `--speed`/`--loop`).
+- **Other flags:** `--cols`/`--rows` (or `-geometry`), `--cooked` (line-oriented instrument
+  mode) and the xterm-style `-e`/`-T`/`-cd`/`-hold`, `--raw`, `--record`/`--render`,
+  `--snapshot`, `--exit-when-done`, `--title`. With no command it hosts `$SHELL` as a real
+  terminal.
 - **Exit code:** `--headless` returns the child's exit status (`source.returncode or 0`), so it
   is honest in CI rather than always 0.
 
@@ -454,7 +463,7 @@ Session to a renderer. The pieces it wires:
 | `pyte_terminal.py` | `PyteTerminal` — full-ANSI/VT100+ backend, drop-in for `Terminal` | `pyte` (deferred; `ansi` extra) |
 | `style.py` | `Cell` + the ANSI palette / `rgb`/`resolve`/`runs` shared by `cells()` and the GUI renderers | none |
 | `keys.py` | VT/xterm key sequences (`KEYS`, `ctrl`) for raw-mode TUI input, shared by the renderers | none |
-| `source.py` | `Source` base (+ `_pump`) and the 5 sources (pty / engine / cast / pipe / ConPTY) | stdlib `pty`/`subprocess`/`json`; `pywinpty` (deferred; `win` extra) |
+| `source.py` | `Source` base (+ `_pump`) and the 8 sources (pty / engine / cast / ttyrec / ans / 3a / pipe / ConPTY) | stdlib `pty`/`subprocess`/`json`; `pywinpty` (deferred; `win` extra) |
 | `session.py` | Session: observe taps, control, talking stick, the bytes↔chars decode | terminal, source |
 | `bus.py` | `BusServer` / `BusClient` — the contract over a unix socket or TCP | stdlib `socket`/`hmac` |
 | `compositor.py` | multi-panel window + `SessionBacking`/`BusBacking` | pygame (deferred), curses_ui, bus |
@@ -493,8 +502,8 @@ specific things plug into them.
 
 ## 7. Testing
 
-The suite (87 in the full environment; the GUI and ANSI tests skip cleanly without their
-optional deps) exercises the model and the contract through real paths, not mocks:
+The suite (the GUI and ANSI tests skip cleanly without their optional deps) exercises the model
+and the contract through real paths, not mocks:
 
 - **Model:** `test_term` (VT52 cursor/scroll, the escapes, scrollback bounds), `test_pyte_terminal`
   (SGR/cursor-address/erase/Unicode/scrollback; skips without pyte).
@@ -699,3 +708,16 @@ shape.
 *emulate-to-display* (render for a human). Keeping them separate, plus sealing the program in
 a fixed 80×24 model with a render-side viewport (§1), is what lets a renderer resize freely
 without the hosted program ever seeing it.
+
+---
+
+## 11. Open work
+
+What's left before (and just after) the first release:
+
+- **Publish to PyPI.** Both distributions (`tappty` and the `tapterm` alias) build and are
+  `twine check`-clean; the remaining step is the upload itself (`twine upload dist/*`).
+- **Verify Windows.** The ConPTY host (`ConPtySource`, the `win` extra) and the `windows-curses`
+  CUI are implemented against the documented APIs but **not yet exercised on a real Windows box**
+  (there's no Windows CI runner) — treat Windows as provisional. Pair `--ansi` with the ConPTY
+  path (it emits VT100+); `--no-pty` (`PipeSource`) + the TCP bus are the cross-platform fallback.

@@ -145,7 +145,7 @@ The rendered docs site is at **[nyxbitco.github.io/tappty](https://nyxbitco.gith
   For *modifying* tappty.
 - **[CHANGELOG.md](CHANGELOG.md)** — dated history, newest first: when tappty started, when
   it first worked, and what's changed since. The remaining open work (publish to PyPI; verify
-  Windows) is noted in its footer and in [docs/DESIGN.md](docs/DESIGN.md) §11.
+  Windows) is in [docs/DESIGN.md](docs/DESIGN.md) §11.
 
 ## Tests & tooling
 
