@@ -19,6 +19,7 @@ Each runs in its own subprocess; the byproduct text dump beside the PNG is remov
 """
 from __future__ import annotations
 
+import importlib.util
 import os
 import shutil
 import subprocess
@@ -29,6 +30,10 @@ ROOT = Path(__file__).resolve().parent.parent
 MEDIA = ROOT / "docs" / "media"
 ENV = {**os.environ, "SDL_VIDEODRIVER": "dummy", "SDL_AUDIODRIVER": "dummy",
        "PYGAME_HIDE_SUPPORT_PROMPT": "1"}
+
+
+def _have(mod):
+    return importlib.util.find_spec(mod) is not None
 
 # (example file, PNG stem, seconds to render before the snapshot)
 SHOTS = [
@@ -118,6 +123,15 @@ def main() -> int:
         )
     print("rendering digital-rain demo -> docs/media/matrix.mp4")
     _render_matrix_movie()
+    if _have("playwright") and _have("websockets") and _have("pyte"):
+        print("screenshotting the web renderer in a browser -> docs/media/web_demo.png")
+        subprocess.run(
+            [sys.executable, str(ROOT / "demos" / "web_demo.py"),
+             "--shot", str(MEDIA / "web_demo.png")],
+            check=True, env=ENV,
+        )
+    else:
+        print("skipping web_demo.png (needs playwright + the web/ansi extras)")
     print(f"done -> {MEDIA.relative_to(ROOT)}/")
     return 0
 

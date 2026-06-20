@@ -47,6 +47,21 @@ tapterm --play demos/recordings/drive_vim.cast     # replay the recording (zero 
 That demo drives a *fixed* script. For a closed loop that **reads the screen/stream and decides
 what to type next**, see [`examples/watch_and_drive.py`](https://github.com/nyxbitco/tappty/blob/main/examples/watch_and_drive.py).
 
+## In the browser — the web renderer
+
+`web_ui` serves the live terminal as one HTML page: a stdlib `http.server` hands out a single
+canvas, the browser paints the styled cells over a websocket and sends your keystrokes back —
+several browsers can watch at once, loopback-bound. Below is the SGR color chart rendered in a
+**real (headless Chromium) browser tab**, captured with Playwright by `demos/web_demo.py`:
+
+![the tappty web renderer painting the SGR color chart in a browser tab](media/web_demo.png)
+
+```sh
+python demos/web_demo.py                 # serve at http://127.0.0.1:8023/ — then open it
+python demos/web_demo.py --shot web.png  # …or screenshot the browser tab headless (Playwright)
+tapterm --web -- bash                    # or host any program for the browser
+```
+
 ## Color & SGR attributes
 
 The full SGR palette — the 8 + 8 colors, backgrounds, **bold**, *italic*, underline, strike,

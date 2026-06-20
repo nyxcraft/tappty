@@ -11,16 +11,20 @@ see [`../examples/`](../examples/).)
 | [matrix_rain.py](matrix_rain.py) | green-phosphor "digital rain" on the dependency-free VT52 backend | `python demos/matrix_rain.py` |
 | [mission_control.py](mission_control.py) | the compositor — four live sessions tiled in one window | `python demos/mission_control.py` |
 | [drive_vim.py](drive_vim.py) | a program driving a real terminal app — an autopilot types into live `vim` over the control tap | `python demos/drive_vim.py` |
+| [web_demo.py](web_demo.py) | the **web renderer** — the live terminal served as an HTML canvas, painted in a browser tab | `python demos/web_demo.py` |
 
 Install the matching extra first:
 
 ```sh
 pip install 'tappty[gui,ansi]'   # color_chart / mission_control / drive_vim (pygame + pyte)
 pip install 'tappty[gui]'        # matrix_rain (pygame only; no color backend needed)
+pip install 'tappty[web,ansi]'   # web_demo (websockets + pyte); --shot also needs playwright
 ```
 
-`drive_vim` also needs `vim` (or `vi`) on your PATH. To watch a closed loop that **reads the
-screen and decides what to type**, see [`../examples/watch_and_drive.py`](../examples/watch_and_drive.py).
+`drive_vim` also needs `vim` (or `vi`) on your PATH; `web_demo --shot` needs Playwright +
+Chromium (`pip install playwright && playwright install chromium`). To watch a closed loop that
+**reads the screen and decides what to type**, see
+[`../examples/watch_and_drive.py`](../examples/watch_and_drive.py).
 
 Each demo also takes `--snapshot PATH`: instead of opening a window it renders
 headless (SDL dummy driver) and writes a PNG. That's exactly how the

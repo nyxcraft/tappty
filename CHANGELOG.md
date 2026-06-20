@@ -109,8 +109,9 @@ The `0.1.0` line — the generic toolkit and the `tapterm` command. Built across
   xterm spellings where they fit: `-e CMD …` (run a command, like `-- CMD`), `-T` / `-title`,
   `-geometry COLSxROWS` (a `+X+Y` offset is parsed but ignored), `-cd` / `--cwd DIR`, and `-hold`.
 - **Demos & examples.** `demos/` holds runnable showpieces — single-file apps you run to *see*
-  a feature (the SGR color chart, the green digital rain, the compositor "mission control", and
-  `drive_vim` — an autopilot typing into a live `vim` over the control tap), plus
+  a feature (the SGR color chart, the green digital rain, the compositor "mission control",
+  `drive_vim` — an autopilot typing into a live `vim` over the control tap, and `web_demo` — the
+  web renderer painted in a real browser tab, screenshotted headless with Playwright), plus
   `demos/recordings/*.cast`: short sessions (`nyancat`, `cbonsai`, the driven `vim`) recorded with
   `--record`, which replay with zero dependencies and feed the gallery's shots and clips.
   `examples/` holds short, commented coding examples of the API — the observe taps, writing a

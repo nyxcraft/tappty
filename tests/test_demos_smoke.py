@@ -37,3 +37,24 @@ def test_demo_renders_a_png_headless(tmp_path, script, needs_pyte, needs_vim):
         check=True, timeout=90, env=ENV,
     )
     assert out.exists() and out.stat().st_size > 0
+
+
+def test_web_demo_screenshots_a_browser(tmp_path):
+    # web_demo serves the web renderer and drives a real headless browser to screenshot it.
+    pytest.importorskip("pyte")
+    pytest.importorskip("websockets")
+    pytest.importorskip("playwright")
+    try:  # skip cleanly where Chromium isn't installed/launchable (e.g. bare CI)
+        from playwright.sync_api import sync_playwright
+
+        with sync_playwright() as p:
+            p.chromium.launch(args=["--no-sandbox"]).close()
+    except Exception as e:
+        pytest.skip(f"chromium not launchable: {e}")
+    out = tmp_path / "web.png"
+    subprocess.run(
+        [sys.executable, os.path.join(DEMOS, "web_demo.py"),
+         "--shot", str(out), "--port", "8771"],
+        check=True, timeout=120, env=ENV,
+    )
+    assert out.exists() and out.stat().st_size > 0
