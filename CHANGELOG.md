@@ -101,6 +101,13 @@ The `0.1.0` line — the generic toolkit and the `tapterm` command. Built across
   `--cols` / `--rows`, `--port`, `--snapshot` (a `.ans`/`.3a` path exports art),
   `--exit-when-done`. `--play` uses the full-ANSI backend automatically (recordings are VT100+).
   Headless prints the final screen and exits with the child's own status.
+- **A regular terminal, with xterm-style flags.** With no command, `tapterm` hosts your `$SHELL`
+  as a real terminal — an interactive session now defaults to the full-ANSI backend **and** raw
+  keys (colors, line-editing, arrows, full-screen apps), and the window closes when the program
+  exits, like xterm. `--cooked` (a.k.a. `--line`) keeps the line-oriented instrument default
+  (local echo on the VT52 grid — what the observe taps and bus `CMD` capture expect). Added the
+  xterm spellings where they fit: `-e CMD …` (run a command, like `-- CMD`), `-T` / `-title`,
+  `-geometry COLSxROWS` (a `+X+Y` offset is parsed but ignored), `-cd` / `--cwd DIR`, and `-hold`.
 - **Demos & examples.** `demos/` holds runnable showpieces — single-file apps you run to *see*
   a feature (the SGR color chart, the green digital rain, the compositor "mission control"),
   plus `demos/recordings/*.cast`: short sessions of real ANSI programs (`nyancat`, `cbonsai`)

@@ -1,15 +1,23 @@
 """tapterm -- host a program on a pseudo-terminal and render it in a terminal UI.
 
-    tapterm                      # host your $SHELL (GUI if pygame + a display, else CUI)
-    tapterm -- python3 -i        # host a specific command (everything after -- is argv)
-    tapterm --cui -- bash        # force the curses character UI (this terminal)
-    tapterm --gui -- bash        # force the pygame green-phosphor window
+    tapterm                      # a regular terminal: your $SHELL, full-ANSI + raw keys
+    tapterm -e vim file          # xterm-style: run a command instead of the shell
+    tapterm -- python3 -i        # the same, via the argv separator (after -- is argv)
+    tapterm -geometry 100x30     # xterm-style size (also --cols/--rows); -T/-title for the title
+    tapterm --gui                # force the pygame green-phosphor window
+    tapterm --cooked -- bash     # line-oriented instrument mode (local echo, VT52 grid)
     tapterm --headless -- ls     # run to completion, print the final screen (scripting)
 
-tapterm is a thin front-end over tappty: it wraps the command in a PtySource, hosts it
-in a Session (the observe/control core), and hands the Session to a renderer. The CUI
-(curses) works anywhere; the GUI (pygame, the 'gui' extra) also needs a display, so the
-default mode is GUI only when both are present, else CUI.
+tapterm is a thin front-end over tappty: it wraps the command in a PtySource, hosts it in a
+Session (the observe/control core), and hands the Session to a renderer. The CUI (curses) works
+anywhere; the GUI (pygame, the 'gui' extra) also needs a display, so the default mode is GUI only
+when both are present, else CUI.
+
+An interactive session behaves like a real terminal: the full-ANSI backend (pyte, the 'ansi'
+extra) plus raw key forwarding, so the shell's colors, line-editing, arrow keys and full-screen
+apps all work, and the window closes when the program exits (xterm's -hold keeps it open). Pass
+--cooked for the line-oriented instrument default instead (local echo + line editing on the VT52
+grid -- what the observe/bus capture primitives expect).
 """
 
 import argparse
@@ -27,6 +35,17 @@ def _positive_int(s):
     if v < 1:
         raise argparse.ArgumentTypeError("must be a positive integer")
     return v
+
+
+def _parse_geometry(ap, spec):
+    """xterm-style geometry COLSxROWS with an optional +X+Y window offset we don't honor
+    (tappty doesn't place windows). Returns (cols, rows)."""
+    import re
+
+    m = re.match(r"^(\d+)x(\d+)(?:[+-]\d+[+-]\d+)?$", spec, re.IGNORECASE)
+    if not m or int(m.group(1)) < 1 or int(m.group(2)) < 1:
+        ap.error("--geometry wants COLSxROWS, e.g. 100x30 (an optional +X+Y offset is ignored)")
+    return int(m.group(1)), int(m.group(2))
 
 
 def _have_pygame():
@@ -91,13 +110,13 @@ def _make_terminal(ap, ansi, cols, rows):
     return Terminal(cols=cols, rows=rows)
 
 
-def _make_source(ap, no_pty, cmd, rows, cols):
+def _make_source(ap, no_pty, cmd, rows, cols, cwd=None):
     """Pick how to host the command: plain pipes (--no-pty, cross-platform), a ConPTY on
     Windows, or a real pty on POSIX."""
     if no_pty:
         from tappty.source import PipeSource
 
-        return PipeSource(cmd)
+        return PipeSource(cmd, cwd=cwd)
     if os.name == "nt":  # Windows pseudo-console
         if not _have_winpty():
             ap.error(
@@ -107,8 +126,8 @@ def _make_source(ap, no_pty, cmd, rows, cols):
             )
         from tappty.source import ConPtySource
 
-        return ConPtySource(cmd, size=(rows, cols))
-    return PtySource(cmd, size=(rows, cols))
+        return ConPtySource(cmd, cwd=cwd, size=(rows, cols))
+    return PtySource(cmd, cwd=cwd, size=(rows, cols))
 
 
 def build_parser():
@@ -152,7 +171,24 @@ def build_parser():
         const="headless",
         help="run to completion, print the final screen, then exit",
     )
-    ap.add_argument("--title", default=None, help="window / status-line title")
+    ap.add_argument("--title", "-T", "-title", default=None,
+                    help="window / status-line title (xterm: -T / -title)")
+    ap.add_argument("--geometry", "-geometry", "-g", default=None, metavar="COLSxROWS",
+                    help="terminal size, xterm-style (e.g. 100x30; a trailing +X+Y offset is "
+                    "ignored). Overrides --cols / --rows")
+    ap.add_argument("--cwd", "-cd", default=None, metavar="DIR",
+                    help="run the hosted program in this working directory (xterm: -cd)")
+    ap.add_argument("-hold", "--hold", dest="hold", action="store_true",
+                    help="keep the window open after the program exits (xterm: -hold). A "
+                    "regular-terminal session closes on exit unless you pass this; the "
+                    "--cooked instrument mode always holds")
+    ap.add_argument("--cooked", "--line", dest="cooked", action="store_true",
+                    help="line-oriented instrument mode: local echo + line editing on the "
+                    "VT52 grid, instead of the default regular-terminal behavior (full-ANSI "
+                    "+ raw keys). What the observe / bus-capture primitives expect")
+    ap.add_argument("-e", "--exec", dest="exec_cmd", nargs=argparse.REMAINDER, default=None,
+                    metavar="CMD", help="run CMD (with its args) instead of your shell, "
+                    "xterm-style -- everything after -e is the command (same as after --)")
     ap.add_argument(
         "--port",
         type=_positive_int,
@@ -326,7 +362,24 @@ def main(argv=None):
     ap = build_parser()
     a = ap.parse_args(argv)
 
+    if a.geometry:  # xterm-style COLSxROWS overrides --cols/--rows
+        a.cols, a.rows = _parse_geometry(ap, a.geometry)
+    if a.exec_cmd is not None:  # xterm -e CMD ...: route it through the same path as `-- CMD`
+        a.command = ["--", *a.exec_cmd]
+
     mode = a.mode or _default_mode()
+
+    # An interactive session should feel like a real terminal: full-ANSI rendering + raw key
+    # forwarding (the shell's colors, line-editing, arrows and full-screen apps), and the window
+    # closes when the program exits, like xterm. --cooked keeps the line-oriented instrument
+    # default (local echo on the VT52 grid). The ANSI backend needs pyte; without it we fall back
+    # to that instrument default rather than fail.
+    interactive = not a.play and not a.render and mode in ("gui", "cui", "arcade", "web")
+    terminalish = interactive and not a.cooked and _have_pyte()
+    if terminalish:
+        a.raw = True
+        if not a.hold:
+            a.exit_when_done = True
 
     if a.render:  # render to a video file, no display
         crop = None
@@ -346,7 +399,7 @@ def main(argv=None):
             if not cmd:
                 cmd = [os.environ.get("SHELL", "/bin/sh")]
             sess = Session(_make_terminal(ap, False, a.cols, a.rows))  # term unused (taps raw)
-            sess.source = _make_source(ap, a.no_pty, cmd, a.rows, a.cols)
+            sess.source = _make_source(ap, a.no_pty, cmd, a.rows, a.cols, cwd=a.cwd)
             fd, recording = tempfile.mkstemp(suffix=".cast")
             os.close(fd)
             tmp = recording
@@ -378,8 +431,8 @@ def main(argv=None):
 
     # Replayed recordings (.cast/.ttyrec/.ans) are VT100+, as is the default Windows ConPTY
     # path -- the VT52 grid would render them as escape soup, so force the full-ANSI backend
-    # whenever a recording is replayed or ConPTY is hosting.
-    ansi = a.ansi or bool(a.play) or (os.name == "nt" and not a.no_pty)
+    # whenever a recording is replayed, ConPTY is hosting, or we're acting as a real terminal.
+    ansi = a.ansi or bool(a.play) or (os.name == "nt" and not a.no_pty) or terminalish
 
     if a.play:  # replay a recording instead of hosting a command
         from tappty.source import replay_source
@@ -396,7 +449,7 @@ def main(argv=None):
             cmd = [os.environ.get("SHELL", "/bin/sh")]
         term = _make_terminal(ap, ansi, a.cols, a.rows)
         sess = Session(term)
-        sess.source = _make_source(ap, a.no_pty, cmd, a.rows, a.cols)
+        sess.source = _make_source(ap, a.no_pty, cmd, a.rows, a.cols, cwd=a.cwd)
         title = a.title or ("tapterm :: " + os.path.basename(cmd[0]))
 
     recorder = None

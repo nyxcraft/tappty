@@ -64,25 +64,38 @@ provisional (see [Platform notes](#platform-notes)); `--no-pty` avoids it.
 
 ## The basics
 
-Run `tapterm` with no arguments to host your shell:
+Run `tapterm` with no arguments and it's a **regular terminal**: it hosts your `$SHELL` with
+full-ANSI rendering and raw keystrokes, so colors, line-editing, arrow keys, tab-completion and
+full-screen apps (vim, htop, less) all work — and the window closes when you exit the shell.
 
 ```sh
 tapterm
 ```
 
-Host a specific command by putting it after `--` (everything after `--` is the command and its
-arguments, untouched):
+Run a specific program instead of the shell — xterm-style with `-e`, or by putting it after `--`
+(everything after is the command and its arguments, untouched):
 
 ```sh
+tapterm -e vim notes.txt
 tapterm -- python3 -i
 tapterm -- ssh user@host
-tapterm -- bash -lc 'top -b -n1'
 ```
 
-> **Put `tapterm`'s own flags *before* the `--`.** Everything after the command name is passed
-> to the program, so `tapterm -- bash --gui` runs `bash --gui` (not what you want);
-> `tapterm --gui -- bash` is correct. With no command at all, `tapterm` hosts `$SHELL`
-> (falling back to `/bin/sh`).
+> **`-e` and `--` both end `tapterm`'s options**, so put `tapterm`'s own flags *first*:
+> `tapterm --gui -e bash` is right; `tapterm -e bash --gui` passes `--gui` to bash. With no
+> command at all, `tapterm` hosts `$SHELL` (falling back to `/bin/sh`).
+
+**xterm-style flags.** Where it makes sense, `tapterm` takes the spellings xterm users expect:
+`-e CMD …` (run a command), `-T` / `-title TITLE`, `-geometry COLSxROWS` (size — a trailing
+`+X+Y` offset is accepted but ignored, since tappty doesn't place windows), `-cd DIR` (working
+directory), and `-hold` (keep the window open after the program exits, instead of closing).
+
+**Regular terminal vs. instrument.** The real-terminal behavior above — full-ANSI + raw keys, the
+window closing on exit — is the default for any interactive session, and needs the `ansi` extra
+(pyte); without pyte, `tapterm` falls back to the instrument mode below. Pass **`--cooked`** to
+choose that mode explicitly: line-buffered input with local echo and line-editing, drawn on the
+dependency-free VT52 grid. That's what the observe taps and the bus `CMD` capture expect — they
+key off the line/prompt boundaries that raw mode doesn't have.
 
 **Picking a mode.** With no mode flag, `tapterm` chooses the **GUI** when pygame is installed
 *and* a display is available, otherwise the always-available **CUI**. Force a mode with
@@ -108,9 +121,10 @@ tapterm --cui -- bash
   ` view@<col>,<row> [partial] ` — the program still thinks it has the full 80×24; only what
   you *see* is a sub-rectangle (resize never changes the model). When the program exits, the
   line shows ` [done -- press a key] ` and `tapterm` waits for a keypress before quitting.
-- **Input:** Enter, Backspace, and printable ASCII are sent to the program. Arrow/function
-  keys are not forwarded (the built-in model is line-oriented). **`Ctrl-]` quits** `tapterm`
-  (and stops the hosted program).
+- **Input:** by default keystrokes are forwarded **raw** — arrows, function keys, and Ctrl-combos
+  go straight to the program, so full-screen apps work. In `--cooked` mode it's line-oriented
+  (Enter, Backspace, and printable text; arrows not forwarded). Either way, **`Ctrl-]` quits**
+  `tapterm` (and stops the hosted program).
 - The CUI shows the **live** screen; it has no interactive scrollback (that's a GUI feature).
 
 ### GUI — `--gui` (pygame green-phosphor window)
@@ -122,7 +136,9 @@ Opens a green-on-black monospace window with a blinking block cursor — the sho
 tapterm --gui -- bash
 ```
 
-- **Input:** Enter, Backspace, and printable (Unicode) characters go to the program.
+- **Input:** keystrokes are forwarded **raw** by default (arrows, function keys, Ctrl-combos, and
+  printable Unicode), so full-screen apps work; `--cooked` makes it line-oriented (Enter,
+  Backspace, printable text).
 - **Scrollback:** mouse wheel up, or **PageUp**/**PageDown**, scrolls into history; a banner
   shows your position. Typing (or Enter/Backspace) **snaps back to live**.
 - **Screenshot:** press **F12** to save a PNG (to your `--snapshot` path + `.png`, or
@@ -419,10 +435,16 @@ MODE (mutually exclusive; default = GUI if pygame+display, else CUI)
   --headless            run to completion, print the final screen, exit with the child's code
 
 OPTIONS
-  --title TITLE         window / status-line title
+  -e, --exec CMD ...    run CMD instead of $SHELL, xterm-style (everything after -e; like `-- CMD`)
+  -T, -title TITLE      window / status-line title  (--title)
+  -geometry, -g WxH     terminal size COLSxROWS, xterm-style; a trailing +X+Y offset is ignored
+  -cd, --cwd DIR        run the hosted program in this working directory
+  -hold                 keep the window open after the program exits (a terminal session closes)
+  --cooked, --line      line-oriented instrument mode (local echo on the VT52 grid) instead of the
+                        regular-terminal default (full-ANSI + raw keys)
   --port N              --web: HTTP port for the page (websocket = N+1; default 8023)
-  --cols N              terminal columns (default 80; positive integer)
-  --rows N              terminal rows (default 24; positive integer)
+  --cols N              terminal columns (default 80; positive integer; --geometry overrides)
+  --rows N              terminal rows (default 24; positive integer; --geometry overrides)
   --ansi                full-ANSI/VT100+ backend (needs the 'ansi' extra); for modern programs
   --raw                 forward keystrokes raw (arrows/Fn/Ctrl, no echo) for TUIs; pair with --ansi
   --no-pty              host over plain pipes, no pty (cross-platform; line-oriented programs)
@@ -443,7 +465,7 @@ OPTIONS
   --speed F             --play: playback speed multiplier (default 1.0)
   --loop                --play: loop the recording (ignored under --headless)
 
-COMMAND                 the program to host, after `--` (default: $SHELL)
+COMMAND                 the program to host, after `--` or `-e` (default: $SHELL, as a terminal)
 ```
 
 (`tapterm --help` lists the same flags; this table adds the default-mode rule and the
