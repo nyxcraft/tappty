@@ -1,7 +1,7 @@
 """A full-ANSI terminal backend -- a drop-in for the VT52 `Terminal`.
 
 `Terminal` (terminal.py) models a VT52-spirit glass with zero dependencies -- right for
-the 1970s programs tappty was born hosting, wrong for anything that speaks modern
+plain/legacy programs that speak VT52, wrong for anything that speaks modern
 ANSI/VT100+ (colors, cursor addressing, line/char edits, scroll regions). `PyteTerminal`
 wraps the `pyte` library (an in-process VTxxx emulator) behind the *same read interface* a
 Session and the renderers use -- `cols`/`rows`/`cx`/`cy`/`write()`/`snapshot()`/

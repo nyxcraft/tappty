@@ -1,6 +1,6 @@
 """PtySource (b-lite): host an arbitrary external program on a pseudo-terminal and
-observe + control it through the Source seam -- the basis for driving real
-SIMH/TOPS-10 (or any CLI) via the bus. See docs/DESIGN.md."""
+observe + control it through the Source seam -- the basis for driving a real shell or
+CLI via the bus. See docs/DESIGN.md."""
 
 import os
 import sys

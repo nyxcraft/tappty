@@ -151,9 +151,9 @@ class PtySource(Source):
     characters for the *screen* using `encoding` (default UTF-8). send_input encodes
     keystrokes with the same `encoding`. on_exit fires when the child ends; on_wait is NOT
     fired -- a pty gives no readline boundary, so an observer reads the stream/grid instead.
-    This is what lets you observe+control any terminal program (e.g. real SIMH/TOPS-10);
-    pair with the VT52 `Terminal` for period children or `PyteTerminal` (--ansi) for modern
-    ANSI. See docs/DESIGN.md."""
+    This is what lets you observe+control any terminal program (a shell, a serial console, a
+    legacy CLI); pair with the VT52 `Terminal` for plain/legacy programs or `PyteTerminal`
+    (--ansi) for modern ANSI. See docs/DESIGN.md."""
 
     def __init__(self, argv, cwd=None, env=None, size=(24, 80), encoding="utf-8"):
         self.argv = list(argv)

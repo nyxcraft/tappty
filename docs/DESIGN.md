@@ -170,8 +170,8 @@ annotation-free.
   screen), `ESC K` (erase to end of line), `ESC Y row col` (direct cursor address, bytes
   offset by 32), and `ESC A/B/C/D` (cursor up/down/right/left, bounds-clamped). It keeps
   **scrollback** — lines that scrolled off the top, the hardcopy "paper roll" — purely as a
-  viewing aid (`max_scroll`/`view_rows`); the program never sees it. Right for period programs
-  that speak VT52; wrong for anything that speaks modern ANSI.
+  viewing aid (`max_scroll`/`view_rows`); the program never sees it. Right for plain/legacy
+  programs that speak VT52; wrong for anything that speaks modern ANSI.
 - **`PyteTerminal` (full ANSI/VT100+, the `ansi` extra).** Wraps the `pyte` library behind the
   *same* read interface, so it drops in wherever a `Terminal` goes (`Session(PyteTerminal())`,
   `tapterm --ansi`) with no change to Session or renderers. It uses `pyte.HistoryScreen` +
@@ -689,9 +689,7 @@ source, and the talking stick were generic from the start. (What stays generic i
   preemption**: a human can always take the stick from an AI, and an AI can *never* preempt a
   human, so a runaway bot can't lock the operator out ("watch it fly, grab the stick, hand it
   back"). The stick **auto-releases on disconnect/death**, the same liveness rule that keeps a
-  session from getting stuck uncontrollable. (A fourth original thread — *discovery* via a
-  TOPS-10-flavored job table — was genuinely OS/game-specific and stayed behind in the
-  extraction.)
+  session from getting stuck uncontrollable.
 
 **Dogfooding shaped the contract.** Several parts of the protocol exist because *using* it
 exposed the need, not because they were specified up front:
