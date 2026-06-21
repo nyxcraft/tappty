@@ -2,13 +2,16 @@ name: Publish to PyPI
 
 # Tag-triggered release via PyPI Trusted Publishing (OIDC) -- no API token stored anywhere.
 # Push a version tag (e.g. v0.1.0) to ship BOTH distributions: `tappty` (library + the tapterm
-# command) and `tapterm` (the thin alias). Each is uploaded by its own job so each does its own
-# OIDC exchange, scoped to that PyPI project.
+# command) and `tapterm` (the thin alias).
 #
-# One-time setup on PyPI (per project), under Publishing -> add a pending publisher:
-#   project: tappty   AND  project: tapterm
-#   owner: nyxcraft   repo: tappty   workflow: publish.yml   environment: pypi
-# (The `environment: pypi` below must match what you enter there.)
+# Two PyPI projects are published from ONE repo+workflow, so each needs its OWN GitHub
+# environment -- otherwise the Trusted Publisher claims (repo + workflow + environment) are
+# identical for both and PyPI can't tell which project an upload is for. A single `release`
+# approval gate fronts both publishes.
+#
+# One-time setup on PyPI, under Publishing -> add a pending publisher (TWICE, distinct env):
+#   project: tappty    owner: nyxcraft  repo: tappty  workflow: publish.yml  environment: pypi-tappty
+#   project: tapterm   owner: nyxcraft  repo: tappty  workflow: publish.yml  environment: pypi-tapterm
 
 on:
   push:
@@ -53,12 +56,21 @@ jobs:
           name: dist-tapterm
           path: dist-tapterm/
 
-  publish-tappty:
+  # Single human approval gate (required reviewer on the `release` environment). Both publish
+  # jobs need it, so one approval unblocks the whole release.
+  gate:
     needs: build
     runs-on: ubuntu-latest
-    environment: pypi
+    environment: release
+    steps:
+      - run: echo "Release approved — publishing tappty + tapterm to PyPI."
+
+  publish-tappty:
+    needs: [build, gate]
+    runs-on: ubuntu-latest
+    environment: pypi-tappty   # distinct env => unambiguous Trusted Publisher match
     permissions:
-      id-token: write  # OIDC token for Trusted Publishing
+      id-token: write
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -67,9 +79,9 @@ jobs:
       - uses: pypa/gh-action-pypi-publish@release/v1
 
   publish-tapterm:
-    needs: build
+    needs: [build, gate]
     runs-on: ubuntu-latest
-    environment: pypi
+    environment: pypi-tapterm
     permissions:
       id-token: write
     steps:
