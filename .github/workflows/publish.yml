@@ -1,0 +1,80 @@
+name: Publish to PyPI
+
+# Tag-triggered release via PyPI Trusted Publishing (OIDC) -- no API token stored anywhere.
+# Push a version tag (e.g. v0.1.0) to ship BOTH distributions: `tappty` (library + the tapterm
+# command) and `tapterm` (the thin alias). Each is uploaded by its own job so each does its own
+# OIDC exchange, scoped to that PyPI project.
+#
+# One-time setup on PyPI (per project), under Publishing -> add a pending publisher:
+#   project: tappty   AND  project: tapterm
+#   owner: nyxcraft   repo: tappty   workflow: publish.yml   environment: pypi
+# (The `environment: pypi` below must match what you enter there.)
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install build twine
+      - name: Check versions agree (tag == __version__ == alias pin)
+        run: |
+          set -euo pipefail
+          VER=$(python -c "import re,pathlib; print(re.search(r'__version__ = \"([^\"]+)\"', pathlib.Path('src/tappty/__init__.py').read_text()).group(1))")
+          echo "package version: $VER"
+          if [ "${GITHUB_REF_TYPE:-}" = "tag" ]; then
+            TAG="${GITHUB_REF_NAME#v}"
+            [ "$TAG" = "$VER" ] || { echo "::error::tag v$TAG != tappty.__version__ $VER"; exit 1; }
+          fi
+          grep -q "version = \"$VER\"" packaging/tapterm/pyproject.toml || { echo "::error::tapterm alias version != $VER"; exit 1; }
+          grep -q "tappty>=$VER" packaging/tapterm/pyproject.toml || { echo "::error::tapterm 'tappty>=' pin != $VER"; exit 1; }
+      - name: Build both distributions
+        run: |
+          set -euo pipefail
+          python -m build --outdir dist-tappty .
+          python -m build --outdir dist-tapterm packaging/tapterm
+          twine check dist-tappty/* dist-tapterm/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-tappty
+          path: dist-tappty/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-tapterm
+          path: dist-tapterm/
+
+  publish-tappty:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write  # OIDC token for Trusted Publishing
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist-tappty
+          path: dist
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  publish-tapterm:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist-tapterm
+          path: dist
+      - uses: pypa/gh-action-pypi-publish@release/v1
