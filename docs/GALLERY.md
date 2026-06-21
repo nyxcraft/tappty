@@ -1,7 +1,7 @@
 # Gallery
 
 What tappty looks like. Each demo below is a runnable single-file app in
-[`demos/`](https://github.com/nyxbitco/tappty/tree/main/demos) — install the GUI and ANSI extras,
+[`demos/`](https://github.com/nyxcraft/tappty/tree/main/demos) — install the GUI and ANSI extras,
 run one, and watch:
 
 ```sh
@@ -11,7 +11,7 @@ python demos/color_chart.py        # or any demo below
 
 The pictures here are rendered headless (`--snapshot out.png`); the movie is rendered straight to
 video with `tapterm --render`. Want to *write* code against the API instead of watch it? See the
-[coding examples](https://github.com/nyxbitco/tappty/tree/main/examples).
+[coding examples](https://github.com/nyxcraft/tappty/tree/main/examples).
 
 ## In motion
 
@@ -45,7 +45,7 @@ tapterm --play demos/recordings/drive_vim.cast     # replay the recording (no pr
 ```
 
 That demo drives a *fixed* script. For a closed loop that **reads the screen/stream and decides
-what to type next**, see [`examples/watch_and_drive.py`](https://github.com/nyxbitco/tappty/blob/main/examples/watch_and_drive.py).
+what to type next**, see [`examples/watch_and_drive.py`](https://github.com/nyxcraft/tappty/blob/main/examples/watch_and_drive.py).
 
 ## In the browser — the web renderer
 
@@ -70,7 +70,7 @@ only where the program asks for it.
 
 ![tappty rendering an ANSI color and SGR-attribute chart](media/color_chart.png)
 
-`python demos/color_chart.py` · [source →](https://github.com/nyxbitco/tappty/blob/main/demos/color_chart.py)
+`python demos/color_chart.py` · [source →](https://github.com/nyxcraft/tappty/blob/main/demos/color_chart.py)
 
 ## Green-phosphor digital rain
 
@@ -83,7 +83,7 @@ mp4 (rendered through the VT52 backend, since this demo speaks VT52, not ANSI):
   <img src="media/matrix_rain.png" alt="tappty drawing a green digital-rain animation">
 </video>
 
-`python demos/matrix_rain.py` · [source →](https://github.com/nyxbitco/tappty/blob/main/demos/matrix_rain.py)
+`python demos/matrix_rain.py` · [source →](https://github.com/nyxcraft/tappty/blob/main/demos/matrix_rain.py)
 
 ## Mission control — the compositor
 
@@ -93,7 +93,7 @@ log tail, and a clock with sweeping bars. Each tile is its own hosted program an
 
 ![tappty compositor tiling four live terminal sessions in one window](media/mission_control.png)
 
-`python demos/mission_control.py` · [source →](https://github.com/nyxbitco/tappty/blob/main/demos/mission_control.py)
+`python demos/mission_control.py` · [source →](https://github.com/nyxcraft/tappty/blob/main/demos/mission_control.py)
 
 ## Hosting real terminal programs
 

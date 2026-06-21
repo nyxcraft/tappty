@@ -1,7 +1,7 @@
 # License
 
 tappty is released under the **MIT License** — © 2026 Nicholas J. Kisseberth. The full text, as
-in the repository's [`LICENSE`](https://github.com/nyxbitco/tappty/blob/main/LICENSE) file:
+in the repository's [`LICENSE`](https://github.com/nyxcraft/tappty/blob/main/LICENSE) file:
 
 ```
 MIT License

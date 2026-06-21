@@ -2,7 +2,7 @@
   "site_name": "tappty",
   "site_tagline": "Instrument any terminal program — observe, control, and render it.",
   "site_description": "tappty hosts a program on a pseudo-terminal, fans its output to any number of observers — a window, a socket, an automated driver — and routes input back, so a human and a bot can watch and drive the very same session.",
-  "github_href": "https://github.com/nyxbitco/tappty",
+  "github_href": "https://github.com/nyxcraft/tappty",
   "copyright": "Nicholas J. Kisseberth",
   "status": "beta",
   "attribution": [

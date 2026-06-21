@@ -29,10 +29,10 @@ classifiers = [
 dependencies = ["tappty>=0.1.0"]
 
 [project.urls]
-Homepage = "https://github.com/nyxbitco/tappty"
-Documentation = "https://nyxbitco.github.io/tappty/"
-Source = "https://github.com/nyxbitco/tappty"
-Changelog = "https://github.com/nyxbitco/tappty/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/nyxcraft/tappty"
+Documentation = "https://nyxcraft.github.io/tappty/"
+Source = "https://github.com/nyxcraft/tappty"
+Changelog = "https://github.com/nyxcraft/tappty/blob/main/CHANGELOG.md"
 
 # Metadata-only: there is intentionally no importable module here -- the command comes
 # from the `tappty` dependency. `py-modules = []` tells setuptools that's deliberate.

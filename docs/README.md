@@ -18,4 +18,4 @@ browser tab. Pick the document you need:
 
 New to tappty? Start with the **[command guide](TAPTERM.md)**. Writing your own tool on the
 engine — a logger, an automated driver, a custom renderer — is the **[reference](REFERENCE.md)**.
-The source and issue tracker are on [GitHub](https://github.com/nyxbitco/tappty).
+The source and issue tracker are on [GitHub](https://github.com/nyxcraft/tappty).

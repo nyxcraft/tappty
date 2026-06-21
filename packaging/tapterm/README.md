@@ -16,5 +16,5 @@ Either way you get the `tapterm` command and `import tappty`. The library, the o
 extras (`sdl` / `gl` / `web` / `video` / `ansi` / `win`), the documentation, and the source all
 live under **tappty**:
 
-- Docs: <https://nyxbitco.github.io/tappty/>
-- Source & issues: <https://github.com/nyxbitco/tappty>
+- Docs: <https://nyxcraft.github.io/tappty/>
+- Source & issues: <https://github.com/nyxcraft/tappty>

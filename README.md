@@ -133,7 +133,7 @@ terminal (and, on Windows, the `win` extra's `windows-curses`); `--headless` nee
 
 ## Documentation
 
-The rendered docs site is at **[nyxbitco.github.io/tappty](https://nyxbitco.github.io/tappty/)**
+The rendered docs site is at **[nyxcraft.github.io/tappty](https://nyxcraft.github.io/tappty/)**
 (built from `docs/` by `gh-pages/build_site.py` and published via GitHub Actions). The sources:
 
 - **[docs/TAPTERM.md](docs/TAPTERM.md)** — the `tapterm` command in depth: every flag,
