@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>tappty | Instrumented terminal toolkit</title>
+  <meta name="description" content="tappty hosts a program on a pseudo-terminal, fans its output to any number of observers — a window, a socket, an automated driver — and routes input back, so a human and a bot can watch and drive the very same session.">
+  <link rel="stylesheet" href="assets/site.css">
+</head>
+<body class="site-home">
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  <div class="page-shell">
+    <header class="site-header">
+      <a class="brand" href="index.html">
+        <img class="brand__icon" src="assets/logo-tappty.svg" alt="" aria-hidden="true">
+        <span class="brand__name">tappty</span><span class="brand__badge">beta</span>
+      </a>
+      <nav class="top-nav" aria-label="Primary">
+        <a href="docs/index.html">Docs</a>
+        <a href="gallery/index.html">Gallery</a>
+        <a href="https://github.com/nyxcraft/tappty">GitHub</a>
+      </nav>
+    </header>
+
+    <main id="main-content" tabindex="-1">
+      <section class="hero">
+        <div class="hero__copy">
+          <h1>Instrument any terminal program — observe it, drive it, render it anywhere.</h1>
+          <div class="hero__attr"><p>Software Architecture, Design &amp; Engineering by Nicholas J. Kisseberth.</p><p>Code Synthesized via Anthropic Claude Code / Opus 4.8.</p><p>Automated Code Review via OpenAI Codex / ChatGPT 5.5.</p></div>
+          <p class="hero__lede">tappty hosts a program on a pseudo-terminal, fans its output to any number of observers — a window, a socket, an automated driver — and routes input back, so a human and a bot can watch and drive the very same session.</p>
+          <div class="hero__actions">
+            <a class="button button--primary" href="guide/index.html">Get started</a>
+            <a class="button" href="reference/index.html">Read the API</a>
+          </div>
+        </div>
+        <div class="hero__visual" role="img" aria-label="The tappty pipeline: a source feeds a terminal grid and a session, which fans out to renderers and a bus.">
+          <div class="flow">
+            <div class="flow__node"><span>Source</span><strong>pty · pipe · cast · engine</strong></div>
+            <div class="flow__arrow" aria-hidden="true">↓</div>
+            <div class="flow__node"><span>Terminal</span><strong>fixed grid · scrollback</strong></div>
+            <div class="flow__arrow" aria-hidden="true">↓</div>
+            <div class="flow__node flow__node--hub"><span>Session</span><strong>observe · control · talking stick</strong></div>
+            <div class="flow__fan">
+              <span>curses</span><span>pygame</span><span>arcade</span><span>web</span><span>bus</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="feature-strip" aria-label="Core ideas">
+        <article>
+          <h2>One observe / control contract</h2>
+          <p>Every consumer — a window, a socket logger, an automated driver — is an equal client of the same Session. A human and a bot take turns driving via the talking stick.</p>
+        </article>
+        <article>
+          <h2>Render it four ways</h2>
+          <p>A curses CUI, two green-phosphor GUI windows (pygame and arcade/OpenGL), and a browser tab over a WebSocket — all from the same styled <code>cells()</code>, color included.</p>
+        </article>
+        <article>
+          <h2>Drive it over a bus</h2>
+          <p>A Unix-socket or TCP bus carries the same contract off-box: subscribe to frames, capture a command's output, hand off the stick — with color over the wire.</p>
+        </article>
+      </section>
+
+      <section class="docs-panel">
+        <div class="section-heading">
+          <p class="eyebrow">Documentation</p>
+          <h2>Use it, build on it, and see how it works.</h2>
+        </div>
+        <div class="doc-grid">
+<article class="doc-card">
+  <h3><a href="guide/index.html">Command guide</a></h3>
+  <p>The tapterm command in depth: the CUI / GUI / web / headless modes, the terminal model, recordings, snapshots, and recipes.</p>
+  <a class="doc-card__link" href="guide/index.html">Open</a>
+</article>
+<article class="doc-card">
+  <h3><a href="reference/index.html">Programming reference</a></h3>
+  <p>The library API: Session, the five Sources, both Terminal backends, the bus, the renderers and compositor, with the shared contracts.</p>
+  <a class="doc-card__link" href="reference/index.html">Open</a>
+</article>
+<article class="doc-card">
+  <h3><a href="design/index.html">Architecture &amp; design</a></h3>
+  <p>How it works inside and why: the Source → Terminal → Session → renderer/bus pipeline, concurrency, the trust model, and the known limits.</p>
+  <a class="doc-card__link" href="design/index.html">Open</a>
+</article>
+<article class="doc-card">
+  <h3><a href="gallery/index.html">Gallery</a></h3>
+  <p>See it in action — screenshots of color, the digital-rain animation, and the compositor, each with runnable source.</p>
+  <a class="doc-card__link" href="gallery/index.html">Open</a>
+</article>
+<article class="doc-card">
+  <h3><a href="changelog/index.html">Changelog</a></h3>
+  <p>Dated history, newest first: when tappty started, when it first worked, and what has changed since.</p>
+  <a class="doc-card__link" href="changelog/index.html">Open</a>
+</article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p>© 2026 Nicholas J. Kisseberth · <a href="index.html">tappty</a> is <a href="license/index.html">MIT-licensed</a>.</p>
+      <p class="site-footer__attr">Software Architecture, Design &amp; Engineering by Nicholas J. Kisseberth.<br>Code Synthesized via Anthropic Claude Code / Opus 4.8.<br>Automated Code Review via OpenAI Codex / ChatGPT 5.5.</p>
+    </footer>
+  </div>
+</body>
+</html>

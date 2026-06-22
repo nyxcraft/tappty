@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gallery | tappty</title>
+  <meta name="description" content="See it in action — screenshots of color, the digital-rain animation, and the compositor, each with runnable source.">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body class="site-doc">
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  <div class="page-shell">
+    <header class="site-header site-header--compact">
+      <a class="brand" href="../index.html">
+        <img class="brand__icon" src="../assets/logo-tappty.svg" alt="" aria-hidden="true">
+        <span class="brand__name">tappty</span><span class="brand__badge">beta</span>
+      </a>
+      <nav class="top-nav" aria-label="Primary">
+        <a href="../docs/index.html">Docs</a>
+        <a href="index.html">Gallery</a>
+        <a href="https://github.com/nyxcraft/tappty">GitHub</a>
+      </nav>
+    </header>
+
+    <nav class="breadcrumbs" aria-label="Breadcrumb">
+      <a href="../index.html">Home</a>
+      <span class="breadcrumbs__sep" aria-hidden="true">›</span>
+      <span aria-current="page">Gallery</span>
+    </nav>
+
+    <!-- Simple full-width page (no left rail, no section viewer) -- used for the docs index. -->
+    <main id="main-content" class="page-main" tabindex="-1">
+      <article class="docs-article">
+        <header class="docs-article__header">
+          <p class="eyebrow">Documentation</p>
+          <h1>Gallery</h1>
+          <p class="docs-article__summary">See it in action — screenshots of color, the digital-rain animation, and the compositor, each with runnable source.</p>
+        </header>
+        <div class="prose">
+<p>What tappty looks like. Each demo below is a runnable single-file app in
+<a href="https://github.com/nyxcraft/tappty/tree/main/demos"><code>demos/</code></a> — install the GUI and ANSI extras,
+run one, and watch:</p>
+<pre><code class="language-sh">pip install 'tappty[sdl,ansi]'
+python demos/color_chart.py        # or any demo below
+</code></pre>
+<p>The pictures here are rendered headless (<code>--snapshot out.png</code>); the movie is rendered straight to
+video with <code>tapterm --render</code>. Want to <em>write</em> code against the API instead of watch it? See the
+<a href="https://github.com/nyxcraft/tappty/tree/main/examples">coding examples</a>.</p>
+<h2 id="in-motion">In motion</h2>
+<p><code>nyancat</code> hosted in tappty and rendered straight to an <strong>animated GIF</strong> — no terminal, no X11,
+just the grid drawn to frames and piped through ffmpeg. It loops, so it moves here <em>and</em> in
+GitHub's markdown view:</p>
+<p><img src="../media/nyancat.gif" alt="nyancat hosted in tappty, rendered to an animated GIF" /></p>
+<pre><code class="language-sh">tapterm --play demos/recordings/nyancat.cast --render nyan.gif --zoom 0.5
+</code></pre>
+<h2 id="a-program-driving-a-terminal-app">A program driving a terminal app</h2>
+<p>This is what tappty is <em>for</em> — observe <strong>and</strong> control. No human touches the keyboard: an
+autopilot holds tappty's talking stick and types into a live <code>vim</code> over the control tap, while
+every renderer/observer watches the same session. Text appears as if typed by a ghost, then
+ex-commands run (<code>:set number</code>, duplicate a line, jump around). The autopilot is an in-process
+thread here, but it only calls <code>send_input</code> — the same primitive the bus relays for a <em>remote</em>
+bot — and it's an <code>ai</code> controller, so a human watching the GUI can press a key to take the stick.</p>
+<video autoplay loop muted playsinline width="528" style="max-width:100%;border-radius:6px">
+  <source src="../media/drive_vim.mp4" type="video/mp4">
+  <img src="../media/drive_vim.png" alt="an autopilot typing into a live vim hosted in tappty">
+</video>
+<pre><code class="language-sh">python demos/drive_vim.py                          # watch it drive vim live (needs vim)
+tapterm --play demos/recordings/drive_vim.cast     # replay the recording (no program needed)
+</code></pre>
+<p>That demo drives a <em>fixed</em> script. For a closed loop that <strong>reads the screen/stream and decides
+what to type next</strong>, see <a href="https://github.com/nyxcraft/tappty/blob/main/examples/watch_and_drive.py"><code>examples/watch_and_drive.py</code></a>.</p>
+<h2 id="in-the-browser-the-web-renderer">In the browser — the web renderer</h2>
+<p><code>web_ui</code> serves the live terminal as one HTML page: a stdlib <code>http.server</code> hands out a single
+canvas, the browser paints the styled cells over a websocket and sends your keystrokes back —
+several browsers can watch at once, loopback-bound. Below is the SGR color chart rendered in a
+<strong>real (headless Chromium) browser tab</strong>, captured with Playwright by <code>demos/web_demo.py</code>:</p>
+<p><img src="../media/web_demo.png" alt="the tappty web renderer painting the SGR color chart in a browser tab" /></p>
+<pre><code class="language-sh">python demos/web_demo.py                 # serve at http://127.0.0.1:8023/ — then open it
+python demos/web_demo.py --shot web.png  # …or screenshot the browser tab headless (Playwright)
+tapterm --web -- bash                    # or host any program for the browser
+</code></pre>
+<h2 id="color-sgr-attributes">Color &amp; SGR attributes</h2>
+<p>The full SGR palette — the 8 + 8 colors, backgrounds, <strong>bold</strong>, <em>italic</em>, underline, strike,
+blink, and reverse, plus a 256-color strip. Uncolored text stays phosphor green; color appears
+only where the program asks for it.</p>
+<p><img src="../media/color_chart.png" alt="tappty rendering an ANSI color and SGR-attribute chart" /></p>
+<p><code>python demos/color_chart.py</code> · <a href="https://github.com/nyxcraft/tappty/blob/main/demos/color_chart.py">source →</a></p>
+<h2 id="green-phosphor-digital-rain">Green-phosphor digital rain</h2>
+<p>Columns of glyphs falling in phosphor green, drawn on the dependency-free VT52 <code>Terminal</code> — no
+color backend, no external program, just the green the terminal already renders. Here it is as an
+mp4 (rendered through the VT52 backend, since this demo speaks VT52, not ANSI):</p>
+<video autoplay loop muted playsinline width="440" style="max-width:100%;border-radius:6px">
+  <source src="../media/matrix.mp4" type="video/mp4">
+  <img src="../media/matrix_rain.png" alt="tappty drawing a green digital-rain animation">
+</video>
+<p><code>python demos/matrix_rain.py</code> · <a href="https://github.com/nyxcraft/tappty/blob/main/demos/matrix_rain.py">source →</a></p>
+<h2 id="mission-control-the-compositor">Mission control — the compositor</h2>
+<p>Four independent sessions tiled in one window: the color chart, the digital rain, a live colored
+log tail, and a clock with sweeping bars. Each tile is its own hosted program and shows the
+<code>[F2: take control]</code> affordance — the talking stick that lets a human or a driver take over.</p>
+<p><img src="../media/mission_control.png" alt="tappty compositor tiling four live terminal sessions in one window" /></p>
+<p><code>python demos/mission_control.py</code> · <a href="https://github.com/nyxcraft/tappty/blob/main/demos/mission_control.py">source →</a></p>
+<h2 id="hosting-real-terminal-programs">Hosting real terminal programs</h2>
+<p>tappty hosts any ANSI program faithfully — 256/truecolor SGR, block-glyph art, full-screen TUIs.
+The shot below is <code>cbonsai</code> <strong>recorded once and replayed here</strong>, so it reproduces with nothing
+installed (the movie above is <code>nyancat</code>, the same way):</p>
+<p><img src="../media/cbonsai.png" alt="a cbonsai tree hosted in tappty" /></p>
+<pre><code class="language-sh">tapterm --play demos/recordings/cbonsai.cast   # replay the bundled recording (no program needed)
+tapterm -- cbonsai -li                         # or host it live (needs cbonsai installed)
+</code></pre>
+<p><strong>Record your own.</strong> <code>--record</code> captures the live output stream with timing; replay it anywhere
+with <code>--play</code>, or turn it into a video with <code>--render</code>:</p>
+<pre><code class="language-sh">tapterm --record cmatrix.cast -- cmatrix       # record a live session
+tapterm --play cmatrix.cast                    # replay it later (no program needed)
+tapterm --play cmatrix.cast --render out.mp4   # …or render it to a movie
+</code></pre>
+
+        </div>
+      </article>
+    </main>
+
+    <footer class="site-footer">
+      <p>© 2026 Nicholas J. Kisseberth · <a href="../index.html">tappty</a> is <a href="../license/index.html">MIT-licensed</a>.</p>
+      <p class="site-footer__attr">Software Architecture, Design &amp; Engineering by Nicholas J. Kisseberth.<br>Code Synthesized via Anthropic Claude Code / Opus 4.8.<br>Automated Code Review via OpenAI Codex / ChatGPT 5.5.</p>
+    </footer>
+  </div>
+</body>
+</html>

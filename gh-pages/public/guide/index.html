@@ -1,0 +1,660 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Command guide | tappty</title>
+  <meta name="description" content="The tapterm command in depth: the CUI / GUI / web / headless modes, the terminal model, recordings, snapshots, and recipes.">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body class="site-doc">
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  <div class="page-shell">
+    <header class="site-header site-header--compact">
+      <a class="brand" href="../index.html">
+        <img class="brand__icon" src="../assets/logo-tappty.svg" alt="" aria-hidden="true">
+        <span class="brand__name">tappty</span><span class="brand__badge">beta</span>
+      </a>
+      <nav class="top-nav" aria-label="Primary">
+        <a href="../docs/index.html">Docs</a>
+        <a href="../gallery/index.html">Gallery</a>
+        <a href="https://github.com/nyxcraft/tappty">GitHub</a>
+      </nav>
+    </header>
+
+    <nav class="breadcrumbs" aria-label="Breadcrumb">
+      <a href="../index.html">Home</a>
+      <span class="breadcrumbs__sep" aria-hidden="true">›</span>
+      <span aria-current="page">Command guide</span>
+    </nav>
+
+    <main id="main-content" class="docs-layout" tabindex="-1">
+      <aside class="docs-sidebar">
+        <p class="docs-sidebar__eyebrow">On this page</p>
+        <nav class="section-nav" aria-label="On this page">
+<ul class="section-nav__list">
+<li><a class="section-nav__link section-nav__link--l2" href="#contents">Contents</a></li>
+<li><a class="section-nav__link section-nav__link--l2" href="#install">Install</a></li>
+<li><a class="section-nav__link section-nav__link--l2" href="#the-basics">The basics</a></li>
+<li><a class="section-nav__link section-nav__link--l2" href="#modes">Modes</a></li>
+<li><a class="section-nav__link section-nav__link--l3" href="#cui-cui-curses-in-your-terminal">CUI — `--cui` (curses, in your terminal)</a></li>
+<li><a class="section-nav__link section-nav__link--l3" href="#gui-gui-pygame-green-phosphor-window">GUI — `--gui` (pygame green-phosphor window)</a></li>
+<li><a class="section-nav__link section-nav__link--l3" href="#headless-headless-run-print-exit">Headless — `--headless` (run, print, exit)</a></li>
+<li><a class="section-nav__link section-nav__link--l3" href="#web-web-a-browser-tab">Web — `--web` (a browser tab)</a></li>
+<li><a class="section-nav__link section-nav__link--l2" href="#the-terminal-model">The terminal model</a></li>
+<li><a class="section-nav__link section-nav__link--l3" href="#size-cols-rows">Size — `--cols` / `--rows`</a></li>
+<li><a class="section-nav__link section-nav__link--l3" href="#ansi-vs-vt52-ansi">ANSI vs VT52 — `--ansi`</a></li>
+<li><a class="section-nav__link section-nav__link--l3" href="#unicode-and-wide-characters">Unicode and wide characters</a></li>
+<li><a class="section-nav__link section-nav__link--l2" href="#how-the-command-is-hosted">How the command is hosted</a></li>
+<li><a class="section-nav__link section-nav__link--l2" href="#driving-full-screen-tuis-raw">Driving full-screen TUIs — `--raw`</a></li>
+<li><a class="section-nav__link section-nav__link--l2" href="#recording-and-replaying-sessions">Recording and replaying sessions</a></li>
+<li><a class="section-nav__link section-nav__link--l3" href="#render-a-recording-to-a-video">Render a recording to a video</a></li>
+<li><a class="section-nav__link section-nav__link--l2" href="#snapshots-and-automation">Snapshots and automation</a></li>
+<li><a class="section-nav__link section-nav__link--l2" href="#recipes">Recipes</a></li>
+<li><a class="section-nav__link section-nav__link--l2" href="#flags-at-a-glance">Flags at a glance</a></li>
+<li><a class="section-nav__link section-nav__link--l2" href="#platform-notes">Platform notes</a></li>
+<li><a class="section-nav__link section-nav__link--l2" href="#troubleshooting">Troubleshooting</a></li>
+</ul>
+        </nav>
+      </aside>
+
+      <article class="docs-article">
+        <header class="docs-article__header">
+          <p class="eyebrow">Documentation</p>
+          <h1>Command guide</h1>
+          <p class="docs-article__summary">The tapterm command in depth: the CUI / GUI / web / headless modes, the terminal model, recordings, snapshots, and recipes.</p>
+          <p class="docs-article__source">tapterm — user&#x27;s guide</p>
+        </header>
+        <div class="prose">
+<p><code>tapterm</code> is the command-line program that comes with <code>tappty</code>. It <strong>hosts a program on a
+pseudo-terminal and renders it</strong> — in a plain terminal (curses), a green-phosphor window
+(pygame), or headless (run to completion and print the final screen). This guide covers every
+flag and mode, with practical examples and troubleshooting.</p>
+<ul>
+<li>The package is <code>tappty</code>; the command is <code>tapterm</code>.</li>
+<li>This guide is the <strong>command</strong> reference. To build your own tools on the same engine — taps,
+the bus, multi-pane dashboards, custom sources — see <a href="../reference/index.html">REFERENCE.md</a> (the
+library API) and <a href="../design/index.html">DESIGN.md</a> (architecture).</li>
+<li><code>tapterm</code> is a single local window: one program, one human at the keyboard. Observing or
+driving a session from <em>another process</em> (a logger, a bot, a remote renderer) is a library
+feature (<code>BusServer</code>/<code>BusClient</code>), not a <code>tapterm</code> flag.</li>
+</ul>
+<hr />
+<h2 id="contents">Contents</h2>
+<ul>
+<li><a href="#install">Install</a></li>
+<li><a href="#the-basics">The basics</a></li>
+<li><a href="#modes">Modes: CUI, GUI, headless</a></li>
+<li><a href="#the-terminal-model">The terminal model: size, ANSI, Unicode</a></li>
+<li><a href="#how-the-command-is-hosted">How the command is hosted: pty, pipes, Windows</a></li>
+<li><a href="#recording-and-replaying-sessions">Recording &amp; replaying sessions (<code>--record</code> / <code>--play</code>)</a></li>
+<li><a href="#snapshots-and-automation">Snapshots and automation</a></li>
+<li><a href="#recipes">Recipes</a></li>
+<li><a href="#flags-at-a-glance">Flags at a glance</a></li>
+<li><a href="#platform-notes">Platform notes</a></li>
+<li><a href="#troubleshooting">Troubleshooting</a></li>
+</ul>
+<hr />
+<h2 id="install">Install</h2>
+<pre><code class="language-sh">pip install tappty            # the core + tapterm; the CUI works out of the box
+pip install 'tappty[sdl]'     # add the green-phosphor window (pygame-ce)
+pip install 'tappty[gl]'  # add the arcade/OpenGL window (alternative GUI backend)
+pip install 'tappty[web]'     # add the browser renderer for --web (websockets)
+pip install 'tappty[ansi]'    # add the full-ANSI backend (pyte) for --ansi
+pip install 'tappty[win]'     # Windows-native: ConPTY host + curses CUI (pywinpty, windows-curses)
+</code></pre>
+<p>After install, <code>tapterm</code> is on your <code>PATH</code>. You can combine extras: <code>pip install 'tappty[sdl,ansi]'</code>.</p>
+<p>What each mode needs:</p>
+<table>
+<thead>
+<tr>
+<th>You want…</th>
+<th>Needs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--cui</code> (curses)</td>
+<td>a terminal — no extras on POSIX; on Windows, the <code>win</code> extra (<code>windows-curses</code>)</td>
+</tr>
+<tr>
+<td><code>--gui</code> (pygame window)</td>
+<td>the <code>sdl</code> extra <strong>and</strong> a display</td>
+</tr>
+<tr>
+<td><code>--arcade</code> (arcade window)</td>
+<td>the <code>gl</code> extra <strong>and</strong> a display (a GL context)</td>
+</tr>
+<tr>
+<td><code>--web</code> (browser tab)</td>
+<td>the <code>web</code> extra (no display needed — it's a server)</td>
+</tr>
+<tr>
+<td><code>--headless</code></td>
+<td>no terminal, no display, no extras*</td>
+</tr>
+<tr>
+<td><code>--ansi</code> (full-ANSI render)</td>
+<td>the <code>ansi</code> extra</td>
+</tr>
+</tbody>
+</table>
+<p>*POSIX pty hosting, <code>--no-pty</code>, and <code>--record</code> need nothing; <code>--play</code> needs the <code>ansi</code> extra
+(recordings are full-ANSI). The exception is <em>default</em>
+<strong>Windows</strong> hosting, which uses ConPTY — that needs <code>tappty[ansi,win]</code> and is still
+provisional (see <a href="#platform-notes">Platform notes</a>); <code>--no-pty</code> avoids it.</p>
+<hr />
+<h2 id="the-basics">The basics</h2>
+<p>Run <code>tapterm</code> with no arguments and it's a <strong>regular terminal</strong>: it hosts your <code>$SHELL</code> with
+full-ANSI rendering and raw keystrokes, so colors, line-editing, arrow keys, tab-completion and
+full-screen apps (vim, htop, less) all work — and the window closes when you exit the shell.</p>
+<pre><code class="language-sh">tapterm
+</code></pre>
+<p>Run a specific program instead of the shell — xterm-style with <code>-e</code>, or by putting it after <code>--</code>
+(everything after is the command and its arguments, untouched):</p>
+<pre><code class="language-sh">tapterm -e vim notes.txt
+tapterm -- python3 -i
+tapterm -- ssh user@host
+</code></pre>
+<blockquote>
+<p><strong><code>-e</code> and <code>--</code> both end <code>tapterm</code>'s options</strong>, so put <code>tapterm</code>'s own flags <em>first</em>:
+<code>tapterm --gui -e bash</code> is right; <code>tapterm -e bash --gui</code> passes <code>--gui</code> to bash. With no
+command at all, <code>tapterm</code> hosts <code>$SHELL</code> (falling back to <code>/bin/sh</code>).</p>
+</blockquote>
+<p><strong>xterm-style flags.</strong> Where it makes sense, <code>tapterm</code> takes the spellings xterm users expect:
+<code>-e CMD …</code> (run a command), <code>-T</code> / <code>-title TITLE</code>, <code>-geometry COLSxROWS</code> (size — a trailing
+<code>+X+Y</code> offset is accepted but ignored, since tappty doesn't place windows), <code>-cd DIR</code> (working
+directory), and <code>-hold</code> (keep the window open after the program exits, instead of closing).</p>
+<p><strong>Regular terminal vs. instrument.</strong> The real-terminal behavior above — full-ANSI + raw keys, the
+window closing on exit — is the default for any interactive session, and needs the <code>ansi</code> extra
+(pyte); without pyte, <code>tapterm</code> falls back to the instrument mode below. Pass <strong><code>--cooked</code></strong> to
+choose that mode explicitly: line-buffered input with local echo and line-editing, drawn on the
+dependency-free VT52 grid. That's what the observe taps and the bus <code>CMD</code> capture expect — they
+key off the line/prompt boundaries that raw mode doesn't have.</p>
+<p><strong>Picking a mode.</strong> With no mode flag, <code>tapterm</code> chooses the <strong>GUI</strong> when pygame is installed
+<em>and</em> a display is available, otherwise the always-available <strong>CUI</strong>. Force a mode with
+<code>--cui</code>, <code>--gui</code>, or <code>--headless</code> (these are mutually exclusive).</p>
+<hr />
+<h2 id="modes">Modes</h2>
+<h3 id="cui-cui-curses-in-your-terminal">CUI — <code>--cui</code> (curses, in your terminal)</h3>
+<p>Takes over the current terminal and draws the hosted program's fixed grid, green on your
+terminal's background, with a status line at the bottom. Works anywhere a terminal does, no
+extras. With <code>--ansi</code>, colored programs render in <strong>color</strong> where your terminal supports it
+(uncolored text stays phosphor green).</p>
+<pre><code class="language-sh">tapterm --cui -- bash
+</code></pre>
+<ul>
+<li><strong>The status line</strong> shows the title and grid size, e.g. <code>tapterm :: bash  80x24</code>. If your
+real terminal is smaller than the model, the view follows the cursor and the line shows
+<code>view@&lt;col&gt;,&lt;row&gt; [partial]</code> — the program still thinks it has the full 80×24; only what
+you <em>see</em> is a sub-rectangle (resize never changes the model). When the program exits, the
+line shows <code>[done -- press a key]</code> and <code>tapterm</code> waits for a keypress before quitting.</li>
+<li><strong>Input:</strong> by default keystrokes are forwarded <strong>raw</strong> — arrows, function keys, and Ctrl-combos
+go straight to the program, so full-screen apps work. In <code>--cooked</code> mode it's line-oriented
+(Enter, Backspace, and printable text; arrows not forwarded). Either way, <strong><code>Ctrl-]</code> quits</strong>
+<code>tapterm</code> (and stops the hosted program).</li>
+<li>The CUI shows the <strong>live</strong> screen; it has no interactive scrollback (that's a GUI feature).</li>
+</ul>
+<h3 id="gui-gui-pygame-green-phosphor-window">GUI — <code>--gui</code> (pygame green-phosphor window)</h3>
+<p>Opens a green-on-black monospace window with a blinking block cursor — the showcase. Needs the
+<code>sdl</code> extra and a display.</p>
+<pre><code class="language-sh">tapterm --gui -- bash
+</code></pre>
+<ul>
+<li><strong>Input:</strong> keystrokes are forwarded <strong>raw</strong> by default (arrows, function keys, Ctrl-combos, and
+printable Unicode), so full-screen apps work; <code>--cooked</code> makes it line-oriented (Enter,
+Backspace, printable text).</li>
+<li><strong>Scrollback:</strong> mouse wheel up, or <strong>PageUp</strong>/<strong>PageDown</strong>, scrolls into history; a banner
+shows your position. Typing (or Enter/Backspace) <strong>snaps back to live</strong>.</li>
+<li><strong>Screenshot:</strong> press <strong>F12</strong> to save a PNG (to your <code>--snapshot</code> path + <code>.png</code>, or
+<code>/tmp/tapterm.png</code>).</li>
+<li><strong>Closing:</strong> click the window's close button to quit. Add <strong><code>--exit-when-done</code></strong> to close the
+window automatically a moment after the hosted program exits (otherwise the window stays open
+showing the final screen).</li>
+<li><strong><code>--snapshot PATH</code></strong> mirrors the screen to a text file (and a <code>.png</code>) about once a second —
+handy for letting a script or an AI watch what you see (see <a href="#snapshots-and-automation">Snapshots</a>).</li>
+</ul>
+<p><strong><code>--arcade</code></strong> opens the <em>same</em> green-phosphor window on the arcade (pyglet/OpenGL) stack
+instead of pygame — same keys, scrollback, <code>F12</code>, <code>--snapshot</code>, and <code>--exit-when-done</code>. It
+needs the <code>gl</code> extra and a real GL display (where <code>--gui</code> also runs in software). Use it if
+you prefer the arcade backend or already depend on it; otherwise <code>--gui</code> is the default window.</p>
+<h3 id="headless-headless-run-print-exit">Headless — <code>--headless</code> (run, print, exit)</h3>
+<p>No terminal and no display — and no extras for POSIX pty hosting, <code>--no-pty</code>, or <code>--record</code>
+(<code>--play</code> needs the <code>ansi</code> extra).
+Runs the program to completion, prints the <strong>final screen</strong> to stdout, and exits with the
+<strong>program's own exit code</strong> — the scripting/CI mode.</p>
+<pre><code class="language-sh">tapterm --headless -- ls -la
+echo &quot;exit was $?&quot;             # tapterm forwards the child's exit status
+</code></pre>
+<ul>
+<li><code>--snapshot PATH</code> additionally writes the final screen to that file.</li>
+<li>Because it returns the child's exit code, <code>tapterm --headless -- sh -c 'exit 7'</code> exits 7 — so
+it's safe in CI (a failing command makes the step fail).</li>
+<li>On <strong>Windows</strong>, <em>default</em> hosting uses ConPTY, which needs <code>tappty[ansi,win]</code> and is still
+provisional — use <code>--no-pty</code> (no extras) for headless CI there. See
+<a href="#platform-notes">Platform notes</a>.</li>
+</ul>
+<h3 id="web-web-a-browser-tab">Web — <code>--web</code> (a browser tab)</h3>
+<p>Serves the terminal over HTTP + a WebSocket so you can watch and drive it in a <strong>browser</strong> —
+from this machine, or any device that can reach it. Needs the <code>web</code> extra; no display required
+(it's a server).</p>
+<pre><code class="language-sh">pip install 'tappty[web]'
+tapterm --web -- bash              # then open http://127.0.0.1:8023/
+tapterm --web --port 9000 -- bash  # page on :9000, websocket on :9001
+</code></pre>
+<ul>
+<li>The browser draws tappty's grid (green phosphor + the same SGR <strong>color</strong> as the other UIs);
+keystrokes go back to the program. Like the other interactive modes it's <strong>full-ANSI + raw by
+default</strong> (so full-screen TUIs like <code>vim</code> just work) and closes when the program exits; pass
+<code>--cooked</code> for the line-oriented instrument mode instead.</li>
+<li><strong>Several browsers can connect at once</strong> — all watch; the talking stick decides who drives
+(typing takes it). This is the &quot;human and a bot share one session&quot; idea, in a browser.</li>
+<li>It binds <strong>loopback (127.0.0.1) only</strong> and has <strong>no TLS</strong> — it's a local control plane, like
+the bus. To reach it from another machine, tunnel it (<code>ssh -L</code>) rather than exposing the port.</li>
+<li>The page is on <code>--port</code> (default 8023); the WebSocket is on <code>--port + 1</code>. <code>tapterm</code> prints the
+URL on start; it runs until the program exits or you press <strong>Ctrl-C</strong>.</li>
+</ul>
+<hr />
+<h2 id="the-terminal-model">The terminal model</h2>
+<h3 id="size-cols-rows">Size — <code>--cols</code> / <code>--rows</code></h3>
+<p>The hosted program lives in a <strong>fixed grid</strong>, default <strong>80×24</strong>. Change it with <code>--cols</code> and
+<code>--rows</code> (positive integers):</p>
+<pre><code class="language-sh">tapterm --cols 120 --rows 40 -- bash
+</code></pre>
+<p>The size is what the <em>program</em> sees and never changes while it runs — resizing your real window
+(CUI) or the pygame window doesn't resize the program; the renderer just shows more or less of
+the fixed grid (a viewport). This keeps the hosted program sealed in a predictable size.</p>
+<h3 id="ansi-vs-vt52-ansi">ANSI vs VT52 — <code>--ansi</code></h3>
+<p>Two terminal backends:</p>
+<ul>
+<li><strong>Default (VT52-spirit).</strong> A small, dependency-free model: text, wrap/scroll, the common
+control characters, and a handful of VT52 escapes. Perfect for line-oriented and period
+programs. It does <strong>not</strong> understand modern ANSI (colors, cursor addressing) — feed it a
+program that emits those and you'll see escape-sequence soup.</li>
+<li><strong><code>--ansi</code> (full ANSI/VT100+).</strong> Backed by <code>pyte</code> (the <code>ansi</code> extra). Use it for anything
+modern — shells with colored prompts, <code>vim</code>, <code>htop</code>, <code>git log</code>, etc. It interprets cursor
+movement, erasing, and line edits correctly.</li>
+</ul>
+<pre><code class="language-sh">tapterm --ansi -- vim
+tapterm --ansi -- bash      # colored prompts/output render cleanly
+</code></pre>
+<blockquote>
+<p>Note: <code>--ansi</code> renders <strong>color</strong> in every interactive renderer — the GUI (<code>--gui</code> /
+<code>--arcade</code>) in full RGB, and the CUI (<code>--cui</code>) via your terminal's colors where it supports
+them — covering foreground/background, bold (as a brighter shade), and inverse, while
+uncolored text stays phosphor green. Only <code>--headless</code>/<code>--snapshot</code> output is plain text.</p>
+</blockquote>
+<h3 id="unicode-and-wide-characters">Unicode and wide characters</h3>
+<p>Unicode works in both backends: a program printing <code>café</code> or <code>→ ✓</code> shows those characters
+(UTF-8 is decoded for the screen; pass-through is correct end to end).</p>
+<p><strong>Wide glyphs</strong> — CJK (<code>日本語</code>, <code>中文</code>) and single-code-point emoji (<code>👍 🔥 ✅</code>) — occupy their
+true <strong>two columns</strong>, so neighboring text lines up instead of crowding. This is most reliable
+with <code>--ansi</code> (the <code>pyte</code> backend tracks the width). In the CUI it relies on your terminal being
+in a UTF-8 locale (<code>$LANG</code>/<code>$LC_ALL</code>); a non-UTF-8 locale falls back to single-width but never
+garbles the rest of the line. The GUI and web renderers draw the glyph in the font you have, so
+how a given emoji <em>looks</em> depends on that font's coverage — but its width is always correct.</p>
+<p><strong>What doesn't work: grapheme clusters.</strong> Emoji built from several code points — ZWJ families
+(<code>👨‍👩‍👧</code>), flags (<code>🇺🇸</code>), and skin-tone modifiers (<code>👋🏽</code>) — are split or collapsed by <code>pyte</code>
+before tapterm sees them (the family shows as just <code>👨</code>, the flag as two letter-boxes). This is
+a deliberate limit, not a bug; see <a href="../design/index.html">DESIGN.md</a> §9.</p>
+<hr />
+<h2 id="how-the-command-is-hosted">How the command is hosted</h2>
+<p>By default <code>tapterm</code> runs your command on a <strong>pseudo-terminal</strong> so it behaves exactly as it
+would in a real terminal (interactive prompts, line editing, programs that check for a tty).</p>
+<ul>
+<li>
+<p><strong>POSIX:</strong> a real pty. This is the default and the most faithful.</p>
+</li>
+<li>
+<p><strong><code>--no-pty</code>:</strong> host over <strong>plain pipes</strong> instead — no tty. Cross-platform (including
+Windows), but because there's no tty the child knows it isn't interactive: many programs
+<strong>block-buffer</strong> their output (you see nothing until they flush or exit) and skip prompts.
+Best for cooperative, line-oriented programs; not for full interactive ones.</p>
+<pre><code class="language-sh">tapterm --no-pty -- python3 -c &quot;print('hello from a pipe')&quot;
+</code></pre>
+</li>
+<li>
+<p><strong>Windows:</strong> there's no POSIX pty, so <code>tapterm</code> hosts the command on a <strong>Windows
+pseudo-console (ConPTY)</strong> via the <code>win</code> extra, and automatically enables <code>--ansi</code> (ConPTY
+emits VT100+). This path is implemented but <strong>not yet validated on real Windows</strong> — treat it
+as provisional. <code>--no-pty</code> (pipes) is the more conservative choice on Windows today.</p>
+</li>
+</ul>
+<hr />
+<h2 id="driving-full-screen-tuis-raw">Driving full-screen TUIs — <code>--raw</code></h2>
+<p>An interactive session is <strong>raw by default</strong> (the regular-terminal behavior): every keystroke
+goes straight to the program with no local echo or line editing, and special keys are translated
+to their VT escape sequences — so full-screen programs like <strong><code>vim</code></strong>, <strong><code>htop</code></strong>, or <strong><code>less</code></strong>
+work, the program handling its own echo and redraw exactly as under a real terminal. <code>--raw</code>
+forces this mode explicitly.</p>
+<p>The opposite is <strong><code>--cooked</code></strong> (the line-oriented instrument mode): <code>tapterm</code> echoes your
+keystrokes locally and sends a whole line on Enter — good for prompts you want to <em>watch</em> being
+typed — and arrow/function/Ctrl keys aren't forwarded. That's what the observe taps and the bus
+<code>CMD</code> capture expect (they key off line/prompt boundaries).</p>
+<pre><code class="language-sh">tapterm -- vim                     # interactive: full-ANSI render + raw keys, by default
+tapterm --cooked -- somelinetool   # line-oriented instrument mode instead
+</code></pre>
+<ul>
+<li>Pair it with <strong><code>--ansi</code></strong> for anything that paints the screen with color and cursor moves —
+that's the typical combination.</li>
+<li>Mapped (normal cursor-key mode): arrows, Home/End, PageUp/Down, Insert/Delete, F1–F12, Tab,
+Esc, and Ctrl-letters. In the CUI, Ctrl-C/Z/\ reach the program (raw tty).</li>
+<li>Still local: mouse-wheel scrollback, <strong>Ctrl-]</strong> to quit the CUI, the GUI close button, and
+<strong>F12</strong> snapshots in the GUI.</li>
+</ul>
+<hr />
+<h2 id="recording-and-replaying-sessions">Recording and replaying sessions</h2>
+<p><code>tapterm</code> reads and writes two terminal-session recording formats —
+<a href="https://asciinema.org">asciinema</a> <strong><code>.cast</code></strong> (v2 NDJSON, or the older compact v1) and
+<strong><code>.ttyrec</code></strong> (the ttyrec / termrec / NetHack format) — and plays two text-art formats:
+<strong><code>.ans</code></strong> ANSI/BBS art (CP437 + ANSI + SAUCE) and <strong><code>.3a</code></strong> animated ASCII art. The format is
+picked automatically by file extension.</p>
+<p><strong>Replay</strong> a recording (or play art) through the same renderers instead of hosting a live
+command, with <code>--play</code>:</p>
+<pre><code class="language-sh">tapterm --play session.cast               # replay at the recorded speed
+tapterm --play session.ttyrec             # a .ttyrec (ttyrec / NetHack format)
+tapterm --play art.ans --gui              # ANSI / BBS art
+tapterm --play anim.3a --gui --loop       # animated ASCII art (.3a), looping
+tapterm --play session.cast --speed 4     # 4x faster
+tapterm --play session.cast --gui --loop  # loop it in the window (a screensaver of your session)
+</code></pre>
+<ul>
+<li>Recordings are VT100+, so <code>--play</code> <strong>uses the full-ANSI backend automatically</strong> (it needs the
+<code>ansi</code> extra: <code>pip install 'tappty[ansi]'</code>).</li>
+<li>A <code>.cast</code>/<code>.ans</code> carries its size, so the terminal is <strong>sized to the recording</strong>
+(<code>--cols</code>/<code>--rows</code> ignored); <code>.ttyrec</code> carries none, so it uses 80×24 (set <code>--cols</code>/<code>--rows</code>).</li>
+<li><code>--speed</code> multiplies playback rate; long idle gaps are still replayed at that rate.</li>
+<li><code>--loop</code> repeats the recording (GUI/CUI; ignored under <code>--headless</code>, which plays once and
+prints the final frame).</li>
+<li><code>--cast</code> is kept as an alias for <code>--play</code>.</li>
+</ul>
+<p><strong>Record</strong> the session you're running with <code>--record FILE</code> — it captures the program's output
+stream, with timing, as you use it:</p>
+<pre><code class="language-sh">tapterm --record session.cast -- bash         # record a shell session to asciicast v2
+tapterm --record demo.ttyrec --gui -- vim      # record while you drive it in the window
+tapterm --headless --record out.cast -- make   # record a non-interactive run
+tapterm --play in.ttyrec --record out.cast     # transcode: replay one, record the other
+</code></pre>
+<p>The format follows the extension. Recordings are deterministic to replay — useful for demos,
+docs, and visual regression (<code>--headless --snapshot</code> renders a recording to a known final
+screen + PNG). <code>.cast</code> files also play in the <code>asciinema</code> ecosystem and its GIF/SVG tooling.</p>
+<p><strong>Export a screen as art:</strong> <code>--headless --snapshot screen.ans</code> writes the final screen as a <code>.ans</code>
+file (CP437 + SGR), and <code>--snapshot screen.3a</code> writes it as a single-frame <code>.3a</code> — instead of
+plain text. Both read back with <code>--play</code>.</p>
+<h3 id="render-a-recording-to-a-video">Render a recording to a video</h3>
+<p><code>--play RECORDING --render OUT.mp4</code> turns a recording into a real video file (<code>.mp4</code> / <code>.webm</code> /
+<code>.gif</code> / …, by extension) via ffmpeg, instead of displaying it:</p>
+<pre><code class="language-sh">tapterm --play demo.cast --render demo.mp4                 # a recording to MP4
+tapterm --play demo.cast --render demo.gif --zoom 0.5      # half-size GIF
+tapterm --play nyan.cast --render nyan.mp4 --speed 2 --fps 30
+tapterm --play big.ttyrec --render clip.mp4 --crop 10,4,60,20   # just a region
+tapterm --render cmatrix.mp4 --seconds 5 -- cmatrix        # a LIVE program, straight to video
+</code></pre>
+<ul>
+<li><code>--font-size</code> sets the glyph size (the main size control); <code>--zoom F</code> scales the finished
+frame (crisp, e.g. <code>2</code>); <code>--font TTF</code> picks a font; <code>--speed</code> and <code>--fps</code> control pacing.</li>
+<li><code>--crop COL,ROW,COLS,ROWS</code> renders only that region of the grid (area of interest).</li>
+<li>Pass a command instead of <code>--play</code> to render a <strong>live</strong> program directly — it's hosted,
+recorded, and rendered in one step. <code>--seconds N</code> caps programs that don't exit on their own
+(cmatrix, htop, a shell); a program that exits (a build, <code>ls</code>, cbonsai) needs no cap.</li>
+<li>The render is deterministic and faster-than-real-time. It needs the <code>sdl</code> + <code>ansi</code> extras and
+<strong>ffmpeg</strong> — a system binary, or <code>pip install 'tappty[video]'</code> for a bundled one.</li>
+<li><strong>No display required.</strong> Although it uses pygame, it rasterizes <em>off-screen</em> (SDL's <code>dummy</code>
+driver) — there's no window — so <code>--render</code> runs over plain SSH, in a curses console, in cron,
+or in CI with no X11/Wayland. (Only the interactive <code>--gui</code> / <code>--arcade</code> windows need a display.)</li>
+</ul>
+<hr />
+<h2 id="snapshots-and-automation">Snapshots and automation</h2>
+<ul>
+<li><strong><code>--snapshot PATH</code></strong>
+<ul>
+<li><em>GUI:</em> mirrors the live screen to <code>PATH</code> (text) and <code>PATH.png</code> (pixels) roughly once a
+second, so a separate script or an AI can watch the same thing you see.</li>
+<li><em>Headless:</em> writes the final screen to <code>PATH</code> (in addition to printing it).</li>
+</ul>
+</li>
+<li><strong><code>--headless</code></strong> prints the final screen to stdout and exits with the child's return code —
+the building block for scripting and CI.</li>
+<li><strong>Exit code:</strong> only <code>--headless</code> forwards the program's exit status; the interactive modes
+return 0 when you close them.</li>
+</ul>
+<p><strong>Headless GUI render (no display).</strong> You can drive the pygame renderer with no display by
+forcing SDL's dummy driver — useful to produce a PNG in CI:</p>
+<pre><code class="language-sh">SDL_VIDEODRIVER=dummy tapterm --gui --exit-when-done --snapshot out -- bash -lc 'ls; echo done'
+# -&gt; out (text) and out.png (pixels), then exits
+</code></pre>
+<p>(For richer automation — observe/drive a session from another process, multi-pane dashboards —
+use the library; see <a href="../reference/index.html">REFERENCE.md</a>.)</p>
+<hr />
+<h2 id="recipes">Recipes</h2>
+<table>
+<thead>
+<tr>
+<th>Goal</th>
+<th>Command</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Host your shell, best available UI</td>
+<td><code>tapterm</code></td>
+</tr>
+<tr>
+<td>Force the in-terminal curses UI</td>
+<td><code>tapterm --cui -- bash</code></td>
+</tr>
+<tr>
+<td>Green-phosphor window</td>
+<td><code>tapterm --gui -- bash</code></td>
+</tr>
+<tr>
+<td>A full-screen TUI (color + keys)</td>
+<td><code>tapterm --ansi --raw -- htop</code></td>
+</tr>
+<tr>
+<td>A bigger grid</td>
+<td><code>tapterm --cols 120 --rows 40 --ansi --raw -- vim</code></td>
+</tr>
+<tr>
+<td>Run a command, capture the final screen</td>
+<td><code>tapterm --headless -- make 2&gt;&amp;1</code></td>
+</tr>
+<tr>
+<td>Same, save it to a file</td>
+<td><code>tapterm --headless --snapshot build.txt -- make</code></td>
+</tr>
+<tr>
+<td>No pty (line-oriented / cross-platform)</td>
+<td><code>tapterm --no-pty -- python3 -u script.py</code></td>
+</tr>
+<tr>
+<td>Record a session</td>
+<td><code>tapterm --record demo.cast -- bash</code></td>
+</tr>
+<tr>
+<td>Replay a recording</td>
+<td><code>tapterm --play demo.cast --speed 2</code></td>
+</tr>
+<tr>
+<td>Replay a .ttyrec</td>
+<td><code>tapterm --play game.ttyrec</code></td>
+</tr>
+<tr>
+<td>Play ANSI/BBS art</td>
+<td><code>tapterm --play art.ans --gui</code></td>
+</tr>
+<tr>
+<td>Export the screen as ANSI art</td>
+<td><code>tapterm --headless --snapshot screen.ans -- neofetch</code></td>
+</tr>
+<tr>
+<td>Render a recording to MP4</td>
+<td><code>tapterm --play demo.cast --render demo.mp4</code></td>
+</tr>
+<tr>
+<td>Render a live program to MP4</td>
+<td><code>tapterm --render rain.mp4 --seconds 5 -- cmatrix</code></td>
+</tr>
+<tr>
+<td>Watch/drive it in a browser</td>
+<td><code>tapterm --web -- bash</code> → open <code>http://127.0.0.1:8023/</code></td>
+</tr>
+<tr>
+<td>Loop a recording in a window</td>
+<td><code>tapterm --gui --loop --play demo.cast</code></td>
+</tr>
+<tr>
+<td>Headless PNG of a recording</td>
+<td><code>SDL_VIDEODRIVER=dummy tapterm --gui --exit-when-done --snapshot demo --play demo.cast</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="flags-at-a-glance">Flags at a glance</h2>
+<pre><code>tapterm [MODE] [OPTIONS] -- COMMAND [ARGS...]
+
+MODE (mutually exclusive; default = GUI if pygame+display, else CUI)
+  --cui                 curses character UI, in the current terminal
+  --gui                 pygame green-phosphor window (needs the 'sdl' extra + a display)
+  --arcade              arcade/OpenGL green-phosphor window (needs the 'gl' extra + a display)
+  --web                 serve in a browser over a websocket (needs the 'web' extra)
+  --headless            run to completion, print the final screen, exit with the child's code
+
+OPTIONS
+  -e, --exec CMD ...    run CMD instead of $SHELL, xterm-style (everything after -e; like `-- CMD`)
+  -T, -title TITLE      window / status-line title  (--title)
+  -geometry, -g WxH     terminal size COLSxROWS, xterm-style; a trailing +X+Y offset is ignored
+  -cd, --cwd DIR        run the hosted program in this working directory
+  -hold                 keep the window open after the program exits (a terminal session closes)
+  --cooked, --line      line-oriented instrument mode (local echo on the VT52 grid) instead of the
+                        regular-terminal default (full-ANSI + raw keys)
+  --port N              --web: HTTP port for the page (websocket = N+1; default 8023)
+  --cols N              terminal columns (default 80; positive integer; --geometry overrides)
+  --rows N              terminal rows (default 24; positive integer; --geometry overrides)
+  --ansi                full-ANSI/VT100+ backend (needs the 'ansi' extra); for modern programs
+  --raw                 forward keystrokes raw (arrows/Fn/Ctrl, no echo) for TUIs; pair with --ansi
+  --no-pty              host over plain pipes, no pty (cross-platform; line-oriented programs)
+  --snapshot PATH       GUI/arcade: mirror the screen to PATH (+PATH.png) each second (ignored by
+                        --cui/--web); headless: write the final screen to PATH (.ans/.3a export art)
+  --exit-when-done      GUI/CUI/web: close (don't wait for a final keypress) when the program exits
+  --play FILE           replay a .cast/.ttyrec recording or play .ans/.3a art, instead of a
+                        command (--cast alias; uses the ANSI backend; sizes to a .cast/.ans)
+  --record FILE         record the session's output to a .cast or .ttyrec file as it runs
+  --render FILE         render to a video (.mp4/.webm/.gif/...): a --play recording, or a
+                        live command (it's recorded then rendered, one step)
+  --seconds N           --render of a live command: stop after N seconds (non-exiting programs)
+  --fps N               --render: output frame rate (default 30)
+  --font-size N         --render: glyph size in points (size/zoom control; default 18)
+  --zoom F              --render: scale the finished frame (e.g. 2 for crisp 2x)
+  --font TTF            --render: font file to render with (default DejaVu Sans Mono)
+  --crop C,R,COLS,ROWS  --render: render only this grid region (area of interest)
+  --speed F             --play: playback speed multiplier (default 1.0)
+  --loop                --play: loop the recording (ignored under --headless)
+
+COMMAND                 the program to host, after `--` or `-e` (default: $SHELL, as a terminal)
+</code></pre>
+<p>(<code>tapterm --help</code> lists the same flags; this table adds the default-mode rule and the
+display / positive-integer notes that the bare <code>--help</code> leaves out.)</p>
+<hr />
+<h2 id="platform-notes">Platform notes</h2>
+<ul>
+<li><strong>Linux / BSD:</strong> the CUI works in any terminal; the GUI needs <code>sdl</code> + an X11/Wayland display.
+Over SSH or cron (no display), plain <code>tapterm</code> falls back to CUI automatically. An explicit
+<code>--gui</code> <em>without the <code>sdl</code> extra</em> fails with a clear install hint; <code>--gui</code> <em>with no display</em>
+surfaces pygame/SDL's own video-initialization error instead.</li>
+<li><strong>macOS:</strong> the GUI works (native, no <code>DISPLAY</code> needed); CUI works in Terminal/iTerm.</li>
+<li><strong>Windows:</strong> the GUI (pygame) and <code>--headless</code> work; the CUI needs <code>windows-curses</code>, which
+the <code>win</code> extra installs (<code>pip install 'tappty[win]'</code>). Hosting a command uses ConPTY (also
+in the <code>win</code> extra) and auto-enables <code>--ansi</code>, but that path is <strong>provisional/untested</strong> —
+prefer <code>--no-pty</code> for now.</li>
+<li><strong><code>--headless</code> needs neither a terminal nor a display</strong>, so it's the safe choice in CI and
+scripts on any platform.</li>
+</ul>
+<hr />
+<h2 id="troubleshooting">Troubleshooting</h2>
+<ul>
+<li><strong>Escape-sequence soup / garbled colors</strong> (you see things like <code>^[[0;32m</code>): the program emits
+modern ANSI but you're on the VT52 model. Add <strong><code>--ansi</code></strong> (and <code>pip install 'tappty[ansi]'</code>).</li>
+<li><strong><code>--gui</code> fails / &quot;needs pygame&quot;</strong>: install the GUI extra — <code>pip install 'tappty[sdl]'</code> — and
+make sure a display is available. Over SSH, use <code>--cui</code> or <code>--headless</code>, or forward X /
+set <code>SDL_VIDEODRIVER=dummy</code> for a windowless render.</li>
+<li><strong><code>--no-pty</code> shows nothing until the program exits</strong>: that's output buffering — without a tty
+many programs block-buffer stdout. Run the child unbuffered (e.g. <code>python3 -u</code>,
+<code>stdbuf -oL …</code>) or use the default pty instead of <code>--no-pty</code>.</li>
+<li><strong>&quot;command not found&quot; / it just exits</strong>: the command after <code>--</code> must be a real executable and
+its argv; e.g. <code>tapterm -- bash -lc 'echo hi'</code>, not <code>tapterm -- 'bash -lc &quot;echo hi&quot;'</code>.</li>
+<li><strong>Mojibake on a pty program</strong> (<code>café</code> shows as <code>cafÃ©</code>): the program is emitting non-UTF-8
+bytes; the screen decodes as UTF-8 by default. This is uncommon for modern programs; the raw
+bytes are always preserved on the stream side (a library concern — see REFERENCE).</li>
+<li><strong>My flags are being passed to the program</strong>: put <code>tapterm</code>'s flags <em>before</em> <code>--</code>. Anything
+after the command name belongs to the command.</li>
+</ul>
+
+        </div>
+      </article>
+    </main>
+
+    <footer class="site-footer">
+      <p>© 2026 Nicholas J. Kisseberth · <a href="../index.html">tappty</a> is <a href="../license/index.html">MIT-licensed</a>.</p>
+      <p class="site-footer__attr">Software Architecture, Design &amp; Engineering by Nicholas J. Kisseberth.<br>Code Synthesized via Anthropic Claude Code / Opus 4.8.<br>Automated Code Review via OpenAI Codex / ChatGPT 5.5.</p>
+    </footer>
+  </div>
+
+  <script>
+  // Section viewer: split the page into one panel per H2 and show one at a time, driven by the
+  // left-rail "On this page" links (and any in-prose # link). Degrades to the full page when
+  // JavaScript is off -- the panels are only hidden once .js-sections is set here.
+  (function () {
+    var prose = document.querySelector('.prose');
+    if (!prose) return;
+    var navLinks = Array.prototype.slice.call(document.querySelectorAll('.section-nav a[href^="#"]'));
+
+    var kids = Array.prototype.slice.call(prose.childNodes);
+    var groups = [], preface = [], cur = null;
+    kids.forEach(function (n) {
+      if (n.nodeType === 1 && n.tagName === 'H2') { cur = { id: n.id, nodes: [n] }; groups.push(cur); }
+      else if (cur) { cur.nodes.push(n); }
+      else { preface.push(n); }
+    });
+    if (!groups.length) return;                 // no H2s -> leave the page as one scroll
+    groups[0].nodes = preface.concat(groups[0].nodes);
+
+    prose.innerHTML = '';
+    prose.classList.add('js-sections');
+    var anchorToSection = {};
+    var sections = groups.map(function (g) {
+      var s = document.createElement('section');
+      s.className = 'doc-section';
+      g.nodes.forEach(function (n) { s.appendChild(n); });
+      prose.appendChild(s);
+      Array.prototype.forEach.call(s.querySelectorAll('[id]'), function (el) { anchorToSection[el.id] = s; });
+      if (g.id) anchorToSection[g.id] = s;
+      return s;
+    });
+
+    function activate(anchor, scroll) {
+      var target = anchorToSection[anchor] || sections[0];
+      sections.forEach(function (s) { s.classList.toggle('is-active', s === target); });
+      navLinks.forEach(function (a) {
+        var id = decodeURIComponent(a.getAttribute('href').slice(1));
+        a.classList.toggle('is-active', anchorToSection[id] === target);
+      });
+      if (scroll) {
+        var el = (anchor && document.getElementById(anchor)) || target;
+        if (el && el.scrollIntoView) el.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      }
+    }
+    function fromHash(scroll) { activate(decodeURIComponent((location.hash || '').slice(1)), scroll); }
+
+    document.addEventListener('click', function (e) {
+      var a = e.target && e.target.closest ? e.target.closest('a[href^="#"]') : null;
+      if (!a) return;
+      var id = decodeURIComponent(a.getAttribute('href').slice(1));
+      if (anchorToSection[id]) activate(id, true);
+    });
+    window.addEventListener('hashchange', function () { fromHash(true); });
+    fromHash(false);
+  })();
+  </script>
+</body>
+</html>

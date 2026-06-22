@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Changelog | tappty</title>
+  <meta name="description" content="Dated history, newest first: when tappty started, when it first worked, and what has changed since.">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body class="site-doc">
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  <div class="page-shell">
+    <header class="site-header site-header--compact">
+      <a class="brand" href="../index.html">
+        <img class="brand__icon" src="../assets/logo-tappty.svg" alt="" aria-hidden="true">
+        <span class="brand__name">tappty</span><span class="brand__badge">beta</span>
+      </a>
+      <nav class="top-nav" aria-label="Primary">
+        <a href="../docs/index.html">Docs</a>
+        <a href="../gallery/index.html">Gallery</a>
+        <a href="https://github.com/nyxcraft/tappty">GitHub</a>
+      </nav>
+    </header>
+
+    <nav class="breadcrumbs" aria-label="Breadcrumb">
+      <a href="../index.html">Home</a>
+      <span class="breadcrumbs__sep" aria-hidden="true">›</span>
+      <span aria-current="page">Changelog</span>
+    </nav>
+
+    <main id="main-content" class="docs-layout" tabindex="-1">
+      <aside class="docs-sidebar">
+        <p class="docs-sidebar__eyebrow">On this page</p>
+        <nav class="section-nav" aria-label="On this page">
+<ul class="section-nav__list">
+<li><a class="section-nav__link section-nav__link--l2" href="#2026-06-17-and-so-it-begins">2026-06-17 — And so it begins...</a></li>
+<li><a class="section-nav__link section-nav__link--l2" href="#2026-06-18-standalone">2026-06-18 — standalone</a></li>
+<li><a class="section-nav__link section-nav__link--l2" href="#2026-06-19-renderers-color-bus-packaging">2026-06-19 — renderers, color, bus, packaging</a></li>
+<li><a class="section-nav__link section-nav__link--l2" href="#2026-06-20-recording-formats-video-demos-the-terminal">2026-06-20 — recording formats, video, demos, the terminal</a></li>
+</ul>
+        </nav>
+      </aside>
+
+      <article class="docs-article">
+        <header class="docs-article__header">
+          <p class="eyebrow">Documentation</p>
+          <h1>Changelog</h1>
+          <p class="docs-article__summary">Dated history, newest first: when tappty started, when it first worked, and what has changed since.</p>
+          <p class="docs-article__source">Changelog</p>
+        </header>
+        <div class="prose">
+<h2 id="2026-06-17-and-so-it-begins">2026-06-17 — And so it begins...</h2>
+<ul>
+<li><strong>13:10</strong> — Started: the fixed-size VT52 <code>Terminal</code> grid</li>
+<li><strong>14:29</strong> — the first pygame renderer</li>
+<li><strong>22:51</strong> — First end-to-end run of observe/control core</li>
+</ul>
+<h2 id="2026-06-18-standalone">2026-06-18 — standalone</h2>
+<ul>
+<li><strong>23:30</strong> — Extracted to a standalone package</li>
+<li><strong>23:35</strong> — round-tripped a real subprocess through the pty into the grid.</li>
+</ul>
+<h2 id="2026-06-19-renderers-color-bus-packaging">2026-06-19 — renderers, color, bus, packaging</h2>
+<ul>
+<li><strong>10:54</strong> — Runtime hardening</li>
+<li><strong>11:06</strong> — Consolidated the byte-source reader loop into <code>Source._pump</code>.</li>
+<li><strong>12:08</strong> — The detailed docs: <code>DESIGN.md</code>, <code>REFERENCE.md</code>, the <code>tapterm</code> guide.</li>
+<li><strong>13:14</strong> — Windows: the <code>win</code> extra bundles <code>windows-curses</code> (curses CUI on Windows).</li>
+<li><strong>13:32</strong> — <code>arcade_ui</code> renderer — the pyglet/OpenGL twin of <code>pygame_ui</code>.</li>
+<li><strong>14:23</strong> — SGR <strong>color</strong> in the GUI, then in the curses CUI too.</li>
+<li><strong>14:55</strong> — Raw-mode full-screen TUI input (<code>--raw</code>), so vim/htop work.</li>
+<li><strong>15:30</strong> — <code>web_ui</code> renderer — the terminal in a browser over a websocket.</li>
+<li><strong>20:33</strong> — Bold/italic/underline as real attributes; then strikethrough and blink.</li>
+<li><strong>20:46</strong> — Packaging: <code>MANIFEST.in</code> + a validated (non-publishing) build.</li>
+<li><strong>21:10</strong> — SGR color over the bus (styled snapshot + colored compositor panels).</li>
+<li><strong>21:37</strong> — Wide CJK and single-code-point emoji at their true two columns.</li>
+<li><strong>22:44</strong> — A GitHub Pages docs site: <code>docs/</code> sources, a <code>gh-pages/</code> builder, Actions deploy.</li>
+<li><strong>23:05</strong> — Published a <code>tapterm</code> alias distribution alongside <code>tappty</code>.</li>
+<li><strong>23:50</strong> — Docs-site nav and hero polish.</li>
+</ul>
+<h2 id="2026-06-20-recording-formats-video-demos-the-terminal">2026-06-20 — recording formats, video, demos, the terminal</h2>
+<ul>
+<li><strong>10:52</strong> — A <strong>gallery</strong> of runnable demos (screenshots + source).</li>
+<li><strong>11:15</strong> — <code>.ttyrec</code> read/write, and recording any live session to <code>.cast</code>/<code>.ttyrec</code></li>
+<li><strong>11:47</strong> — Host &amp; record real ANSI programs; bundle <code>nyancat</code>/<code>cbonsai</code> recordings</li>
+<li><strong>12:01</strong> — Play and export ANSI/BBS art <code>.ans</code> (CP437 + SAUCE) and animated <code>.3a</code></li>
+<li><strong>12:27</strong> — <strong>Render to video</strong> — any recording to mp4/webm/gif via ffmpeg</li>
+<li><strong>12:41</strong> — render of a live command (record + render in one step).</li>
+<li><strong>13:14</strong> — Split <code>demos/</code> (runnable showpieces) from <code>examples/</code> (API coding examples).</li>
+<li><strong>13:50</strong> — Gallery goes visual: an embedded movie, a looping GIF, a digital-rain mp4.</li>
+<li><strong>14:06</strong> — <code>tapterm</code> is a <strong>regular terminal</strong> by default</li>
+<li><strong>14:12</strong> — <code>tapterm</code> takes xterm like arguments where useful</li>
+<li><strong>14:26</strong> — Observe-and-control demos: an autopilot driving live <code>vim</code> (open loop)</li>
+<li><strong>14:35</strong> — reactive bot demo that reads the stream and decides what to type (closed loop).</li>
+<li><strong>14:55</strong> — A web-renderer demo with a real-browser (Playwright) screenshot.</li>
+<li><strong>15:42</strong> — Named the GUI extras by graphics layer — <code>sdl</code> (pygame-ce) and <code>gl</code> (arcade).</li>
+<li><strong>16:40</strong> — Docs-site polish</li>
+<li><strong>17:28</strong> — Runtime hardening</li>
+<li><strong>17:33</strong> — Fixed race conditions</li>
+<li><strong>17:40</strong> — pypy packaging prep</li>
+<li><strong>18:11</strong> — Bus/control hardening</li>
+<li><strong>18:16</strong> — Improve replay/render robustness</li>
+<li><strong>18:19</strong> — The CUI honors <code>--exit-when-done</code> / <code>-hold</code></li>
+<li><strong>18:28</strong> — Applied <code>ruff format</code></li>
+<li><strong>18:29</strong> — Across the tree; CI installs the <code>web</code> extra so the WebSocket/CSWSH tests run.</li>
+</ul>
+
+        </div>
+      </article>
+    </main>
+
+    <footer class="site-footer">
+      <p>© 2026 Nicholas J. Kisseberth · <a href="../index.html">tappty</a> is <a href="../license/index.html">MIT-licensed</a>.</p>
+      <p class="site-footer__attr">Software Architecture, Design &amp; Engineering by Nicholas J. Kisseberth.<br>Code Synthesized via Anthropic Claude Code / Opus 4.8.<br>Automated Code Review via OpenAI Codex / ChatGPT 5.5.</p>
+    </footer>
+  </div>
+
+  <script>
+  // Section viewer: split the page into one panel per H2 and show one at a time, driven by the
+  // left-rail "On this page" links (and any in-prose # link). Degrades to the full page when
+  // JavaScript is off -- the panels are only hidden once .js-sections is set here.
+  (function () {
+    var prose = document.querySelector('.prose');
+    if (!prose) return;
+    var navLinks = Array.prototype.slice.call(document.querySelectorAll('.section-nav a[href^="#"]'));
+
+    var kids = Array.prototype.slice.call(prose.childNodes);
+    var groups = [], preface = [], cur = null;
+    kids.forEach(function (n) {
+      if (n.nodeType === 1 && n.tagName === 'H2') { cur = { id: n.id, nodes: [n] }; groups.push(cur); }
+      else if (cur) { cur.nodes.push(n); }
+      else { preface.push(n); }
+    });
+    if (!groups.length) return;                 // no H2s -> leave the page as one scroll
+    groups[0].nodes = preface.concat(groups[0].nodes);
+
+    prose.innerHTML = '';
+    prose.classList.add('js-sections');
+    var anchorToSection = {};
+    var sections = groups.map(function (g) {
+      var s = document.createElement('section');
+      s.className = 'doc-section';
+      g.nodes.forEach(function (n) { s.appendChild(n); });
+      prose.appendChild(s);
+      Array.prototype.forEach.call(s.querySelectorAll('[id]'), function (el) { anchorToSection[el.id] = s; });
+      if (g.id) anchorToSection[g.id] = s;
+      return s;
+    });
+
+    function activate(anchor, scroll) {
+      var target = anchorToSection[anchor] || sections[0];
+      sections.forEach(function (s) { s.classList.toggle('is-active', s === target); });
+      navLinks.forEach(function (a) {
+        var id = decodeURIComponent(a.getAttribute('href').slice(1));
+        a.classList.toggle('is-active', anchorToSection[id] === target);
+      });
+      if (scroll) {
+        var el = (anchor && document.getElementById(anchor)) || target;
+        if (el && el.scrollIntoView) el.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      }
+    }
+    function fromHash(scroll) { activate(decodeURIComponent((location.hash || '').slice(1)), scroll); }
+
+    document.addEventListener('click', function (e) {
+      var a = e.target && e.target.closest ? e.target.closest('a[href^="#"]') : null;
+      if (!a) return;
+      var id = decodeURIComponent(a.getAttribute('href').slice(1));
+      if (anchorToSection[id]) activate(id, true);
+    });
+    window.addEventListener('hashchange', function () { fromHash(true); });
+    fromHash(false);
+  })();
+  </script>
+</body>
+</html>

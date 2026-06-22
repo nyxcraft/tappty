@@ -1,0 +1,27 @@
+#!/bin/sh
+# Keep the committed docs site (gh-pages/public/) in lockstep with its sources.
+#
+# Whenever you commit, rebuild the static site and stage the result, so the committed build
+# never drifts from the markdown / templates / site.json it is generated from. The build is
+# deterministic (the only date-dependent output is the copyright year), so on commits that
+# don't touch the docs this regenerates byte-identical files and stages nothing.
+#
+# One-time setup per clone (not auto-applied by git):
+#     git config core.hooksPath .githooks
+#
+# CI re-runs the build and fails if gh-pages/public/ is out of date, so a missing hook is caught.
+
+set -e
+
+# Find the repo root so this works regardless of the current working directory.
+root=$(git rev-parse --show-toplevel)
+cd "$root"
+
+# Skip if there's no Python available -- don't block a commit on a missing toolchain.
+if ! command -v python3 >/dev/null 2>&1; then
+    echo "pre-commit: python3 not found; skipping docs-site rebuild" >&2
+    exit 0
+fi
+
+python3 gh-pages/build_site.py >/dev/null
+git add gh-pages/public

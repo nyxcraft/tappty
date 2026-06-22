@@ -48,6 +48,26 @@ jobs:
       - run: pip install build twine
       - run: bash packaging/build-dists.sh
 
+  # The built docs site (gh-pages/public/) is committed and kept current by the
+  # .githooks/pre-commit hook. Rebuild it here and fail if the committed copy is stale, so a
+  # commit made without the hook installed is caught.
+  docs-site:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install markdown-it-py
+      - run: python3 gh-pages/build_site.py
+      - name: Verify committed gh-pages/public is up to date
+        run: |
+          if ! git diff --quiet -- gh-pages/public; then
+            echo "::error::gh-pages/public/ is stale. Run 'python3 gh-pages/build_site.py' and commit, or enable the hook with 'git config core.hooksPath .githooks'."
+            git --no-pager diff --stat -- gh-pages/public
+            exit 1
+          fi
+
 # NOTE: no Windows job yet. The pty-based tests (test_pty_source, the PtySource half of
 # test_source_encoding) now skip on os.name == "nt", but other tests still assume a POSIX
 # shell, and ConPtySource has never been exercised on real Windows. Add a `windows-latest`

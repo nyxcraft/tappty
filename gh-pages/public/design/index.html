@@ -1,0 +1,932 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Architecture &amp; design | tappty</title>
+  <meta name="description" content="How it works inside and why: the Source → Terminal → Session → renderer/bus pipeline, concurrency, the trust model, and the known limits.">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body class="site-doc">
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  <div class="page-shell">
+    <header class="site-header site-header--compact">
+      <a class="brand" href="../index.html">
+        <img class="brand__icon" src="../assets/logo-tappty.svg" alt="" aria-hidden="true">
+        <span class="brand__name">tappty</span><span class="brand__badge">beta</span>
+      </a>
+      <nav class="top-nav" aria-label="Primary">
+        <a href="../docs/index.html">Docs</a>
+        <a href="../gallery/index.html">Gallery</a>
+        <a href="https://github.com/nyxcraft/tappty">GitHub</a>
+      </nav>
+    </header>
+
+    <nav class="breadcrumbs" aria-label="Breadcrumb">
+      <a href="../index.html">Home</a>
+      <span class="breadcrumbs__sep" aria-hidden="true">›</span>
+      <span aria-current="page">Architecture &amp; design</span>
+    </nav>
+
+    <main id="main-content" class="docs-layout" tabindex="-1">
+      <aside class="docs-sidebar">
+        <p class="docs-sidebar__eyebrow">On this page</p>
+        <nav class="section-nav" aria-label="On this page">
+<ul class="section-nav__list">
+<li><a class="section-nav__link section-nav__link--l2" href="#1-the-one-idea">1. The one idea</a></li>
+<li><a class="section-nav__link section-nav__link--l2" href="#2-the-parts">2. The parts</a></li>
+<li><a class="section-nav__link section-nav__link--l3" href="#2-1-source-source-py">2.1 Source — `source.py`</a></li>
+<li><a class="section-nav__link section-nav__link--l3" href="#2-2-terminal-backends-terminal-py-pyte-terminal-py">2.2 Terminal backends — `terminal.py`, `pyte_terminal.py`</a></li>
+<li><a class="section-nav__link section-nav__link--l3" href="#2-3-session-session-py">2.3 Session — `session.py`</a></li>
+<li><a class="section-nav__link section-nav__link--l3" href="#2-4-the-bus-bus-py">2.4 The bus — `bus.py`</a></li>
+<li><a class="section-nav__link section-nav__link--l3" href="#2-5-renderers-curses-ui-py-cui-pygame-ui-py-arcade-ui-py-gui">2.5 Renderers — `curses_ui.py` (CUI), `pygame_ui.py` / `arcade_ui.py` (GUI)</a></li>
+<li><a class="section-nav__link section-nav__link--l3" href="#2-6-the-compositor-compositor-py">2.6 The compositor — `compositor.py`</a></li>
+<li><a class="section-nav__link section-nav__link--l2" href="#3-concurrency-threading-model">3. Concurrency &amp; threading model</a></li>
+<li><a class="section-nav__link section-nav__link--l2" href="#4-the-tapterm-program-cli-py">4. The `tapterm` program — `cli.py`</a></li>
+<li><a class="section-nav__link section-nav__link--l2" href="#5-module-map">5. Module map</a></li>
+<li><a class="section-nav__link section-nav__link--l2" href="#6-what-is-not-here-the-boundary">6. What is *not* here (the boundary)</a></li>
+<li><a class="section-nav__link section-nav__link--l2" href="#7-testing">7. Testing</a></li>
+<li><a class="section-nav__link section-nav__link--l2" href="#8-security-trust-model">8. Security / trust model</a></li>
+<li><a class="section-nav__link section-nav__link--l2" href="#9-known-limitations-deliberate-not-bugs">9. Known limitations (deliberate, not bugs)</a></li>
+<li><a class="section-nav__link section-nav__link--l2" href="#10-provenance-how-this-design-was-found">10. Provenance — how this design was found</a></li>
+<li><a class="section-nav__link section-nav__link--l2" href="#11-open-work">11. Open work</a></li>
+</ul>
+        </nav>
+      </aside>
+
+      <article class="docs-article">
+        <header class="docs-article__header">
+          <p class="eyebrow">Documentation</p>
+          <h1>Architecture &amp; design</h1>
+          <p class="docs-article__summary">How it works inside and why: the Source → Terminal → Session → renderer/bus pipeline, concurrency, the trust model, and the known limits.</p>
+          <p class="docs-article__source">tappty — design document</p>
+        </header>
+        <div class="prose">
+<p>How <code>tappty</code> is structured and why. This is the architecture companion to the
+<a href="../docs/index.html">README</a> (the usage guide); it is for someone modifying the toolkit and
+wanting the full picture — contracts, data shapes, the threading model, and the reasoning
+behind each part. The dated history is in <a href="../changelog/index.html">CHANGELOG.md</a>; the remaining open
+work (publish to PyPI; verify Windows) is noted in §11.</p>
+<hr />
+<h2 id="1-the-one-idea">1. The one idea</h2>
+<p>A terminal program's output should flow through a single pipeline where <strong>every consumer is
+equal</strong>: the screen renderer, an out-of-process logger, and an automated driver are all just
+clients of the same observe/control contract. Get that right and a human and a bot can
+watch — and take turns driving — the <em>exact same</em> session, with no special-casing.</p>
+<p>So tappty is split into four decoupled stages, each ignorant of the others' nature:</p>
+<pre><code>   a program                                          consumers (all equal)
+  ┌─────────┐   bytes    ┌──────────┐  grid    ┌─────────┐  observe   ┌──────────────┐
+  │ Source  │──────────▶ │ Terminal │ ───────▶ │ Session │ ─────────▶ │ curses_ui    │
+  │ (pty /  │            │  (glass) │          │ (taps + │            │ pygame_ui    │
+  │  engine)│ ◀──────────│          │ ◀─────── │ control)│ ◀───────── │ bus clients  │
+  └─────────┘   input    └──────────┘  write   └─────────┘  control   │ compositor   │
+                                                                       └──────────────┘
+</code></pre>
+<ul>
+<li><strong>Source</strong> produces output and accepts input — it does not know what a screen is.</li>
+<li><strong>Terminal</strong> models the glass — it does not know where bytes come from or who draws it.</li>
+<li><strong>Session</strong> fans output to observers and routes input back — it does not know if a
+consumer is a window, a socket, or an AI.</li>
+<li><strong>Renderers / bus clients</strong> consume the contract — they do not know each other exist.</li>
+</ul>
+<p>Two consequences run through everything below:</p>
+<ul>
+<li><strong>Fixed-size model.</strong> The Terminal is a fixed grid (default 80×24). The hosted program
+stays sealed in its own dimensions; making the real window bigger/smaller is a <em>render-side</em>
+concern (a viewport), never a resize the program sees.</li>
+<li><strong>Bytes on the wire, characters on the glass.</strong> A byte source's <em>raw bytes</em> travel
+losslessly to stream observers, while the <em>screen</em> shows those bytes decoded to characters.
+The Session owns that one decode (see §2.3); the terminal backends stay encoding-agnostic.</li>
+</ul>
+<hr />
+<h2 id="2-the-parts">2. The parts</h2>
+<h3 id="2-1-source-source-py">2.1 Source — <code>source.py</code></h3>
+<p>A <code>Source</code> is &quot;something that produces terminal output and consumes input.&quot; The interface is
+tiny — three callbacks supplied at <code>start()</code>, plus <code>send_input()</code> and <code>stop()</code>:</p>
+<pre><code class="language-python">class Source:
+    encoding = None      # wire encoding of raw output, or None if it already emits text
+    returncode = None    # child exit status after on_exit (None if N/A)
+    error = None         # exception that ended the program (None if clean)
+
+    def start(self, on_output, on_wait, on_exit): ...   # begin producing on a thread
+    def send_input(self, text): ...                     # feed input to the program
+    def stop(self): ...                                 # ask it to end
+</code></pre>
+<ul>
+<li><code>on_output(text)</code> — the program emitted output (pre-render; see the bytes/text note below).</li>
+<li><code>on_wait()</code> — the program is blocked waiting for input (&quot;your turn&quot;). Only in-process
+runners fire this; a pty/pipe has no readline boundary, so an observer reads the grid.</li>
+<li><code>on_exit()</code> — the program ended (always fired exactly once, from a <code>finally</code>).</li>
+</ul>
+<p>The three class attributes are the contract the Session reads: <code>encoding</code> tells it whether
+to decode (a <em>byte source</em> sets it, e.g. <code>&quot;utf-8&quot;</code>; a <em>text source</em> leaves it <code>None</code>),
+<code>returncode</code> carries the child's exit status, and <code>error</code> carries an exception so a blocking
+caller can re-raise it. <strong>Eight implementations ship:</strong></p>
+<ul>
+<li><strong><code>PtySource</code> (POSIX).</strong> Hosts an external program on a real pseudo-terminal: <code>pty.openpty()</code>
+<ul>
+<li><code>subprocess.Popen(..., start_new_session=True, close_fds=True)</code>, with the child's
+stdin/stdout/stderr wired to the slave fd and a <code>TIOCSWINSZ</code> ioctl for the size. The
+open→spawn section is wrapped so a failed spawn (e.g. command not found) closes both fds and
+re-raises instead of leaking the pty. Output is forwarded as a <strong>byte-transparent latin-1
+str</strong> (lossless: a stream observer can <code>.encode(&quot;latin-1&quot;)</code> to recover exact bytes); the
+Session decodes it for the screen by <code>encoding</code> (default UTF-8). <code>send_input</code> encodes
+keystrokes with the same encoding and writes to the master fd. <code>on_wait</code> is not fired.</li>
+</ul>
+</li>
+<li><strong><code>EngineSource</code> (any OS).</strong> Wraps an in-process <code>runner(emit, readline)</code> callable on a
+thread. <code>emit</code> is <code>on_output</code>; the first time the runner calls <code>readline</code>, the source fires
+<code>on_wait()</code> and blocks on an input queue until <code>send_input</code> supplies a line — giving
+in-process programs a clean turn boundary a pty can't. It is a <em>text source</em> (<code>encoding</code>
+None). A runner exception is captured into <code>error</code>. <code>stop()</code> pushes a sentinel that makes a
+blocked <code>readline()</code> raise an internal <code>_StopRunner</code> (a <code>BaseException</code>, so a runner's
+<code>except Exception</code> can't swallow it) and unwind cleanly — so <code>Session.stop()</code> can stop a
+runner that is waiting for input. (A runner busy <em>elsewhere</em> — compute/sleep — can't be
+force-stopped; its thread is a daemon and won't block process exit.)</li>
+<li><strong><code>CastSource</code> (any OS).</strong> Replays a recorded asciinema <code>.cast</code> session — the &quot;recorded
+session&quot; producer. A <em>text source</em>. It emits the recorded output events with their original
+timing (<code>speed</code> multiplier; <code>idle_time_limit</code> caps long pauses; <code>loop</code> repeats), so a
+recording streams through the exact same pipeline a live program would — which also makes a
+render <em>reproducible</em>. <code>stop()</code> is prompt even mid-pause: the inter-event wait is on a
+<code>threading.Event</code> that <code>stop()</code> sets. It sizes itself from the recording header
+(<code>.width</code>/<code>.height</code>) so the caller can size the Terminal first. Input is ignored. Formats:
+<strong>v2</strong> (newline-delimited JSON — a header <code>{&quot;version&quot;:2,&quot;width&quot;:..,&quot;height&quot;:..}</code> then
+<code>[time, code, data]</code> events, replaying only <code>&quot;o&quot;</code> output events) and compact <strong>v1</strong>
+(<code>{&quot;version&quot;:1,&quot;width&quot;,&quot;height&quot;,&quot;stdout&quot;:[[delay,data],...]}</code>). Untrusted-input bounds:
+dimensions clamped to <code>MAX_CAST_DIM</code> (1000), v2 line reads capped at <code>MAX_CAST_LINE</code> (1 MiB),
+and the unstreamable v1 whole-file <code>json.load</code> refused above <code>MAX_CAST_FILE</code> (16 MiB).</li>
+<li><strong><code>TtyrecSource</code> / <code>AnsSource</code> / <code>ThreeASource</code> (any OS).</strong> Three more replay/art producers
+sharing a <code>_ReplaySource</code> base (the timed play loop): <code>.ttyrec</code> (NetHack-format binary records
+— a byte source), <code>.ans</code> ANSI/BBS art (CP437 + an optional SAUCE trailer), and <code>.3a</code> animated
+ASCII art. <code>replay_source(path)</code> dispatches by extension. Untrusted-input bounds: <code>.ttyrec</code>
+caps each record at <code>MAX_TTYREC_CHUNK</code>; <code>.ans</code>/<code>.3a</code> are loaded whole, so each is refused above
+<code>MAX_ART_FILE</code> (16 MiB); dimensions are clamped where the format carries them (SAUCE). A parse
+error in any replay source surfaces via <code>Source.error</code> (re-raised by <code>run_blocking</code>), not a
+silent exit. (<code>render_video</code> additionally caps the materialized events by both count <strong>and</strong>
+cumulative bytes, plus the rendered duration, so a hostile recording can't OOM or balloon the
+frame count.)</li>
+<li><strong><code>PipeSource</code> (any OS).</strong> Hosts an external program over plain pipes (<code>subprocess</code> with
+<code>stdin/stdout</code>, <code>stderr</code>→stdout, <code>bufsize=0</code>) — no pty. The &quot;non-pty Source&quot; (<code>--no-pty</code>),
+byte-transparent like <code>PtySource</code>. Caveat: with no tty the child detects it isn't
+interactive, so many programs block-buffer output and skip prompts/raw mode; it suits
+cooperative, line-oriented programs. Cross-platform and dependency-free.</li>
+<li><strong><code>ConPtySource</code> (Windows).</strong> Hosts a program on a Windows pseudo-console (ConPTY) via
+<code>pywinpty</code> (the <code>win</code> extra). The Windows counterpart to <code>PtySource</code>. ConPTY emits ANSI/
+VT100+ and <code>pywinpty</code> returns already-decoded <code>str</code>, so it is a <em>text source</em> and pairs with
+<code>PyteTerminal</code> (not the VT52 model). <strong>Written against the documented <code>PtyProcess</code> API but
+not yet exercised on real Windows — provisional</strong> (finishing it is open work — see §11).</li>
+</ul>
+<p><strong>Shared reader loop.</strong> The three subprocess/pty sources (<code>PtySource</code>, <code>PipeSource</code>,
+<code>ConPtySource</code>) all run the same daemon-thread loop, so it lives once in <code>Source._pump</code>:
+pull chunks from a <code>read_one()</code> closure until it returns <code>&quot;&quot;</code> (EOF), forward each to
+<code>on_output</code>, then in a <code>finally</code> reap the child's exit status (into <code>returncode</code>) and fire
+<code>on_exit</code>. Each source supplies only a small <code>read_one()</code> (its read call, EOF handling, and
+whether to decode) and the <code>wait()</code> form. <code>EngineSource</code> and <code>CastSource</code> have genuinely
+different loops (turn-based queue; timed replay) and keep their own.</p>
+<p>Adding a new byte producer (a telnet stream, a SSH channel) means implementing this one tiny
+interface; nothing else changes — as <code>CastSource</code>, <code>PipeSource</code>, and <code>ConPtySource</code> (each
+added later with no other module touched) show.</p>
+<h3 id="2-2-terminal-backends-terminal-py-pyte-terminal-py">2.2 Terminal backends — <code>terminal.py</code>, <code>pyte_terminal.py</code></h3>
+<p>The Terminal models the glass. Two backends ship behind <strong>one duck-typed read interface</strong> that
+a Session and the renderers rely on:</p>
+<pre><code>cols, rows           # fixed dimensions (ints)
+cx, cy               # cursor column/row
+write(text)          # the hosted program's output goes here
+snapshot()           # whole screen as one &quot;\n&quot;-joined string
+rows_text()          # list of row strings
+view_rows(offset=0)  # `rows` lines scrolled back `offset` into history (0 = live)
+cells(offset=0)      # same window as styled `style.Cell`s (char + fg/bg/bold/reverse)
+max_scroll()         # how many scrolled-off lines are available
+clear()              # blank the grid, home the cursor
+</code></pre>
+<p><code>cells()</code> is the colored parallel to <code>view_rows()</code>: each cell carries SGR attributes, which the
+GUI renderers draw (see §2.5). The VT52 <code>Terminal</code> reports every cell with the <em>default</em> style
+(it has no color); <code>PyteTerminal</code> reports pyte's per-cell <code>fg</code>/<code>bg</code>/<code>bold</code>/<code>italic</code>/<code>underline</code>/
+<code>strike</code>/<code>blink</code>/<code>reverse</code>. The shared
+<code>style</code> module (<code>Cell</code>, the ANSI palette, <code>rgb()</code>/<code>resolve()</code>/<code>runs()</code>) maps <code>&quot;default&quot;</code> to the
+renderer's phosphor color, so uncolored text stays green and color shows only where a program
+asks — the green-phosphor identity survives the addition of color.</p>
+<p>Both are thread-safe (an <code>RLock</code>): the program thread writes while a render thread reads.
+There is no shared base class or <code>Protocol</code> — with only two implementations the implicit
+contract above (documented here) is lighter than an ABC, and the codebase is otherwise
+annotation-free.</p>
+<ul>
+<li><strong><code>Terminal</code> (VT52 spirit, zero deps).</strong> A fixed grid. Printable text advances the cursor
+with wrap + scroll. Control chars: <code>CR</code>, <code>LF</code> (scroll at the bottom), <code>BS</code>, <code>FF</code> (<code>clear</code>),
+<code>TAB</code> (8-column stops). VT52 escapes honored: <code>ESC H</code> (home), <code>ESC J</code> (erase to end of
+screen), <code>ESC K</code> (erase to end of line), <code>ESC Y row col</code> (direct cursor address, bytes
+offset by 32), and <code>ESC A/B/C/D</code> (cursor up/down/right/left, bounds-clamped). It keeps
+<strong>scrollback</strong> — lines that scrolled off the top, the hardcopy &quot;paper roll&quot; — purely as a
+viewing aid (<code>max_scroll</code>/<code>view_rows</code>); the program never sees it. Right for plain/legacy
+programs that speak VT52; wrong for anything that speaks modern ANSI.</li>
+<li><strong><code>PyteTerminal</code> (full ANSI/VT100+, the <code>ansi</code> extra).</strong> Wraps the <code>pyte</code> library behind the
+<em>same</em> read interface, so it drops in wherever a <code>Terminal</code> goes (<code>Session(PyteTerminal())</code>,
+<code>tapterm --ansi</code>) with no change to Session or renderers. It uses <code>pyte.HistoryScreen</code> +
+<code>pyte.Stream</code>, so it gets color/cursor-addressing/line-and-char edits <em>and</em> scrollback
+(read non-mutatingly from <code>history.top</code>, so the program keeps writing to the live screen
+while a renderer views older lines). It is <strong>encoding-agnostic</strong> — it renders whatever
+characters the Session hands it (Unicode included). <code>pyte</code> is imported lazily (LGPLv3, fine
+as a separately-installed optional backend). This is the &quot;b-full&quot; backend the design always
+anticipated and the prerequisite for hosting a Windows ConPTY (which emits VT100+).</li>
+</ul>
+<p>Backend selection is the caller's (<code>Session(PyteTerminal(...))</code>) or the CLI's (<code>--ansi</code>); on
+Windows the CLI auto-enables ANSI for the ConPTY path (§4). Both validate <code>cols/rows &gt;= 1</code> at
+construction, so a 0-sized grid can't be built and crash on the first write.</p>
+<h3 id="2-3-session-session-py">2.3 Session — <code>session.py</code></h3>
+<p>The hub. It holds a Terminal and a Source, wires the source's three callbacks to the Terminal
+and the taps, and exposes the observe/control contract every client speaks.</p>
+<p><strong>Observe taps</strong> (subscribe to taste; each returns the callback so it can be removed with the
+matching <code>off_*</code>):</p>
+<ul>
+<li><code>on_stream(cb(text))</code> — <strong>tap 1: raw program output</strong>, pre-render, temporal. For a byte
+source this is byte-lossless (a latin-1 transport); it is the program's exact bytes.</li>
+<li><code>on_frame(cb())</code> — <strong>tap 2: the grid changed.</strong> Call <code>snapshot()</code> to read it. The grid is
+the output <strong>decoded</strong> to characters.</li>
+<li><code>on_event(cb(name, info))</code> — <strong>tap 3: events.</strong> <code>WAIT</code> (blocked on input), <code>BELL</code>, <code>CLOSED</code>,
+<code>DRIVER {who}</code> (the stick changed hands), <code>ERROR {where, error}</code> (a program/runner failure,
+or an observer callback that raised).</li>
+</ul>
+<p><strong>Bytes vs characters (the decode).</strong> The two output taps are deliberately different views:
+a stream observer sees the program's exact bytes; the screen (the grid, <code>snapshot()</code>, a
+renderer, the bus <code>FRAME</code>) is those bytes decoded to characters. The Session owns the one
+decode — an <em>incremental</em> decoder (so a multibyte char split across reads is handled),
+created in <code>start()</code> from <code>self.source.encoding</code> (UTF-8 by default for byte sources; <code>None</code>
+for text sources, which are passed through). On <code>_exit</code> the decoder is flushed
+(<code>decode(b&quot;&quot;, final=True)</code>) so a stream ending on a partial multibyte sequence still renders
+its final <code>�</code>. <code>encoding=&quot;latin-1&quot;</code> makes the screen byte-transparent too.</p>
+<p><strong><code>snapshot()</code> shape</strong> — the tap-2 / bus-<code>FRAME</code> payload, a plain dict:</p>
+<pre><code class="language-python">{&quot;rows&quot;: [str, ...],           # plain text per row (for text consumers / loggers)
+ &quot;cells&quot;: [[run, ...], ...],   # the styled form: per-row run-length runs, color + attributes
+ &quot;cx&quot;: int, &quot;cy&quot;: int, &quot;cols&quot;: int, &quot;rows_n&quot;: int}
+</code></pre>
+<p><code>cells</code> is <code>style.encode_row</code> per row — the <em>same</em> run encoding the web renderer uses (<code>[col, text, fg_hex, bg_hex, bold, italic, underline, strike, blink]</code>), so a remote bus client (e.g. a
+compositor <code>BusBacking</code> panel) draws full color, not just text. (It is a dict rather than a
+typed object because it crosses the bus's JSON boundary, where a type wouldn't survive.)</p>
+<p><strong>Observer isolation.</strong> Output and frame observers are dispatched through <code>_fanout</code>, which
+catches a misbehaving callback, emits an <code>ERROR</code> event as a breadcrumb, and keeps going — one
+bad client can't kill the output path for everyone. Event observers are dispatched
+defensively too (and never via <code>_fanout</code>, so an <code>ERROR</code> for a failing observer can't recurse).</p>
+<p><strong>Control.</strong></p>
+<ul>
+<li><code>send_input(text, by=None)</code> — inject input. <code>by=None</code> is trusted/internal; a named
+controller's input is applied only while it holds the stick. Returns whether it was applied.</li>
+<li><code>feed_key(ch, by=&quot;local&quot;, auto_take=True)</code> / <code>feed_text</code> — interactive keystrokes: local
+echo + line assembly, sent on Enter; backspace edits the buffer. <code>auto_take</code> means typing
+implicitly grabs the stick (the local human preempts). Local echo goes through <code>_echo_local</code>,
+which writes to the grid <strong>and fans out a frame</strong> (so a remote renderer sees typed characters
+immediately) but not to the stream tap (local echo isn't program output).</li>
+<li><code>send_key(data, by=&quot;local&quot;, auto_take=True)</code> — the <strong>raw</strong> counterpart for full-screen TUIs:
+send <code>data</code> (a printable char, or a VT sequence from <code>tappty.keys</code>) straight to the program,
+with <strong>no echo and no line buffer</strong> (the program redraws itself). Same stick gating. A
+renderer in raw mode (<code>raw_keys</code>) translates each keystroke and calls this (see §2.5, §9).</li>
+<li><code>echo(text)</code> — show injected text on the screen and to observers (so a watcher sees what a
+remote controller &quot;typed&quot;); routed through the same protected fan-out.</li>
+</ul>
+<p><strong>The talking stick (control arbitration).</strong> Exactly one controller &quot;drives&quot; (holds the
+keyboard) at a time:</p>
+<ul>
+<li><code>claim_control(name, role=&quot;ai&quot;)</code> — register a controller; the first to claim becomes the
+driver. <code>has_controller(name)</code> reports registration; <code>has_control(name)</code> reports driving.</li>
+<li><code>take(name)</code> — grab the stick, courtesy-gated: a <code>human</code>/<code>interactive</code> controller can
+preempt anyone; an <code>ai</code> can take only a free stick or one held by another non-human.</li>
+<li><code>release(name)</code> / <code>drop_controller(name)</code> — give it up / deregister (auto-releases if held).</li>
+</ul>
+<p>This is what makes shared control safe — the line buffer is never raced because only the
+driver's keys register.</p>
+<p><strong>Lifecycle.</strong> <code>start()</code> builds the decoder and starts the source. <code>run_in_thread(runner)</code>
+wraps a bare runner as an <code>EngineSource</code> and starts (non-blocking). <code>run_blocking(runner)</code>
+starts and joins the source thread, then re-raises <code>source.error</code> if the program failed.
+<code>stop()</code> stops the source and briefly joins its thread — the <em>owning</em> teardown path (a
+renderer that started the program calls it on exit; a non-owning view does not).</p>
+<h3 id="2-4-the-bus-bus-py">2.4 The bus — <code>bus.py</code></h3>
+<p>The taps and control are in-process. <code>BusServer</code> exposes the <strong>same</strong> contract over a
+Unix-domain socket <em>or</em> TCP, and <code>BusClient</code> is the other end — so a session running in one
+process can be observed and driven from another (a logger, a remote renderer, an automated
+client). One server = one session, N clients.</p>
+<p><strong>Wire format.</strong> Newline-delimited text frames: <code>VERB[ payload]\n</code>. The payload is JSON for
+most verbs, or rest-of-line literal text for <code>LINE</code>/<code>CMD</code>. Frames are read with a size cap
+(<code>MAX_FRAME</code>, 256 KiB) on <strong>both</strong> ends; an oversized frame drops the connection.</p>
+<p><strong>Protocol.</strong></p>
+<table>
+<thead>
+<tr>
+<th>client → server</th>
+<th>meaning</th>
+<th>reply</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>HELLO &lt;json&gt;</code></td>
+<td>identify <code>{role, name, token?}</code></td>
+<td><code>OK {name, driver}</code> | <code>DENIED</code></td>
+</tr>
+<tr>
+<td><code>SNAP</code></td>
+<td>request the current grid</td>
+<td><code>FRAME &lt;snapshot&gt;</code></td>
+</tr>
+<tr>
+<td><code>INFO</code></td>
+<td>session info</td>
+<td><code>INFO &lt;snapshot + done, driver, waiting&gt;</code></td>
+</tr>
+<tr>
+<td><code>SUB</code></td>
+<td>subscribe to pushed <code>OUT</code>/<code>FRAME</code>/<code>EVENT</code></td>
+<td><code>OK</code></td>
+</tr>
+<tr>
+<td><code>LINE &lt;text&gt;</code></td>
+<td>inject a line (needs the stick)</td>
+<td>— | <code>DENIED</code></td>
+</tr>
+<tr>
+<td><code>CMD &lt;text&gt;</code></td>
+<td>send a line, capture output to the next prompt</td>
+<td><code>RESP &lt;json&gt;</code> | <code>DENIED</code></td>
+</tr>
+<tr>
+<td><code>KEY &lt;json-string&gt;</code></td>
+<td>inject raw keystrokes (JSON-encoded so ctrl chars survive)</td>
+<td>— | <code>DENIED</code></td>
+</tr>
+<tr>
+<td><code>TAKE</code> / <code>RELEASE</code></td>
+<td>grab / drop the talking stick</td>
+<td><code>OK</code>/<code>DENIED {driver}</code></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>server → client (pushed, if subscribed)</th>
+<th>meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>OUT &lt;json-string&gt;</code></td>
+<td>a raw output chunk (tap 1 — exact bytes)</td>
+</tr>
+<tr>
+<td><code>FRAME &lt;snapshot&gt;</code></td>
+<td>the grid changed (tap 2 — decoded screen)</td>
+</tr>
+<tr>
+<td><code>EVENT &lt;json&gt;</code></td>
+<td><code>{name: WAIT|BELL|CLOSED|DRIVER|ERROR, ...}</code> (tap 3)</td>
+</tr>
+</tbody>
+</table>
+<p>So the bytes/characters split carries over the wire: <code>OUT</code> is raw bytes, <code>FRAME</code>/<code>SNAP</code> is the
+decoded screen — as both plain-text <code>rows</code> and styled <code>cells</code> (color + attributes), so a remote
+client renders in full color. The protocol is identical over either transport.</p>
+<p><strong>Server internals.</strong> A daemon accept thread spawns one daemon serve thread per connection.
+Per-connection state is a small <code>@dataclass _Conn(name, lock, sub, role, claimed, authed)</code>;
+verbs dispatch through a <code>{verb: handler}</code> table (<code>HELLO</code> is handled specially, before the
+auth gate; unknown verbs are ignored — forward-compatible). The send lock per connection
+serializes concurrent pushes.</p>
+<p><strong><code>CMD</code> is the synchronous primitive</strong> an automated driver needs: send a line and get back
+exactly its output up to the program's next prompt. Each in-flight <code>CMD</code> is a
+<code>@dataclass _Capture(buf, ev, size, truncated, completed, cancelled)</code>. Output is accumulated
+into <code>buf</code> (byte-bounded by <code>MAX_CAPTURE</code>, 1 MiB; <code>truncated</code> flags drops). The capture's
+event is set when a <code>WAIT</code>/<code>CLOSED</code> arrives (<code>completed=True</code>) or when <code>stop()</code> shuts the
+server down (<code>cancelled=True</code>, but only on a capture that hasn't completed). The reply's
+<code>timeout</code> is <code>not (completed and not cancelled)</code> — so a client can distinguish <em>reached the
+prompt</em> (clean) from <em>timed out mid-command</em> from <em>interrupted by shutdown</em>. <code>BusClient.cmd</code>
+raises <code>TimeoutError</code> rather than return partial output as if complete.</p>
+<p><strong>Transports &amp; addressing.</strong> <code>_resolve(addr)</code>: a <code>(host, port)</code> tuple → TCP (works anywhere,
+incl. Windows where <code>AF_UNIX</code> is absent); anything else → a Unix-socket path (and a clear
+error if the platform has no <code>AF_UNIX</code>). See §8 for the security posture (owner-only socket,
+loopback-only TCP, optional token).</p>
+<p><strong>Lifecycle.</strong> <code>start()</code> registers the three session taps, binds/listens, and starts
+accepting. <code>stop()</code> is the mirror and is restart-safe: it detaches the taps, wakes any pending
+<code>CMD</code> captures, drops all client connections (closing sockets and releasing any stick they
+held), closes and clears the listener, and unlinks the Unix socket path. A second <code>start()</code>
+while running is a no-op; <code>start()</code>/<code>stop()</code> cycles are clean.</p>
+<p><strong><code>BusClient</code>.</strong> A background reader thread puts every <code>(verb, payload)</code> on <code>inbox</code>. It is
+<strong>single-consumer</strong>: <code>wait_for(verb)</code> drains the inbox until a match, discarding intervening
+messages — for one request/reply at a time before subscribing, not concurrent callers. A
+subscriber must drain <code>inbox</code> (it is unbounded). <code>send()</code> is a low-level string-frame API that
+rejects non-<code>str</code> payloads and embedded newlines (which would inject frames).</p>
+<h3 id="2-5-renderers-curses-ui-py-cui-pygame-ui-py-arcade-ui-py-gui">2.5 Renderers — <code>curses_ui.py</code> (CUI), <code>pygame_ui.py</code> / <code>arcade_ui.py</code> (GUI)</h3>
+<p>Each is a Session client exposing <code>run(session, runner, title=…)</code>: start the hosted program,
+then loop — read the grid, draw it, forward keystrokes. All are <em>owning</em> renderers: they call
+<code>session.stop()</code> on exit (in a <code>finally</code>), so closing the window stops the hosted program. Each
+honors <code>session.raw_keys</code>: in line mode it feeds keys via <code>feed_key</code>; in raw mode it translates
+its native key events (arrows/function/Ctrl) through <code>tappty.keys</code> and <code>send_key</code>s them raw.</p>
+<ul>
+<li>
+<p><strong><code>curses_ui</code></strong> draws a <strong>viewport</strong> into the fixed model: the whole 80×24 when the real
+terminal is big enough, a cursor-following sub-rectangle when it's smaller, plus a status
+line. The geometry is a pure, unit-tested function — <code>viewport(model_w, model_h, screen_w, screen_h, cx, cy, status=1) → (ox, oy, vw, vh)</code> — so resize never touches the model. It reads
+<code>cells()</code> too, so it draws <strong>SGR color</strong> via curses color pairs (pure-mapped to indices,
+allocated lazily, capped at <code>COLOR_PAIRS</code>) where the terminal supports it, degrading to the
+phosphor/default foreground otherwise. Input maps Enter/Backspace/printable ASCII to the
+Session; arrows/function keys are ignored; <code>Ctrl-]</code> force-quits.</p>
+</li>
+<li>
+<p><strong><code>pygame_ui</code></strong> draws the grid in a monospace font with a blinking block cursor, reading
+<code>cells()</code> so each glyph takes its full SGR style — color (fg/bg, reverse), <strong>bold</strong>/<em>italic</em>/
+underline/strikethrough via the font flags, and a blink phase — with <code>&quot;default&quot;</code> resolving to
+phosphor green, so uncolored output looks exactly as before. Glyphs are rendered lazily and
+cached by <code>(char, fg, bold, italic, underline, strike)</code>; a non-default background is filled
+per cell.
+Scrollback is mouse-wheel / PageUp-PageDown; typing snaps back to live. Optional per-second
+text + PNG snapshots (and <code>F12</code> on demand) let an automated observer watch the same session;
+<code>max_seconds</code> is a hard loop cap for scripting/tests, <code>exit_when_done</code> closes when the
+program ends. <code>fps</code> is validated <code>&gt;= 1</code>.</p>
+</li>
+<li>
+<p><strong><code>arcade_ui</code></strong> is the same renderer on the arcade (pyglet/OpenGL) stack — the <em>same</em>
+<code>run(...)</code> signature, color, and green-phosphor look as <code>pygame_ui</code>, sharing nothing but the
+Session contract (the proof that a renderer is just an adapter). Each row is drawn as
+<code>style.runs()</code> — maximal runs of same-colored cells, one pooled <code>arcade.Text</code> each (a
+monospace font keeps the columns aligned); the cursor and the scrollback bar are primitives.
+Same color / scrollback / snapshots / <code>F12</code> / <code>exit_when_done</code> / <code>max_seconds</code> / <code>fps</code> as
+pygame. <code>arcade</code> is imported lazily — the <code>arcade.Window</code> subclass is built on first <code>run()</code>
+via a cached factory, since a class can't subclass <code>arcade.Window</code> until arcade is imported —
+and pyglet's audio driver is forced to <code>silent</code> before that import (an absent sound server
+otherwise stalls it ~55 s). It needs a real GL context (a display), where the pure-software
+pygame path does not.</p>
+</li>
+<li>
+<p><strong><code>web_ui</code></strong> renders the session in a <strong>browser tab</strong> — the same <code>run(...)</code> contract, over
+HTTP + a WebSocket (the <code>web</code> extra). A stdlib <code>http.server</code> serves one inlined HTML/JS page;
+<code>websockets</code> (its <em>synchronous</em> server — no asyncio) carries the live connection. Per client,
+one handler thread runs a poll loop: <code>recv</code> keystrokes (short timeout) and push the latest
+frame when the grid is dirty, so only that thread sends and the source thread just flips a
+flag. Frames are <code>style.runs()</code> per row (RLE, hex colors) and the browser is a <strong>thin canvas
+painter</strong> — <em>not</em> an emulator, exactly like the other renderers (tappty's model already
+emulated). Keystrokes arrive as <em>logical</em> keys (a char, or <code>&quot;up&quot;</code>/<code>&quot;enter&quot;</code>/<code>&quot;ctrl-c&quot;</code>); the
+server translates them via <code>tappty.keys</code> and routes to <code>send_key</code>/<code>feed_key</code>, so byte-mapping
+stays in one place. Each client <code>claim_control</code>s its own name (the talking stick arbitrates
+several browsers). Loopback-bound with an optional <code>token</code> (§8); it's a control plane, no TLS.</p>
+</li>
+</ul>
+<p>An embedded-widget or arcade-cabinet renderer would be the same shape; nothing else needs to know.</p>
+<h3 id="2-6-the-compositor-compositor-py">2.6 The compositor — <code>compositor.py</code></h3>
+<p>Tiles several panels in one pygame window. A <code>TerminalPanel</code> draws over a <strong>pluggable
+backing</strong>, and both backings present the same tiny interface — <code>grid()</code> (returns the snapshot
+dict), <code>feed_key</code>, <code>has_stick</code>, <code>toggle_stick</code>, <code>focus</code>, <code>close</code> — so a panel doesn't care
+where its bytes come from; local and remote sessions tile together:</p>
+<ul>
+<li><strong><code>SessionBacking</code></strong> — an in-process Session. A <em>non-owning view</em>: <code>close()</code> is a no-op (the
+session may outlive the panel or be driven elsewhere). The local operator types only while it
+explicitly holds the stick (<code>toggle_stick</code>, bound to <strong>F2</strong>); <code>focus()</code> never grabs control.</li>
+<li><strong><code>BusBacking</code></strong> — a <em>remote</em> session over the bus socket. Subscribes for <code>FRAME</code> snapshots
+and forwards keystrokes as <code>KEY</code>; tracks the remote driver and adopts the server-assigned
+(possibly uniquified) name from the <code>HELLO</code> <code>OK</code>; takes an optional <code>token</code>. It paces queued
+frames a few per tick instead of jumping to the newest, so a remote program's output scrolls
+in like a live terminal.</li>
+</ul>
+<p>Rendering: <code>draw_terminal</code> paints each tile from the grid's styled <code>cells</code> runs in <strong>full SGR
+color</strong> (the same per-cell color + bold/italic/underline/strike + blink the standalone GUI
+renderers draw), so a remote <code>BusBacking</code> panel looks like the local session, color and all. A
+shared <code>DrawCtx</code> caches a per-size glyph atlas (keyed by char + color + attributes) and the fit
+font size, keyed on <em>(tile size, grid size)</em> so a non-80×24 cast/terminal fits correctly. Each tile supports mouse
+<strong>pan + zoom</strong> (wheel zooms the font, left-drag pans, right-click resets to fit); the default
+is the largest font at which the whole grid fits the tile. Keys route to the focused tile (the
+talking stick, per tile); <code>Tab</code> cycles focus, <code>Esc</code> quits, <code>fps</code> is validated <code>&gt;= 1</code>.</p>
+<hr />
+<h2 id="3-concurrency-threading-model">3. Concurrency &amp; threading model</h2>
+<p>tappty is multithreaded but the rules are small and deliberate:</p>
+<ul>
+<li><strong>One source thread runs the program.</strong> <code>_pump</code>'s reader (pty/pipe/ConPTY), <code>EngineSource</code>'s
+runner, or <code>CastSource</code>'s replay each run on a single daemon thread and call
+<code>Session._output</code> / <code>_wait</code> / <code>_exit</code>. Because <code>_output</code> is called only from that one
+thread, the incremental decoder is accessed single-threaded — no lock needed there.</li>
+<li><strong>Terminal writes are serialized.</strong> <code>_output</code>, <code>_echo_local</code>, and <code>echo</code> take <code>Session._lock</code>
+around <code>term.write</code>, and the Terminal additionally locks itself (an <code>RLock</code>). Reads
+(<code>rows_text</code>/<code>snapshot</code>/<code>view_rows</code>) take the Terminal lock. So the grid is always read and
+written consistently across the source thread, a renderer's main thread, and bus serve
+threads.</li>
+<li><strong>The bus has its own lock.</strong> <code>BusServer._lock</code> guards <code>_conns</code> and <code>_captures</code>; each
+connection has a per-send lock. Serve threads call session methods (<code>snapshot</code>, <code>send_input</code>,
+<code>take</code>/<code>release</code>, <code>feed_key</code>, <code>echo</code>).</li>
+<li><strong>The talking-stick state is locked.</strong> <code>_controllers</code>/<code>driver</code> mutations
+(<code>claim_control</code>/<code>take</code>/<code>release</code>/<code>drop_controller</code>) and the input gate
+(<code>send_input</code>/<code>feed_key</code>/<code>send_key</code> check who holds the stick <strong>and</strong> write under the same
+<code>Session._lock</code>) are serialized, so a hand-off is atomic: a key is never delivered with a
+different controller recorded as driver, and the bus's check-and-claim of a controller name is
+one locked step. Still a low-contention path (one driver at a time, few controllers), not a
+high-throughput concurrent structure.</li>
+<li><strong>All worker threads are daemons.</strong> A renderer/<code>run_blocking</code> joins with a short timeout, but
+a stuck source thread never blocks process exit.</li>
+</ul>
+<hr />
+<h2 id="4-the-tapterm-program-cli-py">4. The <code>tapterm</code> program — <code>cli.py</code></h2>
+<p>A thin front-end: build a Source, host it in a <code>Session</code> with a Terminal backend, hand the
+Session to a renderer. The pieces it wires:</p>
+<ul>
+<li><strong>Mode</strong> (mutually exclusive): <code>--cui</code> (curses), <code>--gui</code> (pygame), <code>--arcade</code> (arcade/OpenGL),
+<code>--web</code> (browser over a websocket), <code>--headless</code> (run to completion, print the final screen —
+for scripting/CI). With no flag it picks GUI only when pygame is importable <strong>and a display is
+available</strong> (<code>_display_available</code>: native on Windows/macOS; <code>DISPLAY</code>/<code>WAYLAND_DISPLAY</code>/
+<code>SDL_VIDEODRIVER</code> on other POSIX), else CUI — so plain <code>tapterm</code> over SSH/cron falls back to
+CUI instead of failing in pygame.</li>
+<li><strong>Terminal backend</strong> (<code>_make_terminal</code>): the VT52 <code>Terminal</code>, or <code>PyteTerminal</code> for <code>--ansi</code>
+(errors clearly if <code>pyte</code> is missing). ANSI is auto-enabled on the Windows ConPTY path and for
+an interactive session (the regular-terminal default), since both want VT100+.</li>
+<li><strong>Source</strong> (<code>_make_source</code>): <code>PipeSource</code> for <code>--no-pty</code>, <code>ConPtySource</code> on <code>os.name == &quot;nt&quot;</code>,
+else <code>PtySource</code>; or, for <code>--play</code>, one of the replay sources via <code>replay_source(path)</code>
+(<code>.cast</code>/<code>.ttyrec</code>/<code>.ans</code>/<code>.3a</code>, with <code>--speed</code>/<code>--loop</code>).</li>
+<li><strong>Other flags:</strong> <code>--cols</code>/<code>--rows</code> (or <code>-geometry</code>), <code>--cooked</code> (line-oriented instrument
+mode) and the xterm-style <code>-e</code>/<code>-T</code>/<code>-cd</code>/<code>-hold</code>, <code>--raw</code>, <code>--record</code>/<code>--render</code>,
+<code>--snapshot</code>, <code>--exit-when-done</code>, <code>--title</code>. With no command it hosts <code>$SHELL</code> as a real
+terminal.</li>
+<li><strong>Exit code:</strong> <code>--headless</code> returns the child's exit status (<code>source.returncode or 0</code>), so it
+is honest in CI rather than always 0.</li>
+</ul>
+<hr />
+<h2 id="5-module-map">5. Module map</h2>
+<table>
+<thead>
+<tr>
+<th>Module</th>
+<th>Role</th>
+<th>Deps</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>terminal.py</code></td>
+<td>the fixed-size VT52 character grid model</td>
+<td>none</td>
+</tr>
+<tr>
+<td><code>pyte_terminal.py</code></td>
+<td><code>PyteTerminal</code> — full-ANSI/VT100+ backend, drop-in for <code>Terminal</code></td>
+<td><code>pyte</code> (deferred; <code>ansi</code> extra)</td>
+</tr>
+<tr>
+<td><code>style.py</code></td>
+<td><code>Cell</code> + the ANSI palette / <code>rgb</code>/<code>resolve</code>/<code>runs</code> shared by <code>cells()</code> and the GUI renderers</td>
+<td>none</td>
+</tr>
+<tr>
+<td><code>keys.py</code></td>
+<td>VT/xterm key sequences (<code>KEYS</code>, <code>ctrl</code>) for raw-mode TUI input, shared by the renderers</td>
+<td>none</td>
+</tr>
+<tr>
+<td><code>source.py</code></td>
+<td><code>Source</code> base (+ <code>_pump</code>) and the 8 sources (pty / engine / cast / ttyrec / ans / 3a / pipe / ConPTY)</td>
+<td>stdlib <code>pty</code>/<code>subprocess</code>/<code>json</code>; <code>pywinpty</code> (deferred; <code>win</code> extra)</td>
+</tr>
+<tr>
+<td><code>recorder.py</code></td>
+<td><code>Recorder</code> (record a session to <code>.cast</code>/<code>.ttyrec</code>) + <code>export_ansi</code>/<code>export_3a</code> screen exports</td>
+<td>none</td>
+</tr>
+<tr>
+<td><code>video.py</code></td>
+<td><code>render_video</code> — a recording → <code>.mp4</code>/<code>.webm</code>/<code>.gif</code></td>
+<td>pygame + pyte (deferred); ffmpeg (<code>video</code> extra)</td>
+</tr>
+<tr>
+<td><code>session.py</code></td>
+<td>Session: observe taps, control, talking stick, the bytes↔chars decode</td>
+<td>terminal, source</td>
+</tr>
+<tr>
+<td><code>bus.py</code></td>
+<td><code>BusServer</code> / <code>BusClient</code> — the contract over a unix socket or TCP</td>
+<td>stdlib <code>socket</code>/<code>hmac</code></td>
+</tr>
+<tr>
+<td><code>compositor.py</code></td>
+<td>multi-panel window + <code>SessionBacking</code>/<code>BusBacking</code></td>
+<td>pygame (deferred), curses_ui, bus</td>
+</tr>
+<tr>
+<td><code>curses_ui.py</code></td>
+<td>CUI renderer + the pure <code>viewport()</code></td>
+<td>stdlib <code>curses</code> (deferred)</td>
+</tr>
+<tr>
+<td><code>pygame_ui.py</code></td>
+<td>GUI renderer</td>
+<td>pygame (deferred)</td>
+</tr>
+<tr>
+<td><code>arcade_ui.py</code></td>
+<td>GUI renderer (arcade/pyglet/OpenGL twin of <code>pygame_ui</code>)</td>
+<td>arcade (deferred; <code>gl</code> extra)</td>
+</tr>
+<tr>
+<td><code>web_ui.py</code></td>
+<td>browser renderer over HTTP + a WebSocket</td>
+<td>stdlib <code>http.server</code>; <code>websockets</code> (deferred; <code>web</code> extra)</td>
+</tr>
+<tr>
+<td><code>cli.py</code></td>
+<td>the <code>tapterm</code> program</td>
+<td>session, terminal, source</td>
+</tr>
+<tr>
+<td><code>__init__.py</code></td>
+<td>public API</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Optional deps are deferred</strong> — <code>pygame</code>, <code>arcade</code>, <code>websockets</code>, <code>curses</code>, <code>pyte</code>, and
+<code>pywinpty</code> are imported <em>inside</em> the functions/constructors that need them, never at module top.
+So <code>import tappty</code> works with none of them installed (verified under a bare interpreter), and
+<code>tapterm --cui</code> / <code>--headless</code> need no display. The extras: <code>sdl</code> = pygame-ce, <code>gl</code> = arcade
+(<code>arcade_ui</code>), <code>web</code> = websockets (<code>web_ui</code>), <code>video</code> = imageio-ffmpeg (<code>render_video</code> without a
+system ffmpeg), <code>ansi</code> = pyte (<code>PyteTerminal</code>), <code>win</code> = pywinpty + windows-curses (<code>ConPtySource</code>
+and the curses CUI on Windows; both Windows-marked), <code>dev</code> = pytest + ruff.</p>
+<hr />
+<h2 id="6-what-is-not-here-the-boundary">6. What is <em>not</em> here (the boundary)</h2>
+<p>tappty is the generic instrument; application-specific behavior lives <em>on top</em> of its seams, not
+in the core:</p>
+<ul>
+<li><strong>A custom panel</strong> — e.g. an app-specific dashboard view — is just another compositor panel
+<code>kind</code>. <code>run()</code> dispatches panels by their <code>.kind</code>, so the compositor stays fully generic.</li>
+<li><strong>An application or bot driver</strong> is just an <code>EngineSource</code> (or a bus client) wrapping that
+program's logic.</li>
+</ul>
+<p>So a consumer can layer either on top without the core depending on it. The library ships the
+generic seams — Source, Terminal, Session, the bus, the renderers, the compositor — and the
+specific things plug into them.</p>
+<hr />
+<h2 id="7-testing">7. Testing</h2>
+<p>The suite (the GUI and ANSI tests skip cleanly without their optional deps) exercises the model
+and the contract through real paths, not mocks:</p>
+<ul>
+<li><strong>Model:</strong> <code>test_term</code> (VT52 cursor/scroll, the escapes, scrollback bounds), <code>test_pyte_terminal</code>
+(SGR/cursor-address/erase/Unicode/scrollback; skips without pyte).</li>
+<li><strong>Session:</strong> <code>test_session_bus</code>, <code>test_talking_stick</code>, <code>test_session_echo</code> (taps, control,
+the stick, local-echo frames).</li>
+<li><strong>Bus:</strong> <code>test_bus_socket</code> (round-trip over a real socket + lifecycle: tap-unsubscribe,
+client drop, restart, capture-wake), <code>test_bus_tcp</code> (TCP transport), <code>test_bus_cmd</code>
+(synchronous CMD), <code>test_bus_security</code> (token auth, loopback-only bind, newline injection,
+safe socket unlink, capture cap, malformed/non-string <code>HELLO</code>).</li>
+<li><strong>Sources:</strong> <code>test_pty_source</code> (a real subprocess on a pty; POSIX-skip on Windows),
+<code>test_pipe_source</code> (plain pipes + that <code>ConPtySource</code> is import-guarded), <code>test_source_encoding</code>
+(the bytes/characters split, the <code>latin-1</code> knob, partial-multibyte flush at EOF),
+<code>test_cast_source</code> (v1/v2 replay, timing, clamps, <code>stop()</code>).</li>
+<li><strong>Error paths:</strong> <code>test_error_handling</code> (child exit-code propagation, observer-failure
+isolation, runner-error re-raise, CMD timeout, pty spawn cleanup, fps/dimension validation,
+headless display default, stopping a blocked engine runner).</li>
+<li><strong>Pure math:</strong> <code>test_curses_viewport</code>, <code>test_compositor_view</code>.</li>
+<li><strong>Renderers:</strong> <code>test_compositor_backings</code> (the panel-backing data contract);
+<code>test_gui_smoke</code> drives the real <code>pygame_ui.run</code> and the compositor to completion under the
+SDL <code>dummy</code> driver (no display), so every blit/draw/flip executes — deterministically, via a
+<code>CastSource</code> replay. It runs wherever <code>pygame</code> is installed and <em>skips cleanly</em> where it
+isn't, so it never breaks the pygame-free path. (Caveat: that clean skip cuts both ways —
+dropping <code>pygame-ce</code> from CI would silently turn this test green-by-skipping, not red.)</li>
+</ul>
+<p>What is still by-eye only is pixel-level <em>fidelity</em> (does it look right) — the smoke test proves
+the draw path runs and the right grid data reaches it, not that the phosphor is pretty. For the
+by-eye pass: under WSLg (<code>DISPLAY</code>/<code>WAYLAND_DISPLAY</code> set, SDL auto-picks x11) both renderers
+draw correctly, <code>tapterm --cast rec.cast --gui</code> is the easiest reproducible visual check, and
+<code>--snapshot</code> writes a reviewable PNG (harmless EGL/MESA warnings on stderr are failed
+hardware-GL probing — SDL falls back to software). The Windows <code>ConPtySource</code> path is unverified
+(no Windows runner; finishing it is open work — see §11).</p>
+<hr />
+<h2 id="8-security-trust-model">8. Security / trust model</h2>
+<p>The bus is a <strong>terminal control plane</strong>: a connected client can read the screen and, holding
+the talking stick, inject input — i.e. terminal read/write as the tappty user. The <strong><code>web_ui</code></strong>
+renderer is the same kind of plane over HTTP + a WebSocket, and takes the same posture (next
+paragraph). Both are <strong>trusted-local</strong>, not a boundary against a hostile network. The defenses:</p>
+<ul>
+<li><strong>Unix socket (default-safe):</strong> the socket <em>file</em> is <code>0600</code>, so only the owner UID can
+connect — that file mode is the actual connect gate, the auth. When tappty creates the parent
+directory it also makes it <code>0700</code> (defense-in-depth); if you point the path at an existing
+shared directory its permissions are left untouched, so the <code>0600</code> socket file is what
+protects you there.</li>
+<li><strong>TCP:</strong> bound to <strong>loopback only</strong>; binding a non-loopback host raises unless
+<code>allow_remote=True</code> is passed explicitly. Loopback isn't user-isolated, so on a shared box set
+a <code>token</code>.</li>
+<li><strong><code>token</code> (optional):</strong> a non-empty string shared secret presented in <code>HELLO</code> (constant-time
+compared via <code>hmac</code>; an empty token is rejected at construction, and a non-string token can't
+match); a client without it is denied and dropped. It's a <em>casual gate sent in the clear</em> —
+<strong>not</strong> transport security; tunnel over SSH/TLS for an untrusted network.</li>
+<li><strong>Input validation:</strong> <code>HELLO</code> must be a JSON object (invalid JSON or a non-object is denied,
+not silently accepted as an anonymous observer); <code>KEY</code> must decode to a JSON string;
+<code>BusClient.send</code> rejects newline-injected frames.</li>
+<li><strong>DoS bounds:</strong> protocol frames are read with a size cap (<code>MAX_FRAME</code>) on <strong>both</strong> ends;
+<code>CMD</code> captures are byte-bounded (<code>MAX_CAPTURE</code>, with a <code>truncated</code> flag).</li>
+<li><strong>Untrusted <code>.cast</code> files:</strong> width/height are clamped, v2 line reads are byte-bounded, and the
+unstreamable v1 whole-file load is refused above <code>MAX_CAST_FILE</code> — so a malicious recording
+can't drive a huge grid allocation or load an unbounded file.</li>
+<li><strong><code>web_ui</code> (the browser renderer):</strong> binds <strong>loopback only</strong> by default; an optional non-empty
+<code>token</code> (a WebSocket query param, constant-time compared via <code>hmac</code>) gates connections. Same
+cleartext-gate caveat as the bus <code>token</code> — it's not transport security; put it behind an SSH
+tunnel / a TLS proxy for an untrusted network. No TLS of its own.</li>
+</ul>
+<p>Not in scope as bugs: the subprocess path launches <code>argv</code> with <code>shell=False</code> (no shell
+injection), and <code>--snapshot</code> writes exactly where the user asked (user-directed output, not a
+privilege boundary). Full transport auth (TLS/mTLS) is intentionally out of scope for this
+toolkit; the recommendation is a private Unix socket, or loopback+token behind an SSH tunnel.</p>
+<hr />
+<h2 id="9-known-limitations-deliberate-not-bugs">9. Known limitations (deliberate, not bugs)</h2>
+<p>Conscious scope choices, recorded so they aren't mistaken for defects:</p>
+<ul>
+<li><strong>Full SGR color + attributes, everywhere — including over the bus.</strong> The <code>cells()</code> API exposes
+per-cell SGR — fg/bg, <strong>bold</strong>, <em>italic</em>, underline, strikethrough, blink, reverse — and <strong>all
+four renderers draw them</strong>: the GUI backends (<code>pygame_ui</code>, <code>arcade_ui</code>, <code>web_ui</code>) via the font
+(bold/italic weight) plus drawn underline/strike rules, a blink phase, and bg fills; and the
+<strong>curses CUI</strong> via color pairs + <code>A_BOLD</code>/<code>A_ITALIC</code>/<code>A_UNDERLINE</code>/<code>A_BLINK</code>/<code>A_REVERSE</code> where
+the terminal supports them (256/truecolor approximates to the nearest ANSI-16; a colorless
+terminal falls back to its default foreground). Bold also brightens a <em>named</em> color (a
+deliberate extra, on top of the heavier weight). <strong>Not representable:</strong> SGR <code>faint</code> (2),
+<code>rapid-blink</code> (6), and <code>conceal</code> (8) — pyte doesn't model them; and curses has no
+strikethrough attribute, so <code>strike</code> is dropped in the CUI only. The <strong>bus</strong> carries color too:
+<code>snapshot()</code>/<code>FRAME</code> includes styled <code>cells</code>, so a remote <code>BusBacking</code> panel renders in full
+color, not just text (<code>MAX_FRAME</code> was raised to 256 KiB to fit a styled frame).</li>
+<li><strong>Wide glyphs yes, grapheme clusters no.</strong> Wide characters — CJK and single-code-point emoji
+(👍 🔥 ✅) — render at their true <strong>two columns</strong>: the full-ANSI <code>PyteTerminal</code> lays each one
+out as the glyph plus an empty <em>continuation</em> cell, so the grid stays rectangular and the GUI
+renderers (which place text by column) land neighbors correctly. The curses CUI drops that
+continuation cell (<code>style.char_width</code> + <code>_continuations</code>) so ncurses' own two-column advance
+for the wide glyph lines up instead of doubling it; it sets the locale so ncursesw is in
+multibyte mode (a non-UTF-8 locale degrades to single-width, never corruption). <strong>Out of reach:
+grapheme clusters</strong> — ZWJ emoji families (👨‍👩‍👧), flags (🇺🇸), and skin-tone modifiers (👋🏽)
+are <em>multiple</em> code points meant to fuse into one glyph; pyte splits or collapses them upstream
+(the family becomes just 👨, the flag two letter-boxes), before tappty ever sees a cell, so
+there is nothing here to widen. Supporting them would mean a grapheme-segmenting text path that
+overrides pyte's per-cell processing — deliberately not done.</li>
+<li><strong>Two input modes.</strong> The <code>Session</code> itself defaults to <strong>line-oriented</strong> (<code>raw_keys=False</code>, the
+toolkit's heritage): renderers forward Enter/Backspace/printable text with local echo + a line
+buffer, sending on Enter, and arrows/function keys are ignored — right for in-process
+line-readers (<code>EngineSource</code>). (<code>tapterm</code>, though, flips an <em>interactive</em> session to raw by
+default — the regular-terminal behavior — and exposes the line mode as <code>--cooked</code>.)
+<strong>Raw mode</strong> (<code>Session.raw_keys</code>, <code>tapterm --raw</code>) instead forwards every keystroke straight
+to the program with no echo or buffering, translating special keys to VT sequences
+(<code>tappty.keys</code>) — so a full-screen TUI (vim, htop) on a pty works, the program handling its
+own echo and redraw. The CUI additionally switches to <code>curses.raw()</code> so Ctrl-C/Z/\ reach the
+program. <em>Normal</em> cursor-key sequences only; DECCKM application-cursor mode is a future
+refinement.</li>
+<li><strong>Frame fan-out is per-chunk.</strong> A subscribed bus client gets a full screen snapshot on every
+output chunk. Fine at the default 80×24; a busy remote dashboard would want frame coalescing /
+rate-limiting (send the latest at a bounded tick, drop stale frames).</li>
+<li><strong><code>BusClient</code> is single-consumer.</strong> <code>wait_for()</code> drains the inbox until a matching verb,
+discarding others; it's for one request/reply at a time before subscribing, not concurrent
+callers or overlapping requests. A subscriber must drain <code>inbox</code> (it is unbounded).</li>
+<li><strong><code>EngineSource.stop()</code> can't interrupt a busy runner.</strong> It unblocks a runner waiting in
+<code>readline()</code>, but a runner in a compute/sleep loop can't be force-stopped (you can't safely
+interrupt arbitrary in-process Python). Its thread is a daemon, so it never blocks exit.</li>
+<li><strong>Windows is provisional.</strong> The platform-bound surface is small and isolated to the Source
+seam — proof of the §1 claim. Only <code>PtySource</code> (POSIX <code>pty</code>/<code>termios</code>/<code>fcntl</code>) and the
+Unix-socket bus transport are POSIX-specific; the core (Terminal/Session/talking-stick),
+<code>EngineSource</code>, <code>CastSource</code>, <code>PipeSource</code>, the renderers, and the TCP bus are already
+cross-platform. So Windows hosting needs only a Windows Source: <code>ConPtySource</code> (ConPTY via
+pywinpty, the <code>win</code> extra) exists and <code>cli.py</code> selects it — but it has <strong>never run on real
+Windows</strong>, so it's provisional until exercised. (The stdlib also lacks <code>curses</code> on Windows,
+so the CUI needs <code>windows-curses</code> — now bundled in the <code>win</code> extra; <code>curses_ui</code> itself is
+already portable, since all color setup is guarded with a fallback.) Finishing Windows is the
+remaining open work: exercise it on a real box (<code>pip install -e '.[ansi,win]'</code>, then
+<code>tapterm --ansi -- cmd</code> / <code>powershell</code> and <code>--cui</code>), confirming the pywinpty details coded
+from docs — does <code>.read()</code> raise <code>EOFError</code> at child exit, is <code>dimensions</code> row-major
+<code>(rows, cols)</code>, does <code>.write()</code> want <code>str</code>, what does <code>.wait()</code> return for the exit status —
+then add a <code>windows-latest</code> CI lane (the pty tests already <code>skipif(os.name==&quot;nt&quot;)</code>; a few
+POSIX-shell tests would need guarding), broaden the POSIX-only <code>Operating System</code> classifiers,
+and flip this and the README's Windows wording from <em>provisional</em> to <em>verified</em>.</li>
+</ul>
+<hr />
+<h2 id="10-provenance-how-this-design-was-found">10. Provenance — how this design was found</h2>
+<p>tappty was <strong>not designed in the abstract; it was discovered</strong> by building a real
+instrumented terminal against a hard target: many consumers — a human at the screen, an AI, a
+logger, a dashboard — all needing to watch and take turns driving the <em>same</em> live sessions.
+Driving those consumers ad hoc, by hand, was the problem; the idea was to <strong>externalize that
+once</strong> so every consumer attaches the same way. The shorthand that framed it:
+<em>&quot;expect + tmux + asciinema, for AIs&quot;</em> — a programmable, observable, shareable terminal. §1's
+&quot;every consumer is equal&quot; is the distilled result; this section records the reasoning that
+produced it, for anyone changing the contracts.</p>
+<p><strong>Build it against a real need first, generalize later</strong> — deliberately, to avoid
+pre-generalizing a tool nobody had used yet. The rule was to keep the seams clean so only the
+in-process <code>EngineSource</code> was ever application-coupled; the bus, the Terminal/grid, the pty
+source, and the talking stick were generic from the start. (What stays generic is §6.)</p>
+<p><strong>The three load-bearing decisions</strong> (each chosen for a reason, not for symmetry):</p>
+<ul>
+<li><strong>One observe/control <em>contract</em>, with pluggable transport.</strong> Build the interface once;
+let in-process renderers use a direct call and out-of-process clients use a socket — same
+semantics either way. The <strong>three taps</strong> are deliberately different <em>views</em>, not redundant:
+the <strong>raw stream</strong> is lossless and temporal (it catches transient or scrolled-away output,
+bells, exact ordering — for loggers and replay); the <strong>grid</strong> is spatial and rendered <em>once
+then shared</em>, so N clients don't each run an emulator; <strong>events</strong> carry the turn boundary
+(<code>WAIT</code> = &quot;your turn&quot;). An automated driver was already implicitly using the grid + events;
+formalizing the contract just added the raw-stream tap and a name.</li>
+<li><strong>Scope is a Source seam.</strong> Everything downstream of the source — Terminal, the taps,
+control, arbitration, renderers — is identical no matter where the bytes come from, so a new
+producer is the <em>only</em> thing a new use-case adds. The full-ANSI grid (<code>PyteTerminal</code>) was
+deliberately deferred <em>behind this same seam</em> until a non-VT52 program actually needed it,
+rather than built speculatively up front.</li>
+<li><strong>Arbitration is a talking stick</strong> — a single driver token, with <strong>you-privileged
+preemption</strong>: a human can always take the stick from an AI, and an AI can <em>never</em> preempt a
+human, so a runaway bot can't lock the operator out (&quot;watch it fly, grab the stick, hand it
+back&quot;). The stick <strong>auto-releases on disconnect/death</strong>, the same liveness rule that keeps a
+session from getting stuck uncontrollable.</li>
+</ul>
+<p><strong>Dogfooding shaped the contract.</strong> Several parts of the protocol exist because <em>using</em> it
+exposed the need, not because they were specified up front:</p>
+<ul>
+<li><strong>Injected-input echo</strong> (<code>Session.echo</code>, the bus <code>LINE</code> echo) — driving the game through the
+bus in a watched window, a spectator couldn't see the AI's commands, because injected input
+isn't echoed like a local keypress. So the driver echoes a command (when it holds the stick)
+before sending it.</li>
+<li><strong>The synchronous <code>CMD</code> primitive</strong> — every automated driver was hand-rolling the same
+&quot;send a line, drain output until the next <code>WAIT</code>&quot; loop, so it became one verb.</li>
+<li><strong>An <code>INFO</code> <code>waiting</code> flag</strong> — a late-attaching controller couldn't tell it was already its
+turn (the first <code>WAIT</code> fired before it connected).</li>
+<li><strong>The explicit stick toggle</strong> (the compositor's <code>F2</code>) — an earlier &quot;last-to-act-wins&quot; rule
+let a stray click or keystroke silently flip control, which the operator disliked; typing
+now never grabs the stick.</li>
+</ul>
+<p><strong>A scaling lesson shaped the compositor.</strong> Running the session <em>engines</em> inside the render
+process starved the GIL and slowed frames. The fix is why the compositor talks to <em>backings</em>
+rather than hosting sessions itself: real sessions run in separate processes, and the window
+is a bus client that only draws <code>FRAME</code> snapshots and forwards input (<code>BusBacking</code>) — no
+interpreting in the render loop. <code>SessionBacking</code> is the in-process special case of the same
+shape.</p>
+<p><strong>Rendering avoids &quot;curses-in-curses.&quot;</strong> The grid model does two separable jobs:
+<em>emulate-to-observe</em> (a headless screen an automated client reads — always safe) and
+<em>emulate-to-display</em> (render for a human). Keeping them separate, plus sealing the program in
+a fixed 80×24 model with a render-side viewport (§1), is what lets a renderer resize freely
+without the hosted program ever seeing it.</p>
+<hr />
+<h2 id="11-open-work">11. Open work</h2>
+<p>What's left before (and just after) the first release:</p>
+<ul>
+<li><strong>Publish to PyPI.</strong> Both distributions (<code>tappty</code> and the <code>tapterm</code> alias) build and are
+<code>twine check</code>-clean; the remaining step is the upload itself (<code>twine upload dist/*</code>).</li>
+<li><strong>Verify Windows.</strong> The ConPTY host (<code>ConPtySource</code>, the <code>win</code> extra) and the <code>windows-curses</code>
+CUI are implemented against the documented APIs but <strong>not yet exercised on a real Windows box</strong>
+(there's no Windows CI runner) — treat Windows as provisional. Pair <code>--ansi</code> with the ConPTY
+path (it emits VT100+); <code>--no-pty</code> (<code>PipeSource</code>) + the TCP bus are the cross-platform fallback.</li>
+</ul>
+
+        </div>
+      </article>
+    </main>
+
+    <footer class="site-footer">
+      <p>© 2026 Nicholas J. Kisseberth · <a href="../index.html">tappty</a> is <a href="../license/index.html">MIT-licensed</a>.</p>
+      <p class="site-footer__attr">Software Architecture, Design &amp; Engineering by Nicholas J. Kisseberth.<br>Code Synthesized via Anthropic Claude Code / Opus 4.8.<br>Automated Code Review via OpenAI Codex / ChatGPT 5.5.</p>
+    </footer>
+  </div>
+
+  <script>
+  // Section viewer: split the page into one panel per H2 and show one at a time, driven by the
+  // left-rail "On this page" links (and any in-prose # link). Degrades to the full page when
+  // JavaScript is off -- the panels are only hidden once .js-sections is set here.
+  (function () {
+    var prose = document.querySelector('.prose');
+    if (!prose) return;
+    var navLinks = Array.prototype.slice.call(document.querySelectorAll('.section-nav a[href^="#"]'));
+
+    var kids = Array.prototype.slice.call(prose.childNodes);
+    var groups = [], preface = [], cur = null;
+    kids.forEach(function (n) {
+      if (n.nodeType === 1 && n.tagName === 'H2') { cur = { id: n.id, nodes: [n] }; groups.push(cur); }
+      else if (cur) { cur.nodes.push(n); }
+      else { preface.push(n); }
+    });
+    if (!groups.length) return;                 // no H2s -> leave the page as one scroll
+    groups[0].nodes = preface.concat(groups[0].nodes);
+
+    prose.innerHTML = '';
+    prose.classList.add('js-sections');
+    var anchorToSection = {};
+    var sections = groups.map(function (g) {
+      var s = document.createElement('section');
+      s.className = 'doc-section';
+      g.nodes.forEach(function (n) { s.appendChild(n); });
+      prose.appendChild(s);
+      Array.prototype.forEach.call(s.querySelectorAll('[id]'), function (el) { anchorToSection[el.id] = s; });
+      if (g.id) anchorToSection[g.id] = s;
+      return s;
+    });
+
+    function activate(anchor, scroll) {
+      var target = anchorToSection[anchor] || sections[0];
+      sections.forEach(function (s) { s.classList.toggle('is-active', s === target); });
+      navLinks.forEach(function (a) {
+        var id = decodeURIComponent(a.getAttribute('href').slice(1));
+        a.classList.toggle('is-active', anchorToSection[id] === target);
+      });
+      if (scroll) {
+        var el = (anchor && document.getElementById(anchor)) || target;
+        if (el && el.scrollIntoView) el.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      }
+    }
+    function fromHash(scroll) { activate(decodeURIComponent((location.hash || '').slice(1)), scroll); }
+
+    document.addEventListener('click', function (e) {
+      var a = e.target && e.target.closest ? e.target.closest('a[href^="#"]') : null;
+      if (!a) return;
+      var id = decodeURIComponent(a.getAttribute('href').slice(1));
+      if (anchorToSection[id]) activate(id, true);
+    });
+    window.addEventListener('hashchange', function () { fromHash(true); });
+    fromHash(false);
+  })();
+  </script>
+</body>
+</html>

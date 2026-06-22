@@ -1,0 +1,897 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Programming reference | tappty</title>
+  <meta name="description" content="The library API: Session, the five Sources, both Terminal backends, the bus, the renderers and compositor, with the shared contracts.">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body class="site-doc">
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  <div class="page-shell">
+    <header class="site-header site-header--compact">
+      <a class="brand" href="../index.html">
+        <img class="brand__icon" src="../assets/logo-tappty.svg" alt="" aria-hidden="true">
+        <span class="brand__name">tappty</span><span class="brand__badge">beta</span>
+      </a>
+      <nav class="top-nav" aria-label="Primary">
+        <a href="../docs/index.html">Docs</a>
+        <a href="../gallery/index.html">Gallery</a>
+        <a href="https://github.com/nyxcraft/tappty">GitHub</a>
+      </nav>
+    </header>
+
+    <nav class="breadcrumbs" aria-label="Breadcrumb">
+      <a href="../index.html">Home</a>
+      <span class="breadcrumbs__sep" aria-hidden="true">›</span>
+      <span aria-current="page">Programming reference</span>
+    </nav>
+
+    <main id="main-content" class="docs-layout" tabindex="-1">
+      <aside class="docs-sidebar">
+        <p class="docs-sidebar__eyebrow">On this page</p>
+        <nav class="section-nav" aria-label="On this page">
+<ul class="section-nav__list">
+<li><a class="section-nav__link section-nav__link--l2" href="#contents">Contents</a></li>
+<li><a class="section-nav__link section-nav__link--l2" href="#quick-recipes">Quick recipes</a></li>
+<li><a class="section-nav__link section-nav__link--l2" href="#shared-contracts">Shared contracts</a></li>
+<li><a class="section-nav__link section-nav__link--l3" href="#the-snapshot-dict">The snapshot dict</a></li>
+<li><a class="section-nav__link section-nav__link--l3" href="#events-on-event-bus-event">Events (`on_event` / bus `EVENT`)</a></li>
+<li><a class="section-nav__link section-nav__link--l3" href="#controller-roles-the-talking-stick">Controller roles (the talking stick)</a></li>
+<li><a class="section-nav__link section-nav__link--l2" href="#terminal-backends">Terminal backends</a></li>
+<li><a class="section-nav__link section-nav__link--l3" href="#terminal-cols-80-rows-24-scrollback-5000">`Terminal(cols=80, rows=24, scrollback=5000)`</a></li>
+<li><a class="section-nav__link section-nav__link--l3" href="#pyteterminal-cols-80-rows-24-scrollback-5000">`PyteTerminal(cols=80, rows=24, scrollback=5000)`</a></li>
+<li><a class="section-nav__link section-nav__link--l3" href="#style-cell-color-helpers">`style` — cell color helpers</a></li>
+<li><a class="section-nav__link section-nav__link--l2" href="#sources">Sources</a></li>
+<li><a class="section-nav__link section-nav__link--l3" href="#the-source-contract">The `Source` contract</a></li>
+<li><a class="section-nav__link section-nav__link--l3" href="#ptysource-argv-cwd-none-env-none-size-24-80-encoding-utf-8-posix">`PtySource(argv, cwd=None, env=None, size=(24, 80), encoding=&quot;utf-8&quot;)`  *(POSIX)*</a></li>
+<li><a class="section-nav__link section-nav__link--l3" href="#enginesource-runner-any-os">`EngineSource(runner)`  *(any OS)*</a></li>
+<li><a class="section-nav__link section-nav__link--l3" href="#castsource-path-speed-1-0-idle-time-limit-none-loop-false-any-os">`CastSource(path, speed=1.0, idle_time_limit=None, loop=False)`  *(any OS)*</a></li>
+<li><a class="section-nav__link section-nav__link--l3" href="#ttyrecsource-path-speed-1-0-idle-time-limit-none-loop-false-encoding-utf-8-any-os">`TtyrecSource(path, speed=1.0, idle_time_limit=None, loop=False, encoding=&quot;utf-8&quot;)`  *(any OS)*</a></li>
+<li><a class="section-nav__link section-nav__link--l3" href="#anssource-path-speed-1-0-idle-time-limit-none-loop-false-baud-none-charset-cp437-any-os">`AnsSource(path, speed=1.0, idle_time_limit=None, loop=False, baud=None, charset=&quot;cp437&quot;)`  *(any OS)*</a></li>
+<li><a class="section-nav__link section-nav__link--l3" href="#threeasource-path-speed-1-0-idle-time-limit-none-loop-false-any-os">`ThreeASource(path, speed=1.0, idle_time_limit=None, loop=False)`  *(any OS)*</a></li>
+<li><a class="section-nav__link section-nav__link--l3" href="#replay-source-path-speed-1-0-idle-time-limit-none-loop-false">`replay_source(path, speed=1.0, idle_time_limit=None, loop=False)`</a></li>
+<li><a class="section-nav__link section-nav__link--l3" href="#pipesource-argv-cwd-none-env-none-encoding-utf-8-any-os">`PipeSource(argv, cwd=None, env=None, encoding=&quot;utf-8&quot;)`  *(any OS)*</a></li>
+<li><a class="section-nav__link section-nav__link--l3" href="#conptysource-argv-cwd-none-env-none-size-24-80-windows">`ConPtySource(argv, cwd=None, env=None, size=(24, 80))`  *(Windows)*</a></li>
+<li><a class="section-nav__link section-nav__link--l3" href="#writing-a-custom-source">Writing a custom Source</a></li>
+<li><a class="section-nav__link section-nav__link--l2" href="#recording">Recording</a></li>
+<li><a class="section-nav__link section-nav__link--l3" href="#recorder-session-path-fmt-none">`Recorder(session, path, fmt=None)`</a></li>
+<li><a class="section-nav__link section-nav__link--l3" href="#export-ansi-session-path">`export_ansi(session, path)`</a></li>
+<li><a class="section-nav__link section-nav__link--l3" href="#export-3a-session-path">`export_3a(session, path)`</a></li>
+<li><a class="section-nav__link section-nav__link--l3" href="#render-video-recording-out-path-fps-30-font-size-18-font-path-none-zoom-1-0-speed-1-0-tail-1-0-max-seconds-none-crop-none-terminal-none">`render_video(recording, out_path, fps=30, font_size=18, font_path=None, zoom=1.0, speed=1.0, tail=1.0, max_seconds=None, crop=None, terminal=None)`</a></li>
+<li><a class="section-nav__link section-nav__link--l2" href="#session">Session</a></li>
+<li><a class="section-nav__link section-nav__link--l3" href="#observe-taps">Observe taps</a></li>
+<li><a class="section-nav__link section-nav__link--l3" href="#control-the-talking-stick">Control &amp; the talking stick</a></li>
+<li><a class="section-nav__link section-nav__link--l3" href="#lifecycle">Lifecycle</a></li>
+<li><a class="section-nav__link section-nav__link--l2" href="#the-bus">The bus</a></li>
+<li><a class="section-nav__link section-nav__link--l3" href="#busserver-session-path-cmd-timeout-8-0-token-none-allow-remote-false">`BusServer(session, path, cmd_timeout=8.0, token=None, allow_remote=False)`</a></li>
+<li><a class="section-nav__link section-nav__link--l3" href="#busclient-path-token-none">`BusClient(path, token=None)`</a></li>
+<li><a class="section-nav__link section-nav__link--l2" href="#renderers">Renderers</a></li>
+<li><a class="section-nav__link section-nav__link--l3" href="#curses-ui-run-session-runner-title-tapterm-refresh-ms-50-posix-terminal">`curses_ui.run(session, runner, title=&quot;tapterm&quot;, refresh_ms=50)`  *(POSIX terminal)*</a></li>
+<li><a class="section-nav__link section-nav__link--l3" href="#pygame-ui-run-session-runner-title-tapterm-snapshot-path-none-font-size-18-exit-when-done-false-fps-30-max-seconds-none-gui">`pygame_ui.run(session, runner, title=&quot;tapterm&quot;, snapshot_path=None, font_size=18, exit_when_done=False, fps=30, max_seconds=None)`  *(GUI)*</a></li>
+<li><a class="section-nav__link section-nav__link--l3" href="#arcade-ui-run-session-runner-title-tapterm-snapshot-path-none-font-size-18-exit-when-done-false-fps-30-max-seconds-none-gui">`arcade_ui.run(session, runner, title=&quot;tapterm&quot;, snapshot_path=None, font_size=18, exit_when_done=False, fps=30, max_seconds=None)`  *(GUI)*</a></li>
+<li><a class="section-nav__link section-nav__link--l3" href="#web-ui-run-session-runner-title-tapterm-host-127-0-0-1-port-8023-token-none-exit-when-done-false-max-seconds-none-fps-30-allow-remote-false-browser">`web_ui.run(session, runner, title=&quot;tapterm&quot;, host=&quot;127.0.0.1&quot;, port=8023, token=None, exit_when_done=False, max_seconds=None, fps=30, allow_remote=False)`  *(browser)*</a></li>
+<li><a class="section-nav__link section-nav__link--l2" href="#compositor">Compositor</a></li>
+<li><a class="section-nav__link section-nav__link--l3" href="#compositor-run-panels-title-tappty-dashboard-size-1280-720-fps-10-snapshot-path-none-max-seconds-none">`compositor.run(panels, title=&quot;tappty dashboard&quot;, size=(1280, 720), fps=10, snapshot_path=None, max_seconds=None)`</a></li>
+<li><a class="section-nav__link section-nav__link--l3" href="#terminalpanel-backing-rect-title">`TerminalPanel(backing, rect, title=&quot;&quot;)`</a></li>
+<li><a class="section-nav__link section-nav__link--l3" href="#backings">Backings</a></li>
+<li><a class="section-nav__link section-nav__link--l2" href="#worked-examples">Worked examples</a></li>
+<li><a class="section-nav__link section-nav__link--l3" href="#drive-an-interactive-program-over-the-bus">Drive an interactive program over the bus</a></li>
+<li><a class="section-nav__link section-nav__link--l3" href="#watch-a-live-session-headlessly-subscribe-to-the-stream">Watch a live session headlessly (subscribe to the stream)</a></li>
+<li><a class="section-nav__link section-nav__link--l3" href="#replay-a-recording-to-a-png-headless-deterministic">Replay a recording to a PNG (headless, deterministic)</a></li>
+<li><a class="section-nav__link section-nav__link--l2" href="#quick-reference">Quick reference</a></li>
+</ul>
+        </nav>
+      </aside>
+
+      <article class="docs-article">
+        <header class="docs-article__header">
+          <p class="eyebrow">Documentation</p>
+          <h1>Programming reference</h1>
+          <p class="docs-article__summary">The library API: Session, the five Sources, both Terminal backends, the bus, the renderers and compositor, with the shared contracts.</p>
+          <p class="docs-article__source">tappty — programming reference</p>
+        </header>
+        <div class="prose">
+<p>The public API for using <code>tappty</code> as a library, with signatures, parameters, return values,
+and examples. This is the <em>how to call it</em> companion to <a href="../design/index.html">DESIGN.md</a> (the <em>why</em> —
+architecture, threading, the trust model) and the top-level <a href="../docs/index.html">README</a> (the
+<code>tapterm</code> command). For terms like <em>tap</em>, <em>talking stick</em>, <em>byte source</em>, and <em>snapshot dict</em>,
+DESIGN is the canonical explanation; this doc gives the calling details.</p>
+<pre><code class="language-python">from tappty import (
+    Terminal, PyteTerminal,                                   # screen models
+    Session,                                                  # the hub
+    Source, PtySource, EngineSource, CastSource,              # byte/text producers
+    PipeSource, ConPtySource, TtyrecSource, AnsSource, ThreeASource, replay_source,
+    Recorder, export_ansi, export_3a, render_video,           # record/export/encode
+    BusServer, BusClient,                                     # out-of-process observe/control
+    curses_ui, pygame_ui, arcade_ui, compositor,              # renderers
+)
+</code></pre>
+<p><code>import tappty</code> works with no optional dependencies installed; <code>PyteTerminal</code> needs the
+<code>ansi</code> extra (pyte), <code>pygame_ui</code> and the <code>compositor</code> need the <code>sdl</code> extra (pygame-ce),
+<code>arcade_ui</code> needs the <code>gl</code> extra, <code>web_ui</code> needs the <code>web</code> extra (websockets) — <code>curses_ui</code>
+uses only the stdlib <code>curses</code> — and <code>ConPtySource</code> needs the <code>win</code> extra
+(pywinpty). Those are imported lazily, so you only pay for what you call.</p>
+<hr />
+<h2 id="contents">Contents</h2>
+<ul>
+<li><a href="#quick-recipes">Quick recipes</a></li>
+<li><a href="#shared-contracts">Shared contracts</a> — the snapshot dict, events, controller roles</li>
+<li><a href="#terminal-backends">Terminal backends</a> — <code>Terminal</code>, <code>PyteTerminal</code></li>
+<li><a href="#sources">Sources</a> — <code>Source</code> and the built-in producers; writing your own</li>
+<li><a href="#session">Session</a> — taps, control, the talking stick, lifecycle</li>
+<li><a href="#the-bus">The bus</a> — <code>BusServer</code>, <code>BusClient</code></li>
+<li><a href="#renderers">Renderers</a> — <code>curses_ui</code>, <code>pygame_ui</code>, <code>arcade_ui</code>, <code>web_ui</code></li>
+<li><a href="#compositor">Compositor</a> — <code>TerminalPanel</code>, backings, <code>run</code></li>
+<li><a href="#worked-examples">Worked examples</a></li>
+<li><a href="#quick-reference">Quick reference</a></li>
+</ul>
+<hr />
+<h2 id="quick-recipes">Quick recipes</h2>
+<p><strong>Host a shell in a terminal (curses):</strong></p>
+<pre><code class="language-python">from tappty import Session, Terminal, PtySource, curses_ui
+
+sess = Session(Terminal())
+sess.source = PtySource([&quot;bash&quot;])
+sess.claim_control(&quot;local&quot;, &quot;human&quot;)      # a human is at the keyboard
+curses_ui.run(sess, None, title=&quot;bash&quot;)    # blocks until you quit (Ctrl-])
+</code></pre>
+<p><strong>Run a command to completion and read the final screen (no renderer):</strong></p>
+<pre><code class="language-python">from tappty import Session, Terminal, PtySource
+
+sess = Session(Terminal(), source=PtySource([&quot;ls&quot;, &quot;-la&quot;]))
+sess.run_blocking()                        # runs until the child exits
+print(sess.term.snapshot())                # the final 80x24 grid as text
+</code></pre>
+<p><strong>Observe and drive a session from another process (the bus):</strong></p>
+<pre><code class="language-python"># host process:
+from tappty import Session, Terminal, PtySource, BusServer
+sess = Session(Terminal(), source=PtySource([&quot;python3&quot;, &quot;-i&quot;]))
+BusServer(sess, &quot;/run/user/1000/tappty.sock&quot;).start()
+sess.start()
+
+# driver process:
+from tappty import BusClient
+c = BusClient(&quot;/run/user/1000/tappty.sock&quot;).connect()
+c.hello(role=&quot;ai&quot;, name=&quot;bot&quot;)
+print(c.snap()[&quot;rows&quot;])                    # observe the screen
+print(c.cmd(&quot;print(6 * 7)&quot;))               # drive: send a line, get its output
+</code></pre>
+<p>More in <a href="#worked-examples">Worked examples</a>.</p>
+<hr />
+<h2 id="shared-contracts">Shared contracts</h2>
+<p>A few shapes recur across the API.</p>
+<h3 id="the-snapshot-dict">The snapshot dict</h3>
+<p><code>Session.snapshot()</code> (and the bus <code>FRAME</code>/<code>SNAP</code>/<code>INFO</code> replies, and a backing's <code>grid()</code>)
+return a plain dict describing the screen:</p>
+<pre><code class="language-python">{
+    &quot;rows&quot;:   [&quot;...&quot;, ...],   # list[str], one per row, each `cols` wide (text consumers)
+    &quot;cells&quot;:  [[run, ...], ...],  # styled runs per row (color+attrs); the renderers draw these
+    &quot;cx&quot;:     int,            # cursor column (0-based)
+    &quot;cy&quot;:     int,            # cursor row (0-based)
+    &quot;cols&quot;:   int,            # grid width
+    &quot;rows_n&quot;: int,            # grid height
+}
+</code></pre>
+<p><code>INFO</code> adds <code>done</code> (bool), <code>driver</code> (str|None), and <code>waiting</code> (bool). It is a dict, not a
+typed object, because it crosses the bus's JSON boundary.</p>
+<h3 id="events-on-event-bus-event">Events (<code>on_event</code> / bus <code>EVENT</code>)</h3>
+<p>A callback <code>cb(name, info)</code> receives:</p>
+<table>
+<thead>
+<tr>
+<th><code>name</code></th>
+<th>when</th>
+<th><code>info</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>WAIT</code></td>
+<td>the program is blocked waiting for input</td>
+<td><code>{}</code></td>
+</tr>
+<tr>
+<td><code>BELL</code></td>
+<td>the program emitted <code>\a</code></td>
+<td><code>{}</code></td>
+</tr>
+<tr>
+<td><code>CLOSED</code></td>
+<td>the program ended</td>
+<td><code>{}</code></td>
+</tr>
+<tr>
+<td><code>DRIVER</code></td>
+<td>the talking stick changed hands</td>
+<td><code>{&quot;who&quot;: str | None}</code></td>
+</tr>
+<tr>
+<td><code>ERROR</code></td>
+<td>a program/runner failure, or an observer callback raised</td>
+<td><code>{&quot;where&quot;: str, &quot;error&quot;: str}</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="controller-roles-the-talking-stick">Controller roles (the talking stick)</h3>
+<p>A controller registers a <code>name</code> with a <code>role</code>. Roles: <code>&quot;human&quot;</code> / <code>&quot;interactive&quot;</code> (can
+preempt anyone) and <code>&quot;ai&quot;</code> (can take only a free stick or one held by a non-human). Exactly
+one controller &quot;drives&quot; at a time; only the driver's input registers. See <a href="#control--the-talking-stick">Session control</a>.</p>
+<hr />
+<h2 id="terminal-backends">Terminal backends</h2>
+<p>The screen model. Two implementations share one read interface, so a Session and the
+renderers work with either:</p>
+<table>
+<thead>
+<tr>
+<th>attribute / method</th>
+<th>type</th>
+<th>meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cols</code>, <code>rows</code></td>
+<td><code>int</code></td>
+<td>fixed grid dimensions</td>
+</tr>
+<tr>
+<td><code>cx</code>, <code>cy</code></td>
+<td><code>int</code></td>
+<td>cursor column / row</td>
+</tr>
+<tr>
+<td><code>write(text)</code></td>
+<td>—</td>
+<td>feed the program's output in (the Session calls this)</td>
+</tr>
+<tr>
+<td><code>snapshot()</code></td>
+<td><code>str</code></td>
+<td>whole screen as one <code>&quot;\n&quot;</code>-joined string</td>
+</tr>
+<tr>
+<td><code>rows_text()</code></td>
+<td><code>list[str]</code></td>
+<td>one string per row</td>
+</tr>
+<tr>
+<td><code>view_rows(offset=0)</code></td>
+<td><code>list[str]</code></td>
+<td><code>rows</code> lines scrolled back <code>offset</code> into history (0 = live)</td>
+</tr>
+<tr>
+<td><code>cells(offset=0)</code></td>
+<td><code>list[list[style.Cell]]</code></td>
+<td>same window, styled — <code>Cell(char, fg, bg, bold, italic, underline, strike, blink, reverse)</code></td>
+</tr>
+<tr>
+<td><code>max_scroll()</code></td>
+<td><code>int</code></td>
+<td>how many scrolled-off lines are available</td>
+</tr>
+<tr>
+<td><code>clear()</code></td>
+<td>—</td>
+<td>blank the grid, home the cursor</td>
+</tr>
+</tbody>
+</table>
+<p>Both are thread-safe (an <code>RLock</code>): the program thread writes while a render thread reads.</p>
+<h3 id="terminal-cols-80-rows-24-scrollback-5000"><code>Terminal(cols=80, rows=24, scrollback=5000)</code></h3>
+<p>The built-in <strong>VT52-spirit</strong> model, zero dependencies. Honors wrap+scroll, <code>CR/LF/BS/FF/TAB</code>,
+and the VT52 escapes <code>ESC H/J/K</code>, <code>ESC Y row col</code>, <code>ESC A/B/C/D</code>. Keeps <code>scrollback</code> lines of
+history (the &quot;paper roll&quot;). Raises <code>ValueError</code> if <code>cols</code> or <code>rows</code> &lt; 1.</p>
+<h3 id="pyteterminal-cols-80-rows-24-scrollback-5000"><code>PyteTerminal(cols=80, rows=24, scrollback=5000)</code></h3>
+<p>The <strong>full-ANSI/VT100+</strong> backend (the <code>ansi</code> extra). A drop-in for <code>Terminal</code> with the same
+read interface, backed by <code>pyte.HistoryScreen</code> — so it handles color/cursor-addressing/line
+edits and keeps scrollback. Use it for programs that emit modern ANSI (<code>tapterm --ansi</code>).
+Importing <code>pyte</code> is deferred to the constructor, so this raises <code>ModuleNotFoundError</code> if the
+<code>ansi</code> extra isn't installed. Same <code>ValueError</code> on bad dimensions.</p>
+<blockquote>
+<p>Note: SGR attributes — color, <strong>bold</strong>, <em>italic</em>, underline, strikethrough, blink, inverse — are exposed via
+<code>cells()</code> and drawn by <strong>all four renderers</strong> (the GUI backends via the font + bg fills,
+<code>curses_ui</code> via <code>A_*</code> attributes + color pairs); the <code>cells()</code> cell carries pyte's
+<code>fg</code>/<code>bg</code>/<code>bold</code>/<code>italic</code>/<code>underline</code>/<code>strike</code>/<code>blink</code>/<code>reverse</code>. The bus carries color too —
+<code>snapshot()</code>/<code>FRAME</code> includes styled <code>cells</code> (<code>style.encode_row</code>), so a remote <code>BusBacking</code>
+panel renders in color. SGR faint/rapid-blink/conceal aren't modelled by pyte (curses also
+lacks strikethrough). See DESIGN §9.</p>
+</blockquote>
+<h3 id="style-cell-color-helpers"><code>style</code> — cell color helpers</h3>
+<p><code>style.Cell(char, fg, bg, bold, italic, underline, strike, blink, reverse)</code> is what <code>cells()</code> returns; <code>fg</code>/<code>bg</code> are pyte color
+strings (<code>&quot;default&quot;</code>, <code>&quot;red&quot;</code>, <code>&quot;brightred&quot;</code>, <code>&quot;brown&quot;</code> = yellow, or a 6-hex string from
+256-color/truecolor). Helpers (no dependencies):</p>
+<ul>
+<li><strong><code>rgb(color, bold=False)</code></strong> → an <code>(r, g, b)</code>, or <code>None</code> for <code>&quot;default&quot;</code> (the renderer
+substitutes its own phosphor color). <code>bold</code> brightens a <em>named</em> color.</li>
+<li><strong><code>resolve(cell, fg_default=FG, bg_default=BG)</code></strong> → a cell's concrete <code>(fg, bg)</code> with
+<code>&quot;default&quot;</code> filled in and <code>reverse</code> (inverse video) applied.</li>
+<li><strong><code>runs(row, …)</code></strong> → maximal same-style runs <code>(x, text, fg, bg, bold, italic, underline, strike, blink)</code>, for a renderer that draws a whole run at once.</li>
+<li><strong><code>encode_row(row, …)</code></strong> → the same runs as JSON-able lists
+<code>[col, text, fg_hex, bg_hex, bold, italic, underline, strike, blink]</code> — the single wire
+encoding shared by <code>snapshot()</code>, the web renderer, and the bus <code>FRAME</code>.</li>
+<li><strong><code>hex_rgb(rgb)</code></strong> → an <code>(r, g, b)</code> as a 6-digit hex string (no <code>#</code>).</li>
+<li><strong><code>char_width(char)</code></strong> → display columns a character occupies: <strong>2</strong> for East-Asian
+wide/fullwidth (CJK and single-code-point emoji), <strong>0</strong> for a combining/format mark, else
+<strong>1</strong>. Used to skip the empty continuation cell <code>pyte</code> leaves to the right of a wide glyph
+(see <a href="../design/index.html">DESIGN.md</a> §9). Grapheme clusters are out of scope — <code>pyte</code> splits them upstream.</li>
+</ul>
+<p><code>style.FG</code> / <code>style.BG</code> are the phosphor defaults. Use these to write your own renderer.</p>
+<hr />
+<h2 id="sources">Sources</h2>
+<p>A <code>Source</code> produces terminal output and consumes input. Eight ship; you can write your own.</p>
+<h3 id="the-source-contract">The <code>Source</code> contract</h3>
+<pre><code class="language-python">class Source:
+    encoding = None      # wire encoding of raw output, or None if it already emits text
+    returncode = None    # child exit status after on_exit (None if N/A)
+    error = None         # exception that ended the program (None if clean)
+
+    def start(self, on_output, on_wait, on_exit): ...
+    def send_input(self, text): ...
+    def stop(self): ...
+</code></pre>
+<p><code>start()</code> begins producing on a background (daemon) thread and is handed three callbacks:</p>
+<ul>
+<li><code>on_output(text)</code> — the program emitted output. For a <em>byte source</em> this is a
+byte-transparent latin-1 <code>str</code> (the Session decodes it for the screen by <code>encoding</code>); for a
+<em>text source</em> it's characters.</li>
+<li><code>on_wait()</code> — the program is blocked waiting for input (fired by in-process runners only).</li>
+<li><code>on_exit()</code> — the program ended (fired exactly once).</li>
+</ul>
+<p><code>send_input(text)</code> feeds input; <code>stop()</code> asks the program to end. The Session reads the three
+class attributes: set <code>encoding</code> (e.g. <code>&quot;utf-8&quot;</code>) to mark a <em>byte source</em> whose output the
+Session should decode for the screen; leave it <code>None</code> for a <em>text source</em>.</p>
+<h3 id="ptysource-argv-cwd-none-env-none-size-24-80-encoding-utf-8-posix"><code>PtySource(argv, cwd=None, env=None, size=(24, 80), encoding=&quot;utf-8&quot;)</code>  <em>(POSIX)</em></h3>
+<p>Hosts an external program on a real pseudo-terminal. <code>argv</code> is a list (<code>[&quot;bash&quot;, &quot;-l&quot;]</code>);
+<code>size</code> is <code>(rows, cols)</code>. A byte source. <code>send_input</code> encodes keystrokes with <code>encoding</code>. A
+failed spawn (e.g. command not found) raises (<code>FileNotFoundError</code>/<code>OSError</code>) after cleaning up
+the pty fds. After exit, <code>.returncode</code> holds the child's status. POSIX only (<code>pty</code>/<code>termios</code>).</p>
+<h3 id="enginesource-runner-any-os"><code>EngineSource(runner)</code>  <em>(any OS)</em></h3>
+<p>Wraps an in-process <code>runner(emit, readline)</code> callable on a thread. <code>emit(text)</code> writes output;
+<code>readline()</code> fires <code>on_wait()</code> and blocks until input arrives, returning one line — a clean
+turn boundary. A text source. A runner exception is captured into <code>.error</code>. <code>stop()</code> unblocks
+a runner waiting in <code>readline()</code> (it raises an internal exception that unwinds the runner).
+Usually you don't construct this directly — <code>Session.run_in_thread(runner)</code> /
+<code>run_blocking(runner)</code> wrap a bare runner for you.</p>
+<pre><code class="language-python">def runner(emit, readline):
+    emit(&quot;Name? &quot;)
+    emit(f&quot;Hello, {readline().strip()}!\r\n&quot;)
+</code></pre>
+<h3 id="castsource-path-speed-1-0-idle-time-limit-none-loop-false-any-os"><code>CastSource(path, speed=1.0, idle_time_limit=None, loop=False)</code>  <em>(any OS)</em></h3>
+<p>Replays a recorded asciinema <code>.cast</code> file (v2 NDJSON or compact v1) through the pipeline. A
+text source. <code>speed</code> multiplies playback rate; <code>idle_time_limit</code> caps long pauses (seconds);
+<code>loop=True</code> repeats until <code>stop()</code>. After construction, <code>.width</code> / <code>.height</code> hold the
+recording's dimensions, so you can size the Terminal to match. Input is ignored. Raises
+<code>ValueError</code> for an oversized v1 file (the unstreamable whole-file path).</p>
+<pre><code class="language-python">src = CastSource(&quot;demo.cast&quot;, speed=2.0)
+sess = Session(PyteTerminal(src.width, src.height), source=src)
+</code></pre>
+<h3 id="ttyrecsource-path-speed-1-0-idle-time-limit-none-loop-false-encoding-utf-8-any-os"><code>TtyrecSource(path, speed=1.0, idle_time_limit=None, loop=False, encoding=&quot;utf-8&quot;)</code>  <em>(any OS)</em></h3>
+<p>Replays a <code>.ttyrec</code> recording (ttyrec / termrec / NetHack format) — a flat sequence of records,
+each a header of three little-endian uint32 (seconds, microseconds, payload length) then that
+many raw output bytes. A <strong>byte</strong> source; bytes are decoded to the screen by <code>encoding</code> (pass
+<code>&quot;cp437&quot;</code> for old DOS recordings). <code>speed</code>/<code>idle_time_limit</code>/<code>loop</code> as for <code>CastSource</code>. ttyrec
+carries no dimensions, so <code>.width</code>/<code>.height</code> stay 80×24 — size the Terminal yourself.</p>
+<h3 id="anssource-path-speed-1-0-idle-time-limit-none-loop-false-baud-none-charset-cp437-any-os"><code>AnsSource(path, speed=1.0, idle_time_limit=None, loop=False, baud=None, charset=&quot;cp437&quot;)</code>  <em>(any OS)</em></h3>
+<p>Plays an ANSI / BBS art file (<code>.ans</code>): CP437 bytes + ANSI escapes, optional SAUCE trailer. A
+<strong>text</strong> source — it strips the SAUCE record / comment block / DOS <code>0x1A</code> marker, decodes CP437
+(high-byte glyphs → Unicode box/block characters; escapes pass through), and emits the art (use
+<code>--ansi</code> / <code>PyteTerminal</code> to render it). <code>baud</code> (characters/second) draws it progressively for the
+retro effect; the default shows it at once. SAUCE's width/height land on <code>.width</code>/<code>.height</code>.</p>
+<h3 id="threeasource-path-speed-1-0-idle-time-limit-none-loop-false-any-os"><code>ThreeASource(path, speed=1.0, idle_time_limit=None, loop=False)</code>  <em>(any OS)</em></h3>
+<p>Plays a <code>.3a</code> animated-ASCII-art file (the DomesticMoth/asciimoth format): UTF-8 text with an
+<code>@3a</code> header (<code>delay &lt;ms&gt;</code>, <code>loop yes|no</code>, <code>colors yes|no</code>, custom <code>col &lt;name&gt; fg:.. bg:..</code>;
+<code>;;</code> comments) and an <code>@body</code> of frames separated by blank lines. With <code>colors yes</code>, each frame
+interleaves text rows with equal-length color-name rows (<code>0</code>-<code>7</code>/<code>8</code>-<code>f</code>/<code>_</code> = ANSI
+30-37/90-97/default). A <strong>text</strong> source — it renders each frame as positioned SGR output and
+steps at the <code>delay</code>; <code>loop yes</code> (or <code>--loop</code>) repeats. Channel &quot;pinning&quot; isn't supported.</p>
+<h3 id="replay-source-path-speed-1-0-idle-time-limit-none-loop-false"><code>replay_source(path, speed=1.0, idle_time_limit=None, loop=False)</code></h3>
+<p>Returns the right replay Source for a recording/art file by extension: <code>.ttyrec</code> → <code>TtyrecSource</code>,
+<code>.ans</code> → <code>AnsSource</code>, <code>.3a</code> → <code>ThreeASource</code>, anything else (<code>.cast</code>, …) → <code>CastSource</code>. What
+<code>tapterm --play</code> uses.</p>
+<h3 id="pipesource-argv-cwd-none-env-none-encoding-utf-8-any-os"><code>PipeSource(argv, cwd=None, env=None, encoding=&quot;utf-8&quot;)</code>  <em>(any OS)</em></h3>
+<p>Hosts an external program over plain pipes — no pty (<code>tapterm --no-pty</code>). A byte source,
+cross-platform, zero extra deps. Caveat: with no tty the child detects it isn't interactive,
+so many programs block-buffer output and skip prompts; best for cooperative, line-oriented
+programs.</p>
+<h3 id="conptysource-argv-cwd-none-env-none-size-24-80-windows"><code>ConPtySource(argv, cwd=None, env=None, size=(24, 80))</code>  <em>(Windows)</em></h3>
+<p>Hosts a program on a Windows pseudo-console (ConPTY) via <code>pywinpty</code> (the <code>win</code> extra). The
+Windows counterpart to <code>PtySource</code>; pairs with <code>PyteTerminal</code> (ConPTY emits VT100+). A text
+source (pywinpty returns decoded <code>str</code>). <strong>Provisional — written but not yet exercised on real
+Windows</strong> (DESIGN §9). <code>start()</code> raises <code>ModuleNotFoundError</code> where pywinpty isn't installed.</p>
+<h3 id="writing-a-custom-source">Writing a custom Source</h3>
+<p>Implement the three callbacks; nothing else in the toolkit changes. A byte source sets
+<code>encoding</code> and emits raw bytes as a latin-1 <code>str</code>; a text source leaves <code>encoding = None</code>.</p>
+<pre><code class="language-python">class TelnetSource(Source):
+    encoding = &quot;utf-8&quot;                      # byte source: Session decodes for the screen
+
+    def __init__(self, host, port):
+        self.host, self.port, self.thread, self._running = host, port, None, False
+
+    def start(self, on_output, on_wait, on_exit):
+        self._sock = socket.create_connection((self.host, self.port))
+        self._running = True
+
+        def reader():
+            try:
+                while self._running:
+                    data = self._sock.recv(4096)
+                    if not data:
+                        break
+                    on_output(data.decode(&quot;latin-1&quot;))    # raw bytes, lossless
+            finally:
+                on_exit()
+
+        self.thread = threading.Thread(target=reader, daemon=True)
+        self.thread.start()
+
+    def send_input(self, text):
+        self._sock.sendall(text.encode(&quot;utf-8&quot;))
+
+    def stop(self):
+        self._running = False
+        self._sock.close()
+</code></pre>
+<hr />
+<h2 id="recording">Recording</h2>
+<h3 id="recorder-session-path-fmt-none"><code>Recorder(session, path, fmt=None)</code></h3>
+<p>An observe-tap that writes a session's output stream, with timing, to a recording file as it
+runs — the inverse of a replay source. <code>fmt</code> is <code>&quot;cast&quot;</code> (asciinema v2) or <code>&quot;ttyrec&quot;</code>, defaulting
+from the path extension. <code>start()</code> opens the file (writing the asciicast header) and attaches the
+tap; <code>close()</code> detaches and closes. Works as a context manager. Records any source — including a
+replay source, so it doubles as a format converter.</p>
+<pre><code class="language-python">sess = Session(PyteTerminal(80, 24), source=PtySource([&quot;bash&quot;]))
+with Recorder(sess, &quot;session.cast&quot;):
+    curses_ui.run(sess, None)        # everything bash prints is recorded
+# replay it: tapterm --play session.cast   (or CastSource(&quot;session.cast&quot;))
+</code></pre>
+<h3 id="export-ansi-session-path"><code>export_ansi(session, path)</code></h3>
+<p>Writes the session's <strong>current screen</strong> as an ANSI-art <code>.ans</code> file — each cell's color/attributes
+as an SGR escape, each glyph encoded back to CP437 (non-CP437 glyphs → <code>?</code>), ending with a DOS EOF
+marker. A snapshot, not a recording (no timing); readable by <code>AnsSource</code> and ANSI-art tools, and
+what <code>tapterm --headless --snapshot screen.ans</code> calls.</p>
+<h3 id="export-3a-session-path"><code>export_3a(session, path)</code></h3>
+<p>Writes the current screen as a <strong>single-frame</strong> <code>.3a</code> file (a text row + an equal-length
+color-name row per screen row, under a minimal <code>@3a</code>/<code>@body</code> header). Foreground color only;
+readable by <code>ThreeASource</code>; what <code>tapterm --headless --snapshot screen.3a</code> calls. (Recording a
+multi-frame <code>.3a</code> animation is future work.)</p>
+<h3 id="render-video-recording-out-path-fps-30-font-size-18-font-path-none-zoom-1-0-speed-1-0-tail-1-0-max-seconds-none-crop-none-terminal-none"><code>render_video(recording, out_path, fps=30, font_size=18, font_path=None, zoom=1.0, speed=1.0, tail=1.0, max_seconds=None, crop=None, terminal=None)</code></h3>
+<p>Renders a <code>.cast</code> / <code>.ttyrec</code> / <code>.ans</code> / <code>.3a</code> recording to a <strong>video file</strong> (<code>.mp4</code> / <code>.webm</code> /
+<code>.gif</code> / …, by extension): it replays the recording into a terminal, rasterizes each moment with
+the compositor's grid renderer, and pipes frames to ffmpeg. Deterministic and
+faster-than-real-time (it feeds events up to each frame's time rather than waiting). <code>font_size</code>
+is the main size control; <code>zoom</code> scales the finished frame (crisp nearest-neighbor);
+<code>font_path</code> picks a <code>.ttf</code>; <code>speed</code> scales playback; <code>crop=(col, row, cols, rows)</code> renders only
+that region (area of interest); <code>max_seconds</code> caps a never-ending source; <code>terminal</code> is the
+backend factory <code>(cols, rows) -&gt; backend</code> and defaults to <code>PyteTerminal</code> — pass <code>Terminal</code> to
+render a VT52 recording (e.g. one from the dependency-free digital-rain demo). <code>.gif</code> output is
+an animated, infinitely-looping GIF. Needs the <code>sdl</code> + <code>ansi</code> extras and ffmpeg — a system
+binary, or the bundled one from the <code>video</code> extra (<code>imageio-ffmpeg</code>). What
+<code>tapterm --play X --render out.mp4</code> calls.</p>
+<hr />
+<h2 id="session">Session</h2>
+<p><code>Session(terminal=None, source=None)</code> — the hub. <code>terminal</code> defaults to <code>Terminal()</code>; set or
+pass a <code>source</code> before starting. Attributes you can read: <code>term</code>, <code>source</code>, <code>driver</code> (the
+current controller name or <code>None</code>), <code>done</code> (bool), <code>waiting</code> (bool).</p>
+<h3 id="observe-taps">Observe taps</h3>
+<pre><code class="language-python">on_stream(cb)   # cb(text)        -- raw program output, pre-render (byte-lossless)
+on_frame(cb)    # cb()            -- the grid changed; call snapshot() to read it
+on_event(cb)    # cb(name, info)  -- WAIT / BELL / CLOSED / DRIVER / ERROR (see Events)
+off_stream(cb) / off_frame(cb) / off_event(cb)    # unsubscribe
+</code></pre>
+<p>Each <code>on_*</code> returns the callback (handy for <code>off_*</code> or decorator use). A misbehaving stream/
+frame callback is isolated (caught, emitted as an <code>ERROR</code> event) so it can't kill output for
+other observers.</p>
+<pre><code class="language-python">sess.on_frame(lambda: print(sess.snapshot()[&quot;rows&quot;][0]))   # print the top row on each change
+sess.on_event(lambda name, info: print(&quot;event:&quot;, name, info))
+</code></pre>
+<p><code>snapshot()</code> → the <a href="#the-snapshot-dict">snapshot dict</a>.</p>
+<h3 id="control-the-talking-stick">Control &amp; the talking stick</h3>
+<pre><code class="language-python">send_input(text, by=None)              -&gt; bool   # inject input; applied if by is None or driver
+feed_key(ch, by=&quot;local&quot;, auto_take=True)         # one interactive keystroke (local echo + line buffer)
+feed_text(s, **kw)                               # feed_key for each char of s
+send_key(data, by=&quot;local&quot;, auto_take=True) -&gt; bool  # raw keystroke bytes, no echo/buffer (raw_keys mode)
+echo(text)                                       # show injected text on screen + to observers
+
+claim_control(name, role=&quot;ai&quot;, unique_suffix=None) -&gt; name  # register a controller (first
+                                                 #   claim drives); unique_suffix de-dups a taken
+                                                 #   name (the bus uses it, atomically)
+take(name)                              -&gt; bool  # grab the stick (courtesy-gated by role)
+release(name)                                    # give it up
+drop_controller(name)                            # deregister (auto-releases)
+has_control(name)                       -&gt; bool  # is `name` the driver?
+has_controller(name)                    -&gt; bool  # is `name` registered?
+</code></pre>
+<p><code>send_input(text, by=None)</code>: <code>by=None</code> is trusted/internal and always applied; a named
+controller's input applies only while it holds the stick; returns whether it was applied.
+<code>feed_key</code> assembles a line (echoing locally, sending on Enter); <code>auto_take=True</code> means typing
+implicitly grabs the stick (the local human preempts). Only the driver's keys register, so the
+line buffer is never raced. See DESIGN §2.3 for the courtesy rules.</p>
+<p>Set <code>session.raw_keys = True</code> (or <code>tapterm --raw</code>) for <strong>full-screen TUIs</strong>: a renderer then
+forwards every keystroke via <code>send_key</code> — no echo, no line buffer — translating special keys to
+VT sequences from the <code>tappty.keys</code> module (<code>KEYS[&quot;up&quot;]</code> → <code>&quot;\x1b[A&quot;</code>, …; <code>ctrl(&quot;c&quot;)</code> → <code>&quot;\x03&quot;</code>).
+The program (a pty TUI like vim) handles its own echo and redraw.</p>
+<h3 id="lifecycle">Lifecycle</h3>
+<pre><code class="language-python">start()                  # build the decoder, start the source (non-blocking)
+run_in_thread(runner=None)   # if runner given, wrap it as EngineSource; then start()
+run_blocking(runner=None)    # start + join the source thread; re-raises source.error if it failed
+stop()                   # stop the source and briefly join its thread (idempotent)
+</code></pre>
+<p><code>run_blocking</code> is the scripting entry (host → run to completion → read <code>term.snapshot()</code>).
+<code>stop()</code> is the <em>owning</em> teardown — the renderers call it on exit; a non-owning view (a
+compositor panel over a session it didn't start) should not.</p>
+<hr />
+<h2 id="the-bus">The bus</h2>
+<p>The same observe/control contract, out of process, over a Unix-domain socket or TCP. One
+server = one session, N clients. The full wire protocol is in DESIGN §2.4; here is the Python
+API. Trust model: <strong>trusted-local</strong> — see DESIGN §8.</p>
+<h3 id="busserver-session-path-cmd-timeout-8-0-token-none-allow-remote-false"><code>BusServer(session, path, cmd_timeout=8.0, token=None, allow_remote=False)</code></h3>
+<ul>
+<li><code>path</code> — a filesystem path (Unix socket) <strong>or</strong> a <code>(host, port)</code> tuple (TCP).</li>
+<li><code>cmd_timeout</code> — seconds a <code>CMD</code> waits for the next prompt before reporting a timeout.</li>
+<li><code>token</code> — optional non-empty shared secret a client must present in <code>HELLO</code> (a casual gate,
+not transport security). Passing <code>&quot;&quot;</code> raises <code>ValueError</code>.</li>
+<li><code>allow_remote</code> — required to bind a non-loopback TCP host; otherwise binding one raises
+<code>ValueError</code>.</li>
+</ul>
+<pre><code class="language-python">start()  -&gt; self    # register the session taps, bind/listen, start accepting (idempotent)
+stop()              # detach taps, drop clients, close + unlink; restart-safe
+addr                # the resolved bound address after start() (e.g. (&quot;127.0.0.1&quot;, 54321))
+</code></pre>
+<p>A Unix socket is created <code>0600</code> (owner-only). For TCP, bind port <code>0</code> and read <code>srv.addr</code> for
+the OS-assigned port:</p>
+<pre><code class="language-python">srv = BusServer(sess, (&quot;127.0.0.1&quot;, 0), token=&quot;s3cret&quot;).start()
+host, port = srv.addr
+</code></pre>
+<h3 id="busclient-path-token-none"><code>BusClient(path, token=None)</code></h3>
+<p><code>path</code>/<code>token</code> mirror the server. A background thread reads every message onto <code>inbox</code> (a
+<code>queue.Queue</code> of <code>(verb, payload)</code> tuples).</p>
+<pre><code class="language-python">connect()                 -&gt; self        # open the socket, start the reader thread
+hello(role=&quot;observer&quot;, name=&quot;client&quot;)    # identify; send token if one was set
+sub()                                    # subscribe to pushed OUT/FRAME/EVENT
+take() / release()                       # grab / drop the talking stick
+line(text)                               # inject a line (needs the stick)
+key(text)                                # inject raw keystrokes (a string of chars)
+send(verb, payload=&quot;&quot;)                   # low-level frame (str only, no newlines)
+wait_for(verb, timeout=3.0)  -&gt; payload | None   # drain inbox until this verb (or timeout)
+snap(timeout=3.0)            -&gt; dict | None       # request + return the current grid
+cmd(line, timeout=9.0)       -&gt; str | None        # send a line, return output to next prompt
+close()
+</code></pre>
+<p><code>cmd()</code> is the synchronous driving primitive: it sends the line and returns exactly the output
+up to the program's next prompt. It raises <code>TimeoutError</code> if the command didn't reach a prompt
+(so partial output isn't mistaken for a result) and returns <code>None</code> if no reply arrived.</p>
+<blockquote>
+<p><code>BusClient</code> is <strong>single-consumer</strong>: <code>wait_for()</code> drains and discards intervening messages,
+so it's for one request/reply at a time before subscribing — not concurrent callers. A
+subscriber must drain <code>inbox</code> (it is unbounded). DESIGN §9.</p>
+</blockquote>
+<hr />
+<h2 id="renderers">Renderers</h2>
+<p>Each renderer is a Session client exposing <code>run(session, runner, …)</code>. It starts the program
+(<code>session.run_in_thread(runner)</code>), loops drawing the grid and forwarding keys, and calls
+<code>session.stop()</code> on exit (so closing the window stops the program). <code>run()</code> <strong>blocks</strong> until
+the user quits. Pass <code>runner=None</code> when the session already has a <code>source</code>.</p>
+<h3 id="curses-ui-run-session-runner-title-tapterm-refresh-ms-50-posix-terminal"><code>curses_ui.run(session, runner, title=&quot;tapterm&quot;, refresh_ms=50)</code>  <em>(POSIX terminal)</em></h3>
+<p>Draws a cursor-following viewport into the fixed grid with a status line; takes over the
+current terminal. Renders SGR color via curses color pairs where the terminal supports it
+(else the default foreground). Maps Enter/Backspace/printable ASCII to the session; <code>Ctrl-]</code>
+quits.</p>
+<p>Also exported: <strong><code>viewport(model_w, model_h, screen_w, screen_h, cx, cy, status=1)</code></strong> →
+<code>(ox, oy, vw, vh)</code> — the pure, unit-tested function that computes the visible sub-rectangle
+(the top-left offset and view size) keeping the cursor in view. Useful if you write your own
+renderer.</p>
+<h3 id="pygame-ui-run-session-runner-title-tapterm-snapshot-path-none-font-size-18-exit-when-done-false-fps-30-max-seconds-none-gui"><code>pygame_ui.run(session, runner, title=&quot;tapterm&quot;, snapshot_path=None, font_size=18, exit_when_done=False, fps=30, max_seconds=None)</code>  <em>(GUI)</em></h3>
+<p>A green-phosphor window (the <code>sdl</code> extra; needs a display). <code>snapshot_path</code> mirrors the screen
+to a text file + PNG each second (and <code>F12</code> on demand) so an automated observer can watch;
+<code>exit_when_done</code> closes when the program ends; <code>max_seconds</code> is a hard loop cap (scripting/
+tests). Scrollback is mouse-wheel / PageUp-PageDown. <code>fps</code> must be <code>&gt;= 1</code> (else <code>ValueError</code>).</p>
+<h3 id="arcade-ui-run-session-runner-title-tapterm-snapshot-path-none-font-size-18-exit-when-done-false-fps-30-max-seconds-none-gui"><code>arcade_ui.run(session, runner, title=&quot;tapterm&quot;, snapshot_path=None, font_size=18, exit_when_done=False, fps=30, max_seconds=None)</code>  <em>(GUI)</em></h3>
+<p>The same renderer on the arcade (pyglet/OpenGL) stack — identical signature and behavior to
+<code>pygame_ui.run</code> (green phosphor, scrollback, <code>snapshot_path</code> text+PNG, <code>F12</code>, <code>exit_when_done</code>,
+<code>max_seconds</code>, <code>fps &gt;= 1</code>), so the two are interchangeable. The <code>gl</code> extra; needs a real GL
+context (a display), where the pygame path runs purely in software. <code>arcade</code> is imported lazily,
+so <code>import tappty</code> works without it.</p>
+<h3 id="web-ui-run-session-runner-title-tapterm-host-127-0-0-1-port-8023-token-none-exit-when-done-false-max-seconds-none-fps-30-allow-remote-false-browser"><code>web_ui.run(session, runner, title=&quot;tapterm&quot;, host=&quot;127.0.0.1&quot;, port=8023, token=None, exit_when_done=False, max_seconds=None, fps=30, allow_remote=False)</code>  <em>(browser)</em></h3>
+<p>Serves the session in a <strong>browser tab</strong> (the <code>web</code> extra). A stdlib <code>http.server</code> serves one
+page on <code>port</code>; a <code>websockets</code> server carries the live connection on <code>port + 1</code>. The browser
+draws the <code>cells()</code> grid (phosphor + SGR color) on a canvas and sends keystrokes back, honoring
+<code>session.raw_keys</code> for full TUIs. Several browsers can connect at once — the talking stick
+arbitrates who drives. <code>run()</code> blocks until the program ends (<code>exit_when_done</code>), <code>max_seconds</code>,
+or <code>KeyboardInterrupt</code>.</p>
+<p>Security: binds <strong>loopback</strong> unless <code>allow_remote=True</code>; rejects WebSocket connections whose
+<code>Origin</code> isn't the page's own (anti-CSWSH — a site the user merely visits can't drive the
+terminal); and a non-empty <code>token</code> gates <strong>both</strong> the page and the socket (constant-time
+compared) and is never embedded in the served HTML. No TLS — tunnel it for untrusted networks
+(see DESIGN §8).</p>
+<hr />
+<h2 id="compositor">Compositor</h2>
+<p>Tiles several panels in one pygame window (the <code>sdl</code> extra).</p>
+<h3 id="compositor-run-panels-title-tappty-dashboard-size-1280-720-fps-10-snapshot-path-none-max-seconds-none"><code>compositor.run(panels, title=&quot;tappty dashboard&quot;, size=(1280, 720), fps=10, snapshot_path=None, max_seconds=None)</code></h3>
+<p><code>panels</code> is a list of <code>TerminalPanel</code>. Blocks. Mouse: wheel zooms a tile, left-drag pans,
+right-click resets to fit. Keys: <code>Tab</code> cycles focus, <code>F2</code> takes/gives the focused tile's
+stick, <code>Esc</code> quits; other keys route to the focused tile. <code>fps &gt;= 1</code>.</p>
+<h3 id="terminalpanel-backing-rect-title"><code>TerminalPanel(backing, rect, title=&quot;&quot;)</code></h3>
+<p>A draw-into-rect tile over a pluggable backing. <code>rect</code> is <code>(x, y, w, h)</code> in pixels. <code>.kind</code> is
+<code>&quot;term&quot;</code> (the compositor dispatches panels by kind). Mouse pan/zoom is built in.</p>
+<h3 id="backings">Backings</h3>
+<p>Both present the same interface (<code>grid()</code>, <code>feed_key(ch)</code>, <code>has_stick()</code>, <code>toggle_stick()</code>,
+<code>focus()</code>, <code>close()</code>), so a panel doesn't care whether its session is local or remote:</p>
+<ul>
+<li><strong><code>SessionBacking(session, op=&quot;local&quot;)</code></strong> — an in-process Session. A <em>non-owning view</em>:
+<code>close()</code> is a no-op (the session may outlive the panel). The operator types only while it
+holds the stick (<code>toggle_stick()</code>, bound to F2); <code>focus()</code> never grabs control.</li>
+<li><strong><code>BusBacking(socket_path, name=&quot;panel&quot;, role=&quot;human&quot;, token=None)</code></strong> — a <em>remote</em> session
+over the bus. Subscribes for frames, forwards keystrokes, paces queued frames into a smooth
+scroll. <code>token</code> authenticates if the server requires one.</li>
+</ul>
+<pre><code class="language-python">from tappty import compositor, Session, PyteTerminal, PtySource
+
+def local_panel(cmd, rect):
+    s = Session(PyteTerminal(), source=PtySource(cmd))
+    s.claim_control(&quot;local&quot;, &quot;human&quot;)
+    s.start()
+    return compositor.TerminalPanel(compositor.SessionBacking(s), rect, cmd[0])
+
+panels = [
+    local_panel([&quot;bash&quot;], (10, 24, 620, 680)),
+    compositor.TerminalPanel(compositor.BusBacking(&quot;/tmp/remote.sock&quot;), (650, 24, 620, 680), &quot;remote&quot;),
+]
+compositor.run(panels)
+</code></pre>
+<hr />
+<h2 id="worked-examples">Worked examples</h2>
+<p>Runnable versions of these (and more) live in <a href="https://github.com/nyxcraft/tappty/tree/main/examples"><code>examples/</code></a>
+— <code>observe_tap.py</code>, <code>custom_source.py</code>, <code>bus_capture.py</code>. For visual showpieces, see
+<a href="https://github.com/nyxcraft/tappty/tree/main/demos"><code>demos/</code></a> and the <a href="../gallery/index.html">gallery</a>.</p>
+<h3 id="drive-an-interactive-program-over-the-bus">Drive an interactive program over the bus</h3>
+<pre><code class="language-python"># --- host process ---
+from tappty import Session, Terminal, PtySource, BusServer
+sess = Session(Terminal(), source=PtySource([&quot;python3&quot;, &quot;-i&quot;, &quot;-u&quot;]))
+srv = BusServer(sess, &quot;/tmp/tappty-demo.sock&quot;).start()
+sess.start()
+# ... keep the process alive (e.g. join the source thread, or run a renderer) ...
+
+# --- driver process ---
+from tappty import BusClient
+c = BusClient(&quot;/tmp/tappty-demo.sock&quot;).connect()
+c.hello(role=&quot;ai&quot;, name=&quot;bot&quot;)            # claim the stick (first controller drives)
+print(c.cmd(&quot;import math; math.pi&quot;))      # -&gt; the REPL's output up to the next &quot;&gt;&gt;&gt; &quot;
+print(c.cmd(&quot;2 ** 10&quot;))                   # -&gt; &quot;1024\n...&quot;
+c.line(&quot;exit()&quot;)                          # fire-and-forget input
+c.close()
+</code></pre>
+<h3 id="watch-a-live-session-headlessly-subscribe-to-the-stream">Watch a live session headlessly (subscribe to the stream)</h3>
+<pre><code class="language-python">from tappty import BusClient
+c = BusClient(&quot;/tmp/tappty-demo.sock&quot;).connect()
+c.hello(role=&quot;observer&quot;, name=&quot;logger&quot;)
+c.sub()                                   # subscribe to pushed OUT/FRAME/EVENT
+while True:
+    verb, payload = c.inbox.get()         # MUST drain — the inbox is unbounded
+    if verb == &quot;OUT&quot;:
+        log.write(payload)                # raw program bytes (lossless)
+    elif verb == &quot;EVENT&quot; and payload[&quot;name&quot;] == &quot;CLOSED&quot;:
+        break
+</code></pre>
+<h3 id="replay-a-recording-to-a-png-headless-deterministic">Replay a recording to a PNG (headless, deterministic)</h3>
+<pre><code class="language-python">from tappty import Session, PyteTerminal, CastSource, pygame_ui
+import os
+os.environ[&quot;SDL_VIDEODRIVER&quot;] = &quot;dummy&quot;   # no display needed
+src = CastSource(&quot;session.cast&quot;, speed=4.0)
+sess = Session(PyteTerminal(src.width, src.height), source=src)
+pygame_ui.run(sess, None, snapshot_path=&quot;out&quot;, exit_when_done=True, max_seconds=10)
+# -&gt; out (final screen text) and out.png (pixels)
+</code></pre>
+<hr />
+<h2 id="quick-reference">Quick reference</h2>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Signature</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Terminal</code></td>
+<td><code>(cols=80, rows=24, scrollback=5000)</code></td>
+<td>VT52 model, no deps</td>
+</tr>
+<tr>
+<td><code>PyteTerminal</code></td>
+<td><code>(cols=80, rows=24, scrollback=5000)</code></td>
+<td>full-ANSI; <code>ansi</code> extra</td>
+</tr>
+<tr>
+<td><code>Session</code></td>
+<td><code>(terminal=None, source=None)</code></td>
+<td>the hub</td>
+</tr>
+<tr>
+<td><code>Source</code></td>
+<td>base class</td>
+<td>subclass for a custom producer</td>
+</tr>
+<tr>
+<td><code>PtySource</code></td>
+<td><code>(argv, cwd=None, env=None, size=(24,80), encoding=&quot;utf-8&quot;)</code></td>
+<td>POSIX pty; byte source</td>
+</tr>
+<tr>
+<td><code>EngineSource</code></td>
+<td><code>(runner)</code></td>
+<td>in-process <code>runner(emit, readline)</code>; text source</td>
+</tr>
+<tr>
+<td><code>CastSource</code></td>
+<td><code>(path, speed=1.0, idle_time_limit=None, loop=False)</code></td>
+<td><code>.cast</code> replay; <code>.width</code>/<code>.height</code></td>
+</tr>
+<tr>
+<td><code>TtyrecSource</code></td>
+<td><code>(path, speed=1.0, idle_time_limit=None, loop=False, encoding=&quot;utf-8&quot;)</code></td>
+<td><code>.ttyrec</code> replay; byte source</td>
+</tr>
+<tr>
+<td><code>AnsSource</code></td>
+<td><code>(path, speed=1.0, idle_time_limit=None, loop=False, baud=None, charset=&quot;cp437&quot;)</code></td>
+<td><code>.ans</code> ANSI art; CP437 + SAUCE</td>
+</tr>
+<tr>
+<td><code>ThreeASource</code></td>
+<td><code>(path, speed=1.0, idle_time_limit=None, loop=False)</code></td>
+<td><code>.3a</code> animated ASCII art</td>
+</tr>
+<tr>
+<td><code>replay_source</code></td>
+<td><code>(path, speed=1.0, idle_time_limit=None, loop=False)</code></td>
+<td>picks Cast/Ttyrec/Ans/3a by extension</td>
+</tr>
+<tr>
+<td><code>PipeSource</code></td>
+<td><code>(argv, cwd=None, env=None, encoding=&quot;utf-8&quot;)</code></td>
+<td>plain pipes, any OS; byte source</td>
+</tr>
+<tr>
+<td><code>ConPtySource</code></td>
+<td><code>(argv, cwd=None, env=None, size=(24,80))</code></td>
+<td>Windows ConPTY; <code>win</code> extra (provisional)</td>
+</tr>
+<tr>
+<td><code>Recorder</code></td>
+<td><code>(session, path, fmt=None)</code></td>
+<td>record output → <code>.cast</code>/<code>.ttyrec</code>; <code>start()</code>/<code>close()</code></td>
+</tr>
+<tr>
+<td><code>export_ansi</code></td>
+<td><code>(session, path)</code></td>
+<td>write the screen as ANSI-art <code>.ans</code> (CP437 + SGR)</td>
+</tr>
+<tr>
+<td><code>export_3a</code></td>
+<td><code>(session, path)</code></td>
+<td>write the screen as a single-frame <code>.3a</code></td>
+</tr>
+<tr>
+<td><code>render_video</code></td>
+<td><code>(recording, out_path, fps=30, font_size=18, font_path=None, zoom=1.0, speed=1.0, tail=1.0, max_seconds=None, crop=None, terminal=None)</code></td>
+<td>recording → <code>.mp4</code>/<code>.webm</code>/<code>.gif</code>/… via ffmpeg</td>
+</tr>
+<tr>
+<td><code>BusServer</code></td>
+<td><code>(session, path, cmd_timeout=8.0, token=None, allow_remote=False)</code></td>
+<td><code>.start()</code>/<code>.stop()</code>/<code>.addr</code></td>
+</tr>
+<tr>
+<td><code>BusClient</code></td>
+<td><code>(path, token=None)</code></td>
+<td><code>.connect()</code>, <code>snap</code>, <code>cmd</code>, <code>line</code>, <code>key</code>, <code>sub</code>, <code>inbox</code></td>
+</tr>
+<tr>
+<td><code>curses_ui.run</code></td>
+<td><code>(session, runner, title=&quot;tapterm&quot;, refresh_ms=50)</code></td>
+<td>blocks; POSIX</td>
+</tr>
+<tr>
+<td><code>curses_ui.viewport</code></td>
+<td><code>(model_w, model_h, screen_w, screen_h, cx, cy, status=1)</code></td>
+<td>pure → <code>(ox, oy, vw, vh)</code></td>
+</tr>
+<tr>
+<td><code>pygame_ui.run</code></td>
+<td><code>(session, runner, title=&quot;tapterm&quot;, snapshot_path=None, font_size=18, exit_when_done=False, fps=30, max_seconds=None)</code></td>
+<td>blocks; <code>sdl</code> extra</td>
+</tr>
+<tr>
+<td><code>compositor.run</code></td>
+<td><code>(panels, title=&quot;tappty dashboard&quot;, size=(1280,720), fps=10, snapshot_path=None, max_seconds=None)</code></td>
+<td>blocks; <code>sdl</code> extra</td>
+</tr>
+<tr>
+<td><code>compositor.TerminalPanel</code></td>
+<td><code>(backing, rect, title=&quot;&quot;)</code></td>
+<td><code>rect=(x,y,w,h)</code></td>
+</tr>
+<tr>
+<td><code>compositor.SessionBacking</code></td>
+<td><code>(session, op=&quot;local&quot;)</code></td>
+<td>in-process, non-owning</td>
+</tr>
+<tr>
+<td><code>compositor.BusBacking</code></td>
+<td><code>(socket_path, name=&quot;panel&quot;, role=&quot;human&quot;, token=None)</code></td>
+<td>remote over the bus</td>
+</tr>
+</tbody>
+</table>
+
+        </div>
+      </article>
+    </main>
+
+    <footer class="site-footer">
+      <p>© 2026 Nicholas J. Kisseberth · <a href="../index.html">tappty</a> is <a href="../license/index.html">MIT-licensed</a>.</p>
+      <p class="site-footer__attr">Software Architecture, Design &amp; Engineering by Nicholas J. Kisseberth.<br>Code Synthesized via Anthropic Claude Code / Opus 4.8.<br>Automated Code Review via OpenAI Codex / ChatGPT 5.5.</p>
+    </footer>
+  </div>
+
+  <script>
+  // Section viewer: split the page into one panel per H2 and show one at a time, driven by the
+  // left-rail "On this page" links (and any in-prose # link). Degrades to the full page when
+  // JavaScript is off -- the panels are only hidden once .js-sections is set here.
+  (function () {
+    var prose = document.querySelector('.prose');
+    if (!prose) return;
+    var navLinks = Array.prototype.slice.call(document.querySelectorAll('.section-nav a[href^="#"]'));
+
+    var kids = Array.prototype.slice.call(prose.childNodes);
+    var groups = [], preface = [], cur = null;
+    kids.forEach(function (n) {
+      if (n.nodeType === 1 && n.tagName === 'H2') { cur = { id: n.id, nodes: [n] }; groups.push(cur); }
+      else if (cur) { cur.nodes.push(n); }
+      else { preface.push(n); }
+    });
+    if (!groups.length) return;                 // no H2s -> leave the page as one scroll
+    groups[0].nodes = preface.concat(groups[0].nodes);
+
+    prose.innerHTML = '';
+    prose.classList.add('js-sections');
+    var anchorToSection = {};
+    var sections = groups.map(function (g) {
+      var s = document.createElement('section');
+      s.className = 'doc-section';
+      g.nodes.forEach(function (n) { s.appendChild(n); });
+      prose.appendChild(s);
+      Array.prototype.forEach.call(s.querySelectorAll('[id]'), function (el) { anchorToSection[el.id] = s; });
+      if (g.id) anchorToSection[g.id] = s;
+      return s;
+    });
+
+    function activate(anchor, scroll) {
+      var target = anchorToSection[anchor] || sections[0];
+      sections.forEach(function (s) { s.classList.toggle('is-active', s === target); });
+      navLinks.forEach(function (a) {
+        var id = decodeURIComponent(a.getAttribute('href').slice(1));
+        a.classList.toggle('is-active', anchorToSection[id] === target);
+      });
+      if (scroll) {
+        var el = (anchor && document.getElementById(anchor)) || target;
+        if (el && el.scrollIntoView) el.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      }
+    }
+    function fromHash(scroll) { activate(decodeURIComponent((location.hash || '').slice(1)), scroll); }
+
+    document.addEventListener('click', function (e) {
+      var a = e.target && e.target.closest ? e.target.closest('a[href^="#"]') : null;
+      if (!a) return;
+      var id = decodeURIComponent(a.getAttribute('href').slice(1));
+      if (anchorToSection[id]) activate(id, true);
+    });
+    window.addEventListener('hashchange', function () { fromHash(true); });
+    fromHash(false);
+  })();
+  </script>
+</body>
+</html>
