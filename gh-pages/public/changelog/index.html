@@ -33,6 +33,7 @@
         <p class="docs-sidebar__eyebrow">On this page</p>
         <nav class="section-nav" aria-label="On this page">
 <ul class="section-nav__list">
+<li><a class="section-nav__link section-nav__link--l2" href="#prehistory">Prehistory</a></li>
 <li><a class="section-nav__link section-nav__link--l2" href="#2026-06-17-and-so-it-begins">2026-06-17 — And so it begins...</a></li>
 <li><a class="section-nav__link section-nav__link--l2" href="#2026-06-18-standalone">2026-06-18 — standalone</a></li>
 <li><a class="section-nav__link section-nav__link--l2" href="#2026-06-19-renderers-color-bus-packaging">2026-06-19 — renderers, color, bus, packaging</a></li>
@@ -49,6 +50,16 @@
           <p class="docs-article__source">Changelog</p>
         </header>
         <div class="prose">
+<h2 id="prehistory">Prehistory</h2>
+<p>Before this repository existed, the terminal toolkit was built in-tree inside a larger parent
+project — the observe/control core, the terminal model, the multi-pane compositor, and the
+curses/pygame renderers all took shape there before being extracted to stand on their own. The
+dated history below begins with that early work. Two compositor capabilities from those first
+days predate the extraction and aren't otherwise called out:</p>
+<ul>
+<li>Compositor: eased inter-frame motion (glide) with motion trails.</li>
+<li>Compositor: scrolling terminal-replay in a pane.</li>
+</ul>
 <h2 id="2026-06-17-and-so-it-begins">2026-06-17 — And so it begins...</h2>
 <ul>
 <li><strong>13:10</strong> — Started: the fixed-size VT52 <code>Terminal</code> grid</li>

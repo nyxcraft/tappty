@@ -1,5 +1,16 @@
 # Changelog
 
+## Prehistory
+
+Before this repository existed, the terminal toolkit was built in-tree inside a larger parent
+project — the observe/control core, the terminal model, the multi-pane compositor, and the
+curses/pygame renderers all took shape there before being extracted to stand on their own. The
+dated history below begins with that early work. Two compositor capabilities from those first
+days predate the extraction and aren't otherwise called out:
+
+- Compositor: eased inter-frame motion (glide) with motion trails.
+- Compositor: scrolling terminal-replay in a pane.
+
 ## 2026-06-17 — And so it begins...
 
 - **13:10** — Started: the fixed-size VT52 `Terminal` grid
