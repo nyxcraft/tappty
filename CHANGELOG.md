@@ -5,20 +5,20 @@
 Before this repository existed, the terminal toolkit was built in-tree inside a larger parent
 project — the observe/control core, the terminal model, the multi-pane compositor, and the
 curses/pygame renderers all took shape there before being extracted to stand on their own. The
-dated history below begins with that early work. Two compositor capabilities from those first
-days predate the extraction and aren't otherwise called out:
-
-- Compositor: eased inter-frame motion (glide) with motion trails.
-- Compositor: scrolling terminal-replay in a pane.
+dated history below begins with that early work.
 
 ## 2026-06-17 — And so it begins...
 
 - **13:10** — Started: the fixed-size VT52 `Terminal` grid
 - **14:29** — the first pygame renderer
 - **22:51** — First end-to-end run of observe/control core
+- **22:51** — a multi-pane **compositor** and an **arena** that tiles many sessions
+- **22:51** — a **curses** renderer beside the pygame one, and a `python -m` entry to host any program on a pty
+- **23:43** — Compositor: eased inter-frame motion (glide) with motion trails.
 
 ## 2026-06-18 — standalone
 
+- **00:15** — Compositor: scrolling terminal-replay in a pane.
 - **23:30** — Extracted to a standalone package
 - **23:35** — round-tripped a real subprocess through the pty into the grid.
 
